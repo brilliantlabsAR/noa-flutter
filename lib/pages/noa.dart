@@ -52,10 +52,10 @@ class _NoaPageState extends State<NoaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Title bar
+      backgroundColor: backgroundLightColor,
+
       appBar: TopTitleBar(context, 'NOA', false),
 
-      // Scrollable text area
       body: Container(
         child: ListView.builder(
           itemCount: messages.length,
@@ -79,12 +79,12 @@ class _NoaPageState extends State<NoaPage> {
                       children: [
                         Text(
                           "${messages[index].time.hour.toString().padLeft(2, '0')}:${messages[index].time.minute.toString().padLeft(2, '0')}",
-                          style: TextStyle(color: lightText),
+                          style: TextStyle(color: textLightColor),
                         ),
                         const Flexible(
                           child: Divider(
                             indent: 10,
-                            color: lightText,
+                            color: textLightColor,
                           ),
                         ),
                       ],
@@ -104,7 +104,7 @@ class _NoaPageState extends State<NoaPage> {
       ),
 
       // Bottom bar
-      bottomNavigationBar: BottomNavBar(context, 0),
+      bottomNavigationBar: BottomNavBar(context, 0, false),
     );
   }
 }

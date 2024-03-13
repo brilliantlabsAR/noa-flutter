@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:noa/style.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 
@@ -8,11 +9,12 @@ class HackPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundDarkColor,
       appBar: TopTitleBar(context, 'HACK', true),
       body: const Center(
         child: Text("Hack"),
       ),
-      bottomNavigationBar: BottomNavBar(context, 2),
+      bottomNavigationBar: BottomNavBar(context, 2, true),
     );
   }
 }
