@@ -1,0 +1,27 @@
+name: noa
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.1 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_blue_plus: ^1.31.16
+  flutter_launcher_icons: ^0.13.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter_launcher_icons:
+  image_path: "assets/app_icon.png"
+  ios: true
+  android: true
+  remove_alpha_ios: true
+
+flutter:
+  uses-material-design: true
