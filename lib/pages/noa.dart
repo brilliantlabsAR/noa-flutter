@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:noa/bluetooth.dart';
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/style.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 
 class NoaPage extends StatefulWidget {
-  final FrameBluetooth bluetooth;
-  NoaPage({super.key, required this.bluetooth});
+  NoaPage({super.key});
 
   @override
   State<NoaPage> createState() => _NoaPageState();

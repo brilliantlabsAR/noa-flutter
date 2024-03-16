@@ -34,7 +34,7 @@ Widget BottomNavBar(BuildContext context, int selected, bool darkMode) {
         Expanded(
           child: GestureDetector(
             onTap: () {
-              // switchPage(context, NoaPage(widget.bluetooth));
+              switchPage(context, NoaPage());
             },
             onHorizontalDragUpdate: (details) {
               if (selected == 0 && details.delta.dx > 8) {
@@ -66,7 +66,7 @@ Widget BottomNavBar(BuildContext context, int selected, bool darkMode) {
               if (selected == 1 && details.delta.dx > 8) {
                 switchPage(context, HackPage());
               } else if (selected == 1 && details.delta.dx < -8) {
-                // switchPage(context, NoaPage());
+                switchPage(context, NoaPage());
               }
             },
             child: Container(

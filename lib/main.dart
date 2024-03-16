@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/login.dart';
-import 'package:noa/pages/noa.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+void main() async {
+  await dotenv.load();
   runApp(MainApp());
 }
 
@@ -19,9 +20,9 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: NoaPage(bluetooth: bluetooth),
+      home: LoginPage(),
     );
   }
 }

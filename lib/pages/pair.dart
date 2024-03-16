@@ -4,8 +4,7 @@ import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
 
 class PairPage extends StatefulWidget {
-  final FrameBluetooth bluetooth;
-  const PairPage({super.key, required this.bluetooth});
+  const PairPage({super.key});
 
   @override
   State<PairPage> createState() => _PairPageState();
@@ -13,7 +12,9 @@ class PairPage extends StatefulWidget {
 
 class _PairPageState extends State<PairPage> {
   void _connect() async {
-    FrameConnectionEnum device = await widget.bluetooth.connect(true);
+    // TODO enable this again
+    FrameConnectionEnum device =
+        FrameConnectionEnum.connected; // await widget.bluetooth.connect(true);
 
     switch (device) {
       case FrameConnectionEnum.connected:
@@ -21,8 +22,7 @@ class _PairPageState extends State<PairPage> {
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation1, animation2) =>
-                NoaPage(bluetooth: widget.bluetooth),
+            pageBuilder: (context, animation1, animation2) => NoaPage(),
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),
@@ -36,7 +36,7 @@ class _PairPageState extends State<PairPage> {
 
   void initState() {
     super.initState();
-    _connect();
+    // _connect();
   }
 
   @override

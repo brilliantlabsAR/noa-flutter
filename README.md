@@ -56,7 +56,7 @@ Sometimes it may be necessary to regenerate the platform files. To do this, dele
     
 1. Insert the following into `ios/Runner/Info.plist` to enable Bluetooth for iOS
 
-    ```xml
+    ```plist
     <dict>
         <key>NSBluetoothAlwaysUsageDescription</key>
         <string>This app always needs Bluetooth to function</string>
@@ -71,6 +71,24 @@ Sometimes it may be necessary to regenerate the platform files. To do this, dele
         <key>UIBackgroundModes</key>
         <array>
             <string>bluetooth-central</string>
+        </array>
+        ...
+    ```
+
+1. Insert the following into `ios/Runner/Info.plist to enable Google sign in for iOS
+
+    ```plist
+    <dict>
+        <key>CFBundleURLTypes</key>
+        <array>
+            <dict>
+                <key>CFBundleTypeRole</key>
+                <string>Editor</string>
+                <key>CFBundleURLSchemes</key>
+                <array>
+                    <string>com.googleusercontent.apps.178409912024-a779l8d62k0r94f8qg63bcs77j986htk</string>
+                </array>
+            </dict>
         </array>
         ...
     ```
