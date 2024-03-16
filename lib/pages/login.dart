@@ -2,21 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:noa/pages/pair.dart';
 import 'package:noa/services/sign_in.dart';
 import 'package:noa/style.dart';
+import 'package:noa/widgets/alert_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-Widget _LoginButton(BuildContext context, String image, Function action) {
+void _gotoPairingScreen(BuildContext context) {
+  Navigator.pushReplacement(
+    context,
+    PageRouteBuilder(
+      pageBuilder: (context, animation1, animation2) => const PairPage(),
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+    ),
+  );
+}
+
+Widget _loginButton(BuildContext context, String image, Function action) {
   return GestureDetector(
     onTap: () async {
-      final success = await action();
-      if (success) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation1, animation2) => PairPage(),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-      }
+      try {
+        final token = await action();
+        final preferences = await SharedPreferences.getInstance();
+        await preferences.setString('userToken', token);
+        if (context.mounted) {
+          _gotoPairingScreen(context);
+        }
+      } on SignInNoConnectionError catch (_) {
+        if (context.mounted) {
+          alertDialog(
+            context,
+            "Couldn't Sign In",
+            "Noa requires an internet connection",
+          );
+        }
+      } on SignInServerError catch (error) {
+        if (context.mounted) {
+          alertDialog(
+            context,
+            "Couldn't Sign In",
+            "Server responded with an error: $error",
+          );
+        }
+      } catch (_) {}
     },
     child: Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -25,16 +51,21 @@ Widget _LoginButton(BuildContext context, String image, Function action) {
   );
 }
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
-  @override
   Widget build(BuildContext context) {
+    // Skip this screen if already signed in
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+      final preferences = await SharedPreferences.getInstance();
+      if (preferences.getString('userToken') != null) {
+        if (context.mounted) {
+          _gotoPairingScreen(context);
+        }
+      }
+    });
+    // Otherwise show the page
     return Scaffold(
       backgroundColor: backgroundDarkColor,
       appBar: AppBar(
@@ -46,17 +77,17 @@ class _LoginPageState extends State<LoginPage> {
           Expanded(child: Image.asset('assets/noa_logo.png')),
           Column(
             children: [
-              _LoginButton(
+              _loginButton(
                 context,
                 'assets/sign_in_with_apple_button.png',
                 SignIn().withApple,
               ),
-              _LoginButton(
+              _loginButton(
                 context,
                 'assets/sign_in_with_google_button.png',
                 SignIn().withGoogle,
               ),
-              _LoginButton(
+              _loginButton(
                 context,
                 'assets/sign_in_with_discord_button.png',
                 SignIn().withDiscord,

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/noa.dart';
@@ -12,9 +13,7 @@ class PairPage extends StatefulWidget {
 
 class _PairPageState extends State<PairPage> {
   void _connect() async {
-    // TODO enable this again
-    FrameConnectionEnum device =
-        FrameConnectionEnum.connected; // await widget.bluetooth.connect(true);
+    FrameConnectionEnum device = await frameBluetooth.connect(true);
 
     switch (device) {
       case FrameConnectionEnum.connected:
@@ -36,7 +35,7 @@ class _PairPageState extends State<PairPage> {
 
   void initState() {
     super.initState();
-    // _connect();
+    _connect();
   }
 
   @override
@@ -48,7 +47,10 @@ class _PairPageState extends State<PairPage> {
         title: Image.asset('assets/brilliant_logo.png'),
       ),
       body: const Center(
-        child: Text("Pair"),
+        child: Text(
+          "Pair",
+          style: TextStyle(color: textLightColor),
+        ),
       ),
     );
   }

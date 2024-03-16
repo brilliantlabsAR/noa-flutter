@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum FrameConnectionEnum { connected, new_connection, dfu_mode }
 
+FrameBluetooth frameBluetooth = FrameBluetooth();
+
 class FrameBluetooth {
   late String _pairedDeviceUuid;
   late BluetoothService frameService;
@@ -25,7 +27,7 @@ class FrameBluetooth {
 
   void _savePairedDeviceUuid(String uuid) async {
     final preferences = await SharedPreferences.getInstance();
-    preferences.setString('pairedDeviceUuid', uuid);
+    await preferences.setString('pairedDeviceUuid', uuid);
   }
 
   void deletePairedDevice() async {
