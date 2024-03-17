@@ -5,7 +5,7 @@ import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 
 class NoaPage extends StatefulWidget {
-  NoaPage({super.key});
+  const NoaPage({super.key});
 
   @override
   State<NoaPage> createState() => _NoaPageState();
@@ -54,57 +54,55 @@ class _NoaPageState extends State<NoaPage> {
     return Scaffold(
       backgroundColor: backgroundLightColor,
 
-      appBar: TopTitleBar(context, 'NOA', false),
+      appBar: topTitleBar(context, 'NOA', false, false),
 
-      body: Container(
-        child: ListView.builder(
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            TextStyle style = userMessageTextStyle;
-            if (messages[index].from == 'Noa') {
-              style = noaMessageTextStyle;
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (index == 0 ||
-                    messages[index]
-                            .time
-                            .difference(messages[index - 1].time)
-                            .inSeconds >
-                        1700)
-                  Container(
-                    margin: EdgeInsets.only(top: 40, left: 42, right: 42),
-                    child: Row(
-                      children: [
-                        Text(
-                          "${messages[index].time.hour.toString().padLeft(2, '0')}:${messages[index].time.minute.toString().padLeft(2, '0')}",
-                          style: TextStyle(color: textLightColor),
-                        ),
-                        const Flexible(
-                          child: Divider(
-                            indent: 10,
-                            color: textLightColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+      body: ListView.builder(
+        itemCount: messages.length,
+        itemBuilder: (context, index) {
+          TextStyle style = userMessageTextStyle;
+          if (messages[index].from == 'Noa') {
+            style = noaMessageTextStyle;
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (index == 0 ||
+                  messages[index]
+                          .time
+                          .difference(messages[index - 1].time)
+                          .inSeconds >
+                      1700)
                 Container(
-                  margin: EdgeInsets.only(top: 10, left: 65, right: 42),
-                  child: Text(
-                    messages[index].message,
-                    style: style,
+                  margin: const EdgeInsets.only(top: 40, left: 42, right: 42),
+                  child: Row(
+                    children: [
+                      Text(
+                        "${messages[index].time.hour.toString().padLeft(2, '0')}:${messages[index].time.minute.toString().padLeft(2, '0')}",
+                        style: const TextStyle(color: textLightColor),
+                      ),
+                      const Flexible(
+                        child: Divider(
+                          indent: 10,
+                          color: textLightColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            );
-          },
-        ),
+              Container(
+                margin: const EdgeInsets.only(top: 10, left: 65, right: 42),
+                child: Text(
+                  messages[index].message,
+                  style: style,
+                ),
+              ),
+            ],
+          );
+        },
       ),
 
       // Bottom bar
-      bottomNavigationBar: BottomNavBar(context, 0, false),
+      bottomNavigationBar: bottomNavBar(context, 0, false),
     );
   }
 }

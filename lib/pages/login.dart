@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:noa/pages/pair.dart';
+import 'package:noa/services/check_internet_connection.dart';
+import 'package:noa/services/noa_api.dart';
 import 'package:noa/services/sign_in.dart';
 import 'package:noa/style.dart';
 import 'package:noa/widgets/alert_dialog.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-void _gotoPairingScreen(BuildContext context) {
+void _gotoPairingPage(BuildContext context) {
   Navigator.pushReplacement(
     context,
     PageRouteBuilder(
@@ -20,13 +21,11 @@ Widget _loginButton(BuildContext context, String image, Function action) {
   return GestureDetector(
     onTap: () async {
       try {
-        final token = await action();
-        final preferences = await SharedPreferences.getInstance();
-        await preferences.setString('userToken', token);
+        await action();
         if (context.mounted) {
-          _gotoPairingScreen(context);
+          _gotoPairingPage(context);
         }
-      } on SignInNoConnectionError catch (_) {
+      } on CheckInternetConnectionError catch (_) {
         if (context.mounted) {
           alertDialog(
             context,
@@ -34,7 +33,7 @@ Widget _loginButton(BuildContext context, String image, Function action) {
             "Noa requires an internet connection",
           );
         }
-      } on SignInServerError catch (error) {
+      } on NoaApiServerError catch (error) {
         if (context.mounted) {
           alertDialog(
             context,
@@ -57,13 +56,13 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Skip this screen if already signed in
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
-      final preferences = await SharedPreferences.getInstance();
-      if (preferences.getString('userToken') != null) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await NoaApi.loadSavedAuthToken();
         if (context.mounted) {
-          _gotoPairingScreen(context);
+          _gotoPairingPage(context);
         }
-      }
+      } catch (_) {}
     });
     // Otherwise show the page
     return Scaffold(

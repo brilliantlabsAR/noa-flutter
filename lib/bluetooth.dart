@@ -8,24 +8,20 @@ enum FrameConnectionEnum { connected, new_connection, dfu_mode }
 FrameBluetooth frameBluetooth = FrameBluetooth();
 
 class FrameBluetooth {
-  late String _pairedDeviceUuid;
   late BluetoothService frameService;
   late BluetoothCharacteristic frameRxCharacteristic;
   late BluetoothCharacteristic frameTxCharacteristic;
 
-  int temp_counter = 0;
-
   FrameBluetooth() {
     FlutterBluePlus.setLogLevel(LogLevel.verbose, color: false);
-    _loadPairedDeviceUuid();
   }
 
-  void _loadPairedDeviceUuid() async {
+  Future<String?> _loadPairedDevice() async {
     final preferences = await SharedPreferences.getInstance();
-    _pairedDeviceUuid = preferences.getString('pairedDeviceUuid') ?? "";
+    return preferences.getString('pairedDeviceUuid');
   }
 
-  void _savePairedDeviceUuid(String uuid) async {
+  void _savePairedDevice(String uuid) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString('pairedDeviceUuid', uuid);
   }
@@ -58,13 +54,6 @@ class FrameBluetooth {
                 if (characteristic.characteristicUuid ==
                     Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
                   frameTxCharacteristic = characteristic;
-
-                  ///////
-                  String test =
-                      "frame.imu.tap_callback(function() print('Oi!') end)";
-                  characteristic.write(utf8.encode(test),
-                      withoutResponse: true);
-                  ///////
                 }
                 if (characteristic.characteristicUuid ==
                     Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
@@ -74,14 +63,6 @@ class FrameBluetooth {
                       characteristic.onValueReceived.listen((value) {
                     // TODO call callback
                     print(utf8.decode(value));
-
-                    ///////
-                    temp_counter++;
-                    String test =
-                        "frame.display.text($temp_counter, 50, 50); frame.display.show()";
-                    frameTxCharacteristic.write(utf8.encode(test),
-                        withoutResponse: true);
-                    ///////
                   });
                   device.cancelWhenDisconnected(subscription);
 
@@ -91,7 +72,7 @@ class FrameBluetooth {
             }
           });
 
-          _savePairedDeviceUuid(device.remoteId.toString());
+          _savePairedDevice(device.remoteId.toString());
           if (!completer.isCompleted) {
             completer.complete(device.remoteId.toString());
           }
@@ -102,6 +83,13 @@ class FrameBluetooth {
     // TODO handle errors
 
     return completer.future;
+  }
+
+  Future<bool> isPaired() async {
+    if (await _loadPairedDevice() != null) {
+      return true;
+    }
+    return false;
   }
 
   Future<FrameConnectionEnum> connect(bool firstPairing) async {
@@ -125,15 +113,16 @@ class FrameBluetooth {
         }
 
         // New connection
-        if (_pairedDeviceUuid == "" && results[i].rssi > -55) {
+        if (await _loadPairedDevice() == null && results[i].rssi > -55) {
           String uuid = await _connectToFrame(results[i].device);
-          _savePairedDeviceUuid(uuid);
+          _savePairedDevice(uuid);
           print("Connected to new Frame device");
           completer.complete(FrameConnectionEnum.new_connection);
         }
 
         // Previous connection
-        else if (results[i].device.remoteId.toString() == _pairedDeviceUuid) {
+        else if (results[i].device.remoteId.toString() ==
+            await _loadPairedDevice()) {
           await _connectToFrame(results[i].device);
           print("Connected to existing Frame device");
           completer.complete(FrameConnectionEnum.connected);

@@ -1,8 +1,18 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
+
+void _gotoNoaPage(BuildContext context) {
+  Navigator.pushReplacement(
+    context,
+    PageRouteBuilder(
+      pageBuilder: (context, animation1, animation2) => const NoaPage(),
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+    ),
+  );
+}
 
 class PairPage extends StatefulWidget {
   const PairPage({super.key});
@@ -12,34 +22,21 @@ class PairPage extends StatefulWidget {
 }
 
 class _PairPageState extends State<PairPage> {
-  void _connect() async {
-    FrameConnectionEnum device = await frameBluetooth.connect(true);
-
-    switch (device) {
-      case FrameConnectionEnum.connected:
-      case FrameConnectionEnum.new_connection:
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation1, animation2) => NoaPage(),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
-          ),
-        );
-        break;
-      case FrameConnectionEnum.dfu_mode:
-        // TODO
-        break;
-    }
-  }
-
-  void initState() {
-    super.initState();
-    _connect();
-  }
-
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (await frameBluetooth.isPaired()) {
+        frameBluetooth.connect(false);
+        if (context.mounted) {
+          _gotoNoaPage(context);
+        }
+      } else {
+        await frameBluetooth.connect(true);
+        if (context.mounted) {
+          _gotoNoaPage(context);
+        }
+      }
+    });
     return Scaffold(
       backgroundColor: backgroundDarkColor,
       appBar: AppBar(

@@ -10,11 +10,11 @@ class HackPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundDarkColor,
-      appBar: TopTitleBar(context, 'HACK', true),
+      appBar: topTitleBar(context, 'HACK', true, false),
       body: const Center(
         child: Text("Hack"),
       ),
-      bottomNavigationBar: BottomNavBar(context, 2, true),
+      bottomNavigationBar: bottomNavBar(context, 2, true),
     );
   }
 }

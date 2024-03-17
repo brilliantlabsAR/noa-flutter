@@ -10,11 +10,11 @@ class TunePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundLightColor,
-      appBar: TopTitleBar(context, 'TUNE', false),
+      appBar: topTitleBar(context, 'TUNE', false, false),
       body: const Center(
         child: Text("Tune"),
       ),
-      bottomNavigationBar: BottomNavBar(context, 1, false),
+      bottomNavigationBar: bottomNavBar(context, 1, false),
     );
   }
 }

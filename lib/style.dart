@@ -26,6 +26,13 @@ const TextStyle darkTitleTextStyle = TextStyle(
   fontWeight: FontWeight.w900,
 );
 
+const TextStyle lightSubtitleTextStyle = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: textLightColor,
+  fontSize: 14,
+  fontWeight: FontWeight.w900,
+);
+
 const TextStyle noaMessageTextStyle = TextStyle(
   fontFamily: 'SF Pro Display',
   color: textDarkColor,

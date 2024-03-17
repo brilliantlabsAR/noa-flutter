@@ -21,7 +21,7 @@ Color getButtonColor(bool selected, bool darkMode) {
       : (darkMode ? widgetBackgroundDarkColor : widgetBackgroundLightColor);
 }
 
-Widget BottomNavBar(BuildContext context, int selected, bool darkMode) {
+Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
   return Container(
     height: 50,
     margin: const EdgeInsets.only(left: 41, right: 42, bottom: 50),
@@ -34,11 +34,11 @@ Widget BottomNavBar(BuildContext context, int selected, bool darkMode) {
         Expanded(
           child: GestureDetector(
             onTap: () {
-              switchPage(context, NoaPage());
+              switchPage(context, const NoaPage());
             },
             onHorizontalDragUpdate: (details) {
               if (selected == 0 && details.delta.dx > 8) {
-                switchPage(context, TunePage());
+                switchPage(context, const TunePage());
               }
             },
             child: Container(
@@ -60,13 +60,13 @@ Widget BottomNavBar(BuildContext context, int selected, bool darkMode) {
         Expanded(
           child: GestureDetector(
             onTap: () {
-              switchPage(context, TunePage());
+              switchPage(context, const TunePage());
             },
             onHorizontalDragUpdate: (details) {
               if (selected == 1 && details.delta.dx > 8) {
-                switchPage(context, HackPage());
+                switchPage(context, const HackPage());
               } else if (selected == 1 && details.delta.dx < -8) {
-                switchPage(context, NoaPage());
+                switchPage(context, const NoaPage());
               }
             },
             child: Container(
@@ -88,11 +88,11 @@ Widget BottomNavBar(BuildContext context, int selected, bool darkMode) {
         Expanded(
           child: GestureDetector(
             onTap: () {
-              switchPage(context, HackPage());
+              switchPage(context, const HackPage());
             },
             onHorizontalDragUpdate: (details) {
               if (selected == 2 && details.delta.dx < -8) {
-                switchPage(context, TunePage());
+                switchPage(context, const TunePage());
               }
             },
             child: Container(
