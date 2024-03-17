@@ -15,8 +15,8 @@ Welcome to the Noa app repository! Built using Flutter, this repository also ser
 1. Clone this repository
 
     ```sh
-    git clone https://github.com/brilliantlabsAR/noa-flutter.git noa
-    cd noa
+    git clone https://github.com/brilliantlabsAR/noa-flutter.git
+    cd noa-flutter
     ```
 
 1. Get the required packages
@@ -44,8 +44,8 @@ Sometimes it may be necessary to regenerate the platform files. To do this, dele
 1. Regenerate them
 
     ```sh
-    flutter create --platforms ios --org xyz.brilliant .
-    flutter create --platforms android --org xyz.brilliant .
+    flutter create --platforms ios --org xyz.brilliant --project-name noa .
+    flutter create --platforms android --org xyz.brilliant --project-name noa .
     ```
 
 1. Regenerate the app icons
@@ -92,3 +92,5 @@ Sometimes it may be necessary to regenerate the platform files. To do this, dele
         </array>
         ...
     ```
+
+    1. Finally, you may want to do a find and replace all of the string `xyz.brilliant.noa` to your own package name

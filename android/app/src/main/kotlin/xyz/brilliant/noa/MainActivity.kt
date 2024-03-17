@@ -1,4 +1,4 @@
-package xyz.brilliant.noa
+package xyz.brilliant.noa-flutter
 
 import io.flutter.embedding.android.FlutterActivity
 
