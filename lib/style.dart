@@ -74,3 +74,10 @@ const TextStyle footerTextDarkStyle = TextStyle(
   fontSize: 14,
   fontWeight: FontWeight.w300,
 );
+
+const TextStyle footerTextRedStyle = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: Color(0xFFDC0000),
+  fontSize: 14,
+  fontWeight: FontWeight.w300,
+);

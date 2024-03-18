@@ -23,14 +23,14 @@ Widget _accountInfoText(String title, String detail) {
   );
 }
 
-Widget _linkedFooterText(String text, Function action) {
+Widget _linkedFooterText(String text, bool redText, Function action) {
   return Padding(
     padding: const EdgeInsets.only(top: 8),
     child: GestureDetector(
       onTap: () => action(),
       child: Text(
         text,
-        style: footerTextLightStyle,
+        style: redText ? footerTextRedStyle : footerTextLightStyle,
       ),
     ),
   );
@@ -83,7 +83,7 @@ class _AccountPageState extends State<AccountPage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _linkedFooterText("Logout", () async {
+                  _linkedFooterText("Logout", false, () async {
                     await frameBluetooth.deletePairedDevice();
                     await NoaApi.deleteSavedAuthToken();
                     if (context.mounted) {
@@ -91,9 +91,15 @@ class _AccountPageState extends State<AccountPage> {
                       switchPage(context, const LoginPage());
                     }
                   }),
-                  _linkedFooterText("Privacy Policy", () {}),
-                  _linkedFooterText("Terms & Conditions", () {}),
-                  _linkedFooterText("Delete Account", () {}),
+                  _linkedFooterText("Privacy Policy", false, () {
+                    // TODO
+                  }),
+                  _linkedFooterText("Terms & Conditions", false, () {
+                    // TODO
+                  }),
+                  _linkedFooterText("Delete Account", true, () {
+                    // TODO
+                  }),
                 ],
               ),
             ),
