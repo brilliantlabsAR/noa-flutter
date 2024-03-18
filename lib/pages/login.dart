@@ -1,21 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:noa/api.dart';
 import 'package:noa/pages/pair.dart';
-import 'package:noa/services/check_internet_connection.dart';
-import 'package:noa/services/noa_api.dart';
-import 'package:noa/services/sign_in.dart';
 import 'package:noa/style.dart';
-import 'package:noa/widgets/alert_dialog.dart';
-
-void _gotoPairingPage(BuildContext context) {
-  Navigator.pushReplacement(
-    context,
-    PageRouteBuilder(
-      pageBuilder: (context, animation1, animation2) => const PairPage(),
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
-    ),
-  );
-}
+import 'package:noa/util/alert_dialog.dart';
+import 'package:noa/util/check_internet_connection.dart';
+import 'package:noa/util/sign_in.dart';
+import 'package:noa/util/switch_page.dart';
 
 Widget _loginButton(BuildContext context, String image, Function action) {
   return GestureDetector(
@@ -23,7 +13,7 @@ Widget _loginButton(BuildContext context, String image, Function action) {
       try {
         await action();
         if (context.mounted) {
-          _gotoPairingPage(context);
+          switchPage(context, const PairPage());
         }
       } on CheckInternetConnectionError catch (_) {
         if (context.mounted) {
@@ -60,7 +50,7 @@ class LoginPage extends StatelessWidget {
       try {
         await NoaApi.loadSavedAuthToken();
         if (context.mounted) {
-          _gotoPairingPage(context);
+          switchPage(context, const PairPage());
         }
       } catch (_) {}
     });

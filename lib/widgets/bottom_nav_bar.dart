@@ -3,17 +3,7 @@ import 'package:noa/style.dart';
 import 'package:noa/pages/noa.dart';
 import 'package:noa/pages/tune.dart';
 import 'package:noa/pages/hack.dart';
-
-void switchPage(BuildContext context, Widget page) {
-  Navigator.pushReplacement(
-    context,
-    PageRouteBuilder(
-      pageBuilder: (context, animation1, animation2) => page,
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
-    ),
-  );
-}
+import 'package:noa/util/switch_page.dart';
 
 Color getButtonColor(bool selected, bool darkMode) {
   return selected
@@ -24,7 +14,7 @@ Color getButtonColor(bool selected, bool darkMode) {
 Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
   return Container(
     height: 50,
-    margin: const EdgeInsets.only(left: 41, right: 42, bottom: 50),
+    margin: const EdgeInsets.only(left: 42, right: 42, bottom: 50),
     decoration: BoxDecoration(
       color: darkMode ? widgetBackgroundDarkColor : widgetBackgroundLightColor,
       borderRadius: const BorderRadius.all(Radius.circular(20)),

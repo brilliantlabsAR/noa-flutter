@@ -1,4 +1,4 @@
-import 'package:noa/services/check_internet_connection.dart';
+import 'package:noa/util/check_internet_connection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';

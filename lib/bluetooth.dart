@@ -21,14 +21,14 @@ class FrameBluetooth {
     return preferences.getString('pairedDeviceUuid');
   }
 
-  void _savePairedDevice(String uuid) async {
+  Future<void> _savePairedDevice(String uuid) async {
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString('pairedDeviceUuid', uuid);
   }
 
-  void deletePairedDevice() async {
+  Future<void> deletePairedDevice() async {
     final preferences = await SharedPreferences.getInstance();
-    preferences.remove('pairedDeviceUuid');
+    await preferences.remove('pairedDeviceUuid');
   }
 
   Future<String> _connectToFrame(BluetoothDevice device) async {
@@ -109,7 +109,9 @@ class FrameBluetooth {
         // If DFU device within close range
         if (results[i].device.advName == "Frame DFU" && results[i].rssi > -55) {
           // TODO
-          completer.complete(FrameConnectionEnum.dfu_mode);
+          if (!completer.isCompleted) {
+            completer.complete(FrameConnectionEnum.dfu_mode);
+          }
         }
 
         // New connection
@@ -117,7 +119,9 @@ class FrameBluetooth {
           String uuid = await _connectToFrame(results[i].device);
           _savePairedDevice(uuid);
           print("Connected to new Frame device");
-          completer.complete(FrameConnectionEnum.new_connection);
+          if (!completer.isCompleted) {
+            completer.complete(FrameConnectionEnum.new_connection);
+          }
         }
 
         // Previous connection
@@ -125,7 +129,9 @@ class FrameBluetooth {
             await _loadPairedDevice()) {
           await _connectToFrame(results[i].device);
           print("Connected to existing Frame device");
-          completer.complete(FrameConnectionEnum.connected);
+          if (!completer.isCompleted) {
+            completer.complete(FrameConnectionEnum.connected);
+          }
         }
       }
     });

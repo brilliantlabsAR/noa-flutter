@@ -1,7 +1,7 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:noa/services/check_internet_connection.dart';
-import 'package:noa/services/noa_api.dart';
+import 'package:noa/util/check_internet_connection.dart';
+import 'package:noa/api.dart';
 
 class SignIn {
   withApple() async {}

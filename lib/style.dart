@@ -60,3 +60,17 @@ const TextStyle bottomTabTextDarkStyle = TextStyle(
   fontSize: 14,
   fontWeight: FontWeight.w900,
 );
+
+const TextStyle footerTextLightStyle = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: textDarkColor,
+  fontSize: 14,
+  fontWeight: FontWeight.w300,
+);
+
+const TextStyle footerTextDarkStyle = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: backgroundLightColor,
+  fontSize: 14,
+  fontWeight: FontWeight.w300,
+);
