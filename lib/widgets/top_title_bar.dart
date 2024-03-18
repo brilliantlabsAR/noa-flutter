@@ -7,10 +7,10 @@ AppBar topTitleBar(
   return AppBar(
     toolbarHeight: 84,
     automaticallyImplyLeading: false,
-    backgroundColor: darkMode ? backgroundDarkColor : backgroundLightColor,
+    backgroundColor: darkMode ? colorDark : colorWhite,
     title: Text(
       title,
-      style: darkMode ? darkTitleTextStyle : lightTitleTextStyle,
+      style: darkMode ? textStyleWhiteTitle : textStyleDarkTitle,
     ),
     centerTitle: false,
     titleSpacing: 42,
@@ -36,7 +36,7 @@ AppBar topTitleBar(
               }
             },
             child: Icon(accountPage ? Icons.cancel : Icons.person,
-                color: darkMode ? textLightColor : textDarkColor),
+                color: darkMode ? colorWhite : colorDark),
           ))
     ],
   );

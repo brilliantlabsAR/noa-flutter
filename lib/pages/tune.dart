@@ -9,7 +9,7 @@ class TunePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundLightColor,
+      backgroundColor: colorWhite,
       appBar: topTitleBar(context, 'TUNE', false, false),
       body: const Center(
         child: Text("Tune"),

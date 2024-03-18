@@ -1,83 +1,84 @@
 import 'package:flutter/material.dart';
 
-const Color backgroundLightColor = Color(0xFFFFFFFF);
-const Color backgroundDarkColor = Color(0xFF292929);
+const Color colorWhite = Color(0xFFFFFFFF);
+const Color colorLight = Color(0xFFDCE0E5);
+const Color colorPink = Color(0xFFF288BF);
+const Color colorRed = Color(0xFFDC0000);
+const Color colorDark = Color(0xFF292929);
 
-const Color textLightColor = Color(0xFFDCE0E5);
-const Color textDarkColor = Color(0xFF292929);
-const Color textLinkColor = Color(0xFFF288BF);
-
-const Color widgetBackgroundLightColor = Color(0xFFDCE0E5);
-const Color widgetSelectedLightColor = Color(0xFF292929);
-const Color widgetBackgroundDarkColor = Color(0xFFDCE0E5);
-const Color widgetSelectedDarkColor = Color(0xFFFFFFFF);
-
-const TextStyle lightTitleTextStyle = TextStyle(
+const TextStyle textStyleWhiteTitle = TextStyle(
   fontFamily: 'SF Pro Display',
-  color: textDarkColor,
+  color: colorWhite,
   fontSize: 18,
   fontWeight: FontWeight.w900,
 );
 
-const TextStyle darkTitleTextStyle = TextStyle(
+const TextStyle textStyleLightTitle = TextStyle(
   fontFamily: 'SF Pro Display',
-  color: textLightColor,
+  color: colorLight,
   fontSize: 18,
   fontWeight: FontWeight.w900,
 );
 
-const TextStyle lightSubtitleTextStyle = TextStyle(
+const TextStyle textStyleDarkTitle = TextStyle(
   fontFamily: 'SF Pro Display',
-  color: textLightColor,
+  color: colorDark,
+  fontSize: 18,
+  fontWeight: FontWeight.w900,
+);
+
+const TextStyle textStyleLightHeading = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: colorWhite,
+  fontSize: 32,
+  fontWeight: FontWeight.w200,
+);
+
+const TextStyle textStyleLightSubHeading = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: colorLight,
   fontSize: 14,
   fontWeight: FontWeight.w900,
 );
 
-const TextStyle noaMessageTextStyle = TextStyle(
+const TextStyle textStyleWhite = TextStyle(
   fontFamily: 'SF Pro Display',
-  color: textDarkColor,
+  color: colorWhite,
   fontSize: 14,
   fontWeight: FontWeight.w300,
 );
 
-const TextStyle userMessageTextStyle = TextStyle(
+const TextStyle textStyleLight = TextStyle(
   fontFamily: 'SF Pro Display',
-  color: textLightColor,
+  color: colorLight,
   fontSize: 14,
   fontWeight: FontWeight.w300,
 );
 
-const TextStyle bottomTabTextLightStyle = TextStyle(
+const TextStyle textStyleRed = TextStyle(
   fontFamily: 'SF Pro Display',
-  color: backgroundLightColor,
+  color: colorRed,
+  fontSize: 14,
+  fontWeight: FontWeight.w300,
+);
+
+const TextStyle textStyleDark = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: colorDark,
+  fontSize: 14,
+  fontWeight: FontWeight.w300,
+);
+
+const TextStyle textStyleWhiteWidget = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: colorWhite,
   fontSize: 14,
   fontWeight: FontWeight.w900,
 );
 
-const TextStyle bottomTabTextDarkStyle = TextStyle(
+const TextStyle textStyleDarkWidget = TextStyle(
   fontFamily: 'SF Pro Display',
-  color: backgroundDarkColor,
+  color: colorDark,
   fontSize: 14,
   fontWeight: FontWeight.w900,
-);
-
-const TextStyle footerTextLightStyle = TextStyle(
-  fontFamily: 'SF Pro Display',
-  color: textDarkColor,
-  fontSize: 14,
-  fontWeight: FontWeight.w300,
-);
-
-const TextStyle footerTextDarkStyle = TextStyle(
-  fontFamily: 'SF Pro Display',
-  color: backgroundLightColor,
-  fontSize: 14,
-  fontWeight: FontWeight.w300,
-);
-
-const TextStyle footerTextRedStyle = TextStyle(
-  fontFamily: 'SF Pro Display',
-  color: Color(0xFFDC0000),
-  fontSize: 14,
-  fontWeight: FontWeight.w300,
 );

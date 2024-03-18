@@ -16,8 +16,8 @@ Widget _accountInfoText(String title, String detail) {
     padding: const EdgeInsets.only(bottom: 42),
     child: Column(
       children: [
-        Text(title, style: lightSubtitleTextStyle),
-        Text(detail, style: lightTitleTextStyle),
+        Text(title, style: textStyleLightSubHeading),
+        Text(detail, style: textStyleDarkTitle),
       ],
     ),
   );
@@ -30,7 +30,7 @@ Widget _linkedFooterText(String text, bool redText, Function action) {
       onTap: () => action(),
       child: Text(
         text,
-        style: redText ? footerTextRedStyle : footerTextLightStyle,
+        style: redText ? textStyleRed : textStyleDark,
       ),
     ),
   );
@@ -62,7 +62,7 @@ class _AccountPageState extends State<AccountPage> {
       } catch (_) {}
     });
     return Scaffold(
-      backgroundColor: backgroundLightColor,
+      backgroundColor: colorWhite,
       appBar: topTitleBar(context, 'ACCOUNT', false, true),
       body: Column(
         children: [

@@ -28,17 +28,20 @@ class _PairPageState extends State<PairPage> {
       }
     });
     return Scaffold(
-      backgroundColor: backgroundDarkColor,
+      backgroundColor: colorDark,
       appBar: AppBar(
-        backgroundColor: backgroundDarkColor,
+        backgroundColor: colorDark,
         title: Image.asset('assets/brilliant_logo.png'),
       ),
-      body: const Center(
-        child: Text(
-          "Pair",
-          style: TextStyle(color: textLightColor),
-        ),
-      ),
+      body:
+          Center(child: Text("Setup you device", style: textStyleLightHeading)),
+
+      // const Center(
+      //   child: Text(
+      //     "Pair",
+      //     style: TextStyle(color: colorLight),
+      //   ),
+      // ),
     );
   }
 }

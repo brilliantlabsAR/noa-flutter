@@ -9,7 +9,7 @@ class HackPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundDarkColor,
+      backgroundColor: colorDark,
       appBar: topTitleBar(context, 'HACK', true, false),
       body: const Center(
         child: Text("Hack"),

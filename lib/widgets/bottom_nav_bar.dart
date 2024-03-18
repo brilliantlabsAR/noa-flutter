@@ -7,8 +7,8 @@ import 'package:noa/util/switch_page.dart';
 
 Color getButtonColor(bool selected, bool darkMode) {
   return selected
-      ? (darkMode ? widgetSelectedDarkColor : widgetSelectedLightColor)
-      : (darkMode ? widgetBackgroundDarkColor : widgetBackgroundLightColor);
+      ? (darkMode ? colorWhite : colorDark)
+      : (darkMode ? colorLight : colorLight);
 }
 
 Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
@@ -16,7 +16,7 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
     height: 50,
     margin: const EdgeInsets.only(left: 42, right: 42, bottom: 50),
     decoration: BoxDecoration(
-      color: darkMode ? widgetBackgroundDarkColor : widgetBackgroundLightColor,
+      color: darkMode ? colorLight : colorLight,
       borderRadius: const BorderRadius.all(Radius.circular(20)),
     ),
     child: Row(
@@ -39,9 +39,7 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
               child: Center(
                 child: Text(
                   "NOA",
-                  style: darkMode
-                      ? bottomTabTextDarkStyle
-                      : bottomTabTextLightStyle,
+                  style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
                 ),
               ),
             ),
@@ -67,9 +65,7 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
               child: Center(
                 child: Text(
                   "TUNE",
-                  style: darkMode
-                      ? bottomTabTextDarkStyle
-                      : bottomTabTextLightStyle,
+                  style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
                 ),
               ),
             ),
@@ -93,9 +89,7 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
               child: Center(
                 child: Text(
                   "HACK",
-                  style: darkMode
-                      ? bottomTabTextDarkStyle
-                      : bottomTabTextLightStyle,
+                  style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
                 ),
               ),
             ),

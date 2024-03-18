@@ -56,9 +56,9 @@ class LoginPage extends StatelessWidget {
     });
     // Otherwise show the page
     return Scaffold(
-      backgroundColor: backgroundDarkColor,
+      backgroundColor: colorDark,
       appBar: AppBar(
-        backgroundColor: backgroundDarkColor,
+        backgroundColor: colorDark,
         title: Image.asset('assets/brilliant_logo.png'),
       ),
       body: Column(
@@ -88,10 +88,10 @@ class LoginPage extends StatelessWidget {
       bottomNavigationBar: const Padding(
         padding: EdgeInsets.only(bottom: 48, top: 48),
         child: Text(
-          "Privacy Policy and Terms and Conditions of Noa",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: textLightColor),
-        ),
+            // TODO add links here
+            "Privacy Policy and Terms and Conditions of Noa",
+            textAlign: TextAlign.center,
+            style: textStyleWhite),
       ),
     );
   }

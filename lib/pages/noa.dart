@@ -52,16 +52,16 @@ class _NoaPageState extends State<NoaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundLightColor,
+      backgroundColor: colorWhite,
 
       appBar: topTitleBar(context, 'NOA', false, false),
 
       body: ListView.builder(
         itemCount: messages.length,
         itemBuilder: (context, index) {
-          TextStyle style = userMessageTextStyle;
+          TextStyle style = textStyleLight;
           if (messages[index].from == 'Noa') {
-            style = noaMessageTextStyle;
+            style = textStyleDark;
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,12 +78,12 @@ class _NoaPageState extends State<NoaPage> {
                     children: [
                       Text(
                         "${messages[index].time.hour.toString().padLeft(2, '0')}:${messages[index].time.minute.toString().padLeft(2, '0')}",
-                        style: const TextStyle(color: textLightColor),
+                        style: const TextStyle(color: colorLight),
                       ),
                       const Flexible(
                         child: Divider(
                           indent: 10,
-                          color: textLightColor,
+                          color: colorLight,
                         ),
                       ),
                     ],
