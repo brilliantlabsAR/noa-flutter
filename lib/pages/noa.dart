@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:noa/models/noa_message_model.dart';
+import 'package:noa/bluetooth.dart';
 import 'package:noa/style.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NoaPage extends StatefulWidget {
   const NoaPage({super.key});
@@ -12,10 +15,41 @@ class NoaPage extends StatefulWidget {
 }
 
 class _NoaPageState extends State<NoaPage> {
+  final _connectionStreamController = StreamController<BrilliantDevice>();
+
   List<NoaMessageModel> messages = [];
+
+  void _reconnect() async {
+    final preferences = await SharedPreferences.getInstance();
+    String? deviceUuid = preferences.getString('pairedDeviceUuid');
+    if (deviceUuid != null) {
+      BrilliantBluetooth.reconnect(deviceUuid, _connectionStreamController);
+    }
+  }
+
+  void _connectionListener() {
+    if (_connectionStreamController.hasListener) {
+      return;
+    }
+    _connectionStreamController.stream.listen((device) async {
+      switch (device.state) {
+        case BrilliantConnectionState.connected:
+          print("Noa: connected");
+          break;
+        case BrilliantConnectionState.disconnected:
+          print("Noa: disconnected");
+          break;
+        case BrilliantConnectionState.invalid:
+          print("Noa: invalid");
+          break;
+      }
+    });
+  }
 
   @override
   void initState() {
+    _connectionListener();
+    // _reconnect();
     super.initState();
     messages.add(NoaMessageModel.addMessage(
       "I’m looking for some new sneakers. Could you help me find some?",

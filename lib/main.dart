@@ -1,11 +1,9 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
-import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/login.dart';
 
 void main() async {
   await dotenv.load();
-  frameBluetooth;
   runApp(const MainApp());
 }
 

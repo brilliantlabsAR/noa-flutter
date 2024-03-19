@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:noa/api.dart';
-import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/login.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:noa/widgets/top_title_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 String _userEmail = "Loading";
 String _userPlan = "Loading";
@@ -84,7 +84,8 @@ class _AccountPageState extends State<AccountPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _linkedFooterText("Logout", false, () async {
-                    await frameBluetooth.deletePairedDevice();
+                    final preferences = await SharedPreferences.getInstance();
+                    await preferences.remove('pairedDeviceUuid');
                     await NoaApi.deleteSavedAuthToken();
                     if (context.mounted) {
                       Navigator.pop(context);

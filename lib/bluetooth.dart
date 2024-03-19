@@ -1,147 +1,216 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-enum FrameConnectionEnum { connected, new_connection, dfu_mode }
+enum BrilliantDeviceName { frame, frameUpdate, monocle, monocleUpdate }
 
-FrameBluetooth frameBluetooth = FrameBluetooth();
+enum BrilliantConnectionState {
+  disconnected,
+  connected,
+  invalid,
+}
 
-class FrameBluetooth {
-  late BluetoothService frameService;
-  late BluetoothCharacteristic frameRxCharacteristic;
-  late BluetoothCharacteristic frameTxCharacteristic;
+class BrilliantDevice {
+  final BrilliantDeviceName name;
+  final String uuid;
+  final BrilliantConnectionState state;
+  late BluetoothCharacteristic _frameTxCharacteristic;
 
-  FrameBluetooth() {
-    FlutterBluePlus.setLogLevel(LogLevel.verbose, color: false);
+  BrilliantDevice({
+    required this.name,
+    required this.uuid,
+    required this.state,
+  });
+
+  write() {
+    print("Write data");
+    String test = "frame.imu.tap_callback(function() print('Oi!') end)";
+    _frameTxCharacteristic.write(utf8.encode(test), withoutResponse: true);
   }
 
-  Future<String?> _loadPairedDevice() async {
-    final preferences = await SharedPreferences.getInstance();
-    return preferences.getString('pairedDeviceUuid');
-  }
+  dispose() {}
+}
 
-  Future<void> _savePairedDevice(String uuid) async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString('pairedDeviceUuid', uuid);
-  }
+class BrilliantScannedDevice {
+  final BluetoothDevice device;
+  final int rssi;
 
-  Future<void> deletePairedDevice() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove('pairedDeviceUuid');
-  }
+  BrilliantScannedDevice({
+    required this.device,
+    required this.rssi,
+  });
+}
 
-  Future<String> _connectToFrame(BluetoothDevice device) async {
-    final Completer<String> completer = Completer<String>();
+Future<void> _startScan(bool continuousUpdates) async {
+  await FlutterBluePlus.startScan(
+    withServices: [
+      Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
+      Guid('8ec90001-f315-4f60-9fb8-838830daea50'),
+    ],
+    continuousUpdates: continuousUpdates,
+    removeIfGone: continuousUpdates ? const Duration(seconds: 2) : null,
+  );
+}
 
-    FlutterBluePlus.stopScan();
-
-    device
-        .connect(
+void _connect(
+  BluetoothDevice device,
+  StreamController<BrilliantDevice> listener,
+) async {
+  try {
+    await device.connect(
       autoConnect: true,
-      timeout: const Duration(seconds: 3),
+      timeout: const Duration(seconds: 2),
       mtu: null,
-    )
-        .then((_) {
-      device.connectionState.listen((state) async {
-        if (state == BluetoothConnectionState.connected) {
-          List<BluetoothService> services = await device.discoverServices();
-          services.forEach((service) {
-            if (service.serviceUuid ==
-                Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
-              frameService = service;
-              service.characteristics.forEach((characteristic) async {
-                if (characteristic.characteristicUuid ==
-                    Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
-                  frameTxCharacteristic = characteristic;
-                }
-                if (characteristic.characteristicUuid ==
-                    Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
-                  frameRxCharacteristic = characteristic;
-
-                  final subscription =
-                      characteristic.onValueReceived.listen((value) {
-                    // TODO call callback
-                    print(utf8.decode(value));
-                  });
-                  device.cancelWhenDisconnected(subscription);
-
-                  await characteristic.setNotifyValue(true);
-                }
-              });
-            }
-          });
-
-          _savePairedDevice(device.remoteId.toString());
-          if (!completer.isCompleted) {
-            completer.complete(device.remoteId.toString());
-          }
-        }
-      });
-    });
-
-    // TODO handle errors
-
-    return completer.future;
-  }
-
-  Future<bool> isPaired() async {
-    if (await _loadPairedDevice() != null) {
-      return true;
-    }
-    return false;
-  }
-
-  Future<FrameConnectionEnum> connect(bool firstPairing) async {
-    final Completer<FrameConnectionEnum> completer =
-        Completer<FrameConnectionEnum>();
-
-    await FlutterBluePlus.startScan(
-      withServices: [
-        Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
-        Guid('8ec90001-f315-4f60-9fb8-838830daea50'),
-      ],
-      continuousUpdates: firstPairing ? true : false,
     );
+  } catch (error) {
+    if (listener.hasListener) {
+      listener.sink.add(
+        BrilliantDevice(
+          name: _deviceNameFromAdvName(device.advName),
+          uuid: device.remoteId.toString(),
+          state: BrilliantConnectionState.invalid,
+        ),
+      );
+    }
+  }
 
-    FlutterBluePlus.scanResults.listen((results) async {
-      for (int i = 0; i < results.length; i++) {
-        // If DFU device within close range
-        if (results[i].device.advName == "Frame DFU" && results[i].rssi > -55) {
-          // TODO
-          if (!completer.isCompleted) {
-            completer.complete(FrameConnectionEnum.dfu_mode);
-          }
+  device.connectionState.listen((connectionState) async {
+    late BrilliantConnectionState state;
+
+    switch (connectionState) {
+      case BluetoothConnectionState.connected:
+        try {
+          await _enableServices(device);
+          state = BrilliantConnectionState.connected;
+        } catch (error) {
+          await device.disconnect();
+          state = BrilliantConnectionState.invalid;
         }
+        break;
+      case BluetoothConnectionState.disconnected:
+        // TODO differentiate as invalid when "Device has disconnected from us" error occurs
+        state = BrilliantConnectionState.disconnected;
+        break;
+      default:
+        break;
+    }
 
-        // New connection
-        if (await _loadPairedDevice() == null && results[i].rssi > -55) {
-          String uuid = await _connectToFrame(results[i].device);
-          _savePairedDevice(uuid);
-          print("Connected to new Frame device");
-          if (!completer.isCompleted) {
-            completer.complete(FrameConnectionEnum.new_connection);
+    if (listener.hasListener) {
+      listener.sink.add(
+        BrilliantDevice(
+          name: _deviceNameFromAdvName(device.advName),
+          uuid: device.remoteId.toString(),
+          state: state,
+        ),
+      );
+    }
+  });
+}
+
+Future<BluetoothCharacteristic?> _enableServices(BluetoothDevice device) async {
+  BluetoothCharacteristic? frameTxCharacteristic;
+
+  try {
+    List<BluetoothService> services = await device.discoverServices();
+
+    for (var service in services) {
+      if (service.serviceUuid == Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
+        for (var characteristic in service.characteristics) {
+          if (characteristic.characteristicUuid ==
+              Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
+            frameTxCharacteristic = characteristic;
           }
-        }
+          if (characteristic.characteristicUuid ==
+              Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
+            final subscription = characteristic.onValueReceived.listen((value) {
+              // TODO call callback
+              print(utf8.decode(value));
+            });
+            device.cancelWhenDisconnected(subscription);
 
-        // Previous connection
-        else if (results[i].device.remoteId.toString() ==
-            await _loadPairedDevice()) {
-          await _connectToFrame(results[i].device);
-          print("Connected to existing Frame device");
-          if (!completer.isCompleted) {
-            completer.complete(FrameConnectionEnum.connected);
+            await characteristic.setNotifyValue(true);
           }
         }
       }
-    });
+    }
+  } catch (error) {
+    return Future.error(error);
+  }
 
-    return completer.future;
+  return frameTxCharacteristic;
+}
+
+BrilliantDeviceName _deviceNameFromAdvName(String advName) {
+  switch (advName) {
+    case "Frame":
+      return BrilliantDeviceName.frame;
+    case "Frame Update":
+      return BrilliantDeviceName.frameUpdate;
+    case "Monocle":
+      return BrilliantDeviceName.monocle;
+    case "DFUTarg":
+      return BrilliantDeviceName.monocleUpdate;
+    default:
+      throw Exception("Unknown device");
   }
 }
 
+class BrilliantBluetooth {
+  static void scan(StreamController<BrilliantScannedDevice> listener) async {
+    late ScanResult nearestDevice;
 
-/*
-String test = "frame.imu.tap_callback(function() print('Oi!') end)";
-characteristic.write(utf8.encode(test), withoutResponse: true);
-*/  
+    FlutterBluePlus.onScanResults.listen((results) {
+      if (results.isEmpty) {
+        return;
+      }
+
+      nearestDevice = results[0];
+
+      for (int i = 0; i < results.length; i++) {
+        if (results[i].rssi > nearestDevice.rssi) {
+          nearestDevice = results[i];
+        }
+      }
+
+      if (listener.hasListener) {
+        listener.sink.add(
+          BrilliantScannedDevice(
+            device: nearestDevice.device,
+            rssi: nearestDevice.rssi,
+          ),
+        );
+      }
+    });
+
+    await _startScan(true);
+  }
+
+  static void stopScan() async {
+    await FlutterBluePlus.stopScan();
+  }
+
+  static void connect(
+    BrilliantScannedDevice device,
+    StreamController<BrilliantDevice> listener,
+  ) {
+    _connect(device.device, listener);
+  }
+
+  static void reconnect(
+    String deviceUuid,
+    StreamController<BrilliantDevice> listener,
+  ) async {
+    print("Will reconnect to: $deviceUuid");
+
+    await _startScan(false);
+
+    FlutterBluePlus.scanResults.listen((results) {
+      for (int i = 0; i < results.length; i++) {
+        if (results[i].device.remoteId.toString() == deviceUuid) {
+          print("Reconnecting to: ${results[i].device.remoteId.toString()}");
+          _connect(results[i].device, listener);
+        }
+      }
+    });
+  }
+}
