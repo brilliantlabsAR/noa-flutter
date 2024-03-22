@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:noa/api.dart';
-import 'package:noa/pages/pair.dart';
+import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
 import 'package:noa/util/check_internet_connection.dart';
@@ -13,7 +13,7 @@ Widget _loginButton(BuildContext context, String image, Function action) {
       try {
         await action();
         if (context.mounted) {
-          switchPage(context, const PairPage());
+          switchPage(context, const PairingPage());
         }
       } on CheckInternetConnectionError catch (_) {
         if (context.mounted) {
@@ -50,7 +50,7 @@ class LoginPage extends StatelessWidget {
       try {
         await NoaApi.loadSavedAuthToken();
         if (context.mounted) {
-          switchPage(context, const PairPage());
+          switchPage(context, const PairingPage());
         }
       } catch (_) {}
     });

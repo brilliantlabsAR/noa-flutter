@@ -15,6 +15,7 @@ dependencies:
   http: ^1.2.1
   google_sign_in: ^6.2.1
   flutter_dotenv: ^5.1.0
+  flutter_riverpod: ^2.5.1
 
 dev_dependencies:
   flutter_test:
