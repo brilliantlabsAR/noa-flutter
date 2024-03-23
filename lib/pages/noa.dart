@@ -1,109 +1,37 @@
-import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:noa/models/noa_message_model.dart';
-import 'package:noa/bluetooth.dart';
+import 'package:noa/main.dart';
 import 'package:noa/style.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class NoaPage extends StatefulWidget {
+class NoaPage extends ConsumerWidget {
   const NoaPage({super.key});
 
   @override
-  State<NoaPage> createState() => _NoaPageState();
-}
-
-class _NoaPageState extends State<NoaPage> {
-  final _connectionStreamController = StreamController<BrilliantDevice>();
-
-  List<NoaMessageModel> messages = [];
-
-  void _reconnect() async {
-    final preferences = await SharedPreferences.getInstance();
-    String? deviceUuid = preferences.getString('pairedDeviceUuid');
-    if (deviceUuid != null) {
-      BrilliantBluetooth.reconnect(deviceUuid, _connectionStreamController);
-    }
-  }
-
-  void _connectionListener() {
-    if (_connectionStreamController.hasListener) {
-      return;
-    }
-    _connectionStreamController.stream.listen((device) async {
-      switch (device.state) {
-        case BrilliantConnectionState.connected:
-          print("Noa: connected");
-          break;
-        case BrilliantConnectionState.disconnected:
-          print("Noa: disconnected");
-          break;
-        case BrilliantConnectionState.invalid:
-          print("Noa: invalid");
-          break;
-      }
-    });
-  }
-
-  @override
-  void initState() {
-    _connectionListener();
-    // _reconnect();
-    super.initState();
-    messages.add(NoaMessageModel.addMessage(
-      "I’m looking for some new sneakers. Could you help me find some?",
-      "User",
-      DateTime.now(),
-    ));
-    messages.add(NoaMessageModel.addMessage(
-      "Sure! What kind of style are you looking for?",
-      "Noa",
-      DateTime.now().add(const Duration(seconds: 2)),
-    ));
-    messages.add(NoaMessageModel.addMessage(
-      "Maybe something like these?",
-      "User",
-      DateTime.now().add(const Duration(seconds: 4)),
-    ));
-    messages.add(NoaMessageModel.addMessage(
-      "Those look like some nice designer kicks! If you’re on a budget check these out from Camperlab, or if you want to splash out, Balenciaga have something similar.",
-      "Noa",
-      DateTime.now().add(const Duration(seconds: 5)),
-    ));
-    messages.add(NoaMessageModel.addMessage(
-      "What's a good color to go for?",
-      "User",
-      DateTime.now().add(const Duration(seconds: 2938)),
-    ));
-    messages.add(NoaMessageModel.addMessage(
-      "You can never go wrong with a classic blue sneaker. Alternatively, light green seems to be in style right now.",
-      "Noa",
-      DateTime.now().add(const Duration(seconds: 2941)),
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: colorWhite,
 
       appBar: topTitleBar(context, 'NOA', false, false),
 
       body: ListView.builder(
-        itemCount: messages.length,
+        itemCount: ref.watch(messages).messages.length,
         itemBuilder: (context, index) {
           TextStyle style = textStyleLight;
-          if (messages[index].from == 'Noa') {
+          if (ref.watch(messages).messages[index].from == 'Noa') {
             style = textStyleDark;
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (index == 0 ||
-                  messages[index]
+                  ref
+                          .watch(messages)
+                          .messages[index]
                           .time
-                          .difference(messages[index - 1].time)
+                          .difference(
+                              ref.watch(messages).messages[index - 1].time)
                           .inSeconds >
                       1700)
                 Container(
@@ -111,7 +39,7 @@ class _NoaPageState extends State<NoaPage> {
                   child: Row(
                     children: [
                       Text(
-                        "${messages[index].time.hour.toString().padLeft(2, '0')}:${messages[index].time.minute.toString().padLeft(2, '0')}",
+                        "${ref.watch(messages).messages[index].time.hour.toString().padLeft(2, '0')}:${ref.watch(messages).messages[index].time.minute.toString().padLeft(2, '0')}",
                         style: const TextStyle(color: colorLight),
                       ),
                       const Flexible(
@@ -126,7 +54,7 @@ class _NoaPageState extends State<NoaPage> {
               Container(
                 margin: const EdgeInsets.only(top: 10, left: 65, right: 42),
                 child: Text(
-                  messages[index].message,
+                  ref.watch(messages).messages[index].message,
                   style: style,
                 ),
               ),

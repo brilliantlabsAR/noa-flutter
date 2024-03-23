@@ -1,13 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:noa/models/pairing_model.dart';
+import 'package:noa/main.dart';
 import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
-
-final pairingModel = ChangeNotifierProvider<PairingModel>((ref) {
-  return PairingModel();
-});
 
 class PairingPage extends ConsumerWidget {
   const PairingPage({super.key});
@@ -15,7 +11,10 @@ class PairingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.watch(pairingModel).gotoNoaPage) {
+      // Start pairing as soon as we enter the screen
+      ref.read(bluetooth).startPairing();
+      // Leave once done
+      if (ref.watch(bluetooth).pairingComplete) {
         switchPage(context, const NoaPage());
       }
     });
@@ -49,7 +48,7 @@ class PairingPage extends ConsumerWidget {
                       padding: const EdgeInsets.only(top: 20, right: 20),
                       child: GestureDetector(
                         onTap: () {
-                          ref.read(pairingModel).cancelButtonClicked();
+                          ref.read(bluetooth).pairingCancelPressed();
                         },
                         child: const Icon(
                           Icons.cancel,
@@ -59,7 +58,7 @@ class PairingPage extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    ref.watch(pairingModel).connectionBoxText,
+                    ref.watch(bluetooth).pairingBoxText,
                     style: const TextStyle(
                       fontFamily: 'SF Pro Display',
                       color: colorDark,
@@ -72,14 +71,13 @@ class PairingPage extends ConsumerWidget {
                   ),
                   GestureDetector(
                     onTap: () {
-                      ref.read(pairingModel).connectionBoxClicked();
+                      ref.read(bluetooth).pairingButtonPressed();
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        color:
-                            ref.watch(pairingModel).connectionBoxButtonEnabled
-                                ? colorDark
-                                : colorLight,
+                        color: ref.watch(bluetooth).pairingBoxButtonEnabled
+                            ? colorDark
+                            : colorLight,
                         borderRadius:
                             const BorderRadius.all(Radius.circular(20)),
                       ),
@@ -88,7 +86,7 @@ class PairingPage extends ConsumerWidget {
                           left: 31, right: 31, bottom: 28),
                       child: Center(
                         child: Text(
-                          ref.watch(pairingModel).connectionBoxButtonText,
+                          ref.watch(bluetooth).pairingBoxButtonText,
                           style: textStyleWhiteWidget,
                         ),
                       ),

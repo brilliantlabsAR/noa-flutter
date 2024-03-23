@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:noa/api.dart';
+import 'package:noa/main.dart';
 import 'package:noa/pages/login.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:noa/widgets/top_title_bar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 String _userEmail = "Loading";
 String _userPlan = "Loading";
@@ -36,14 +37,14 @@ Widget _linkedFooterText(String text, bool redText, Function action) {
   );
 }
 
-class AccountPage extends StatefulWidget {
+class AccountPage extends ConsumerStatefulWidget {
   const AccountPage({super.key});
 
   @override
-  State<AccountPage> createState() => _AccountPageState();
+  ConsumerState<AccountPage> createState() => _AccountPageState();
 }
 
-class _AccountPageState extends State<AccountPage> {
+class _AccountPageState extends ConsumerState<AccountPage> {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -84,9 +85,8 @@ class _AccountPageState extends State<AccountPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _linkedFooterText("Logout", false, () async {
-                    final preferences = await SharedPreferences.getInstance();
-                    await preferences.remove('pairedDeviceUuid');
                     await NoaApi.deleteSavedAuthToken();
+                    ref.read(bluetooth).deletePairing();
                     if (context.mounted) {
                       Navigator.pop(context);
                       switchPage(context, const LoginPage());

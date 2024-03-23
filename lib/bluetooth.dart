@@ -11,12 +11,14 @@ enum BrilliantConnectionState {
 }
 
 class BrilliantDevice {
+  final BluetoothDevice device;
   final BrilliantDeviceName name;
   final String uuid;
   final BrilliantConnectionState state;
   late BluetoothCharacteristic _frameTxCharacteristic;
 
   BrilliantDevice({
+    required this.device,
     required this.name,
     required this.uuid,
     required this.state,
@@ -66,6 +68,7 @@ void _connect(
     if (listener.hasListener) {
       listener.sink.add(
         BrilliantDevice(
+          device: device,
           name: _deviceNameFromAdvName(device.advName),
           uuid: device.remoteId.toString(),
           state: BrilliantConnectionState.invalid,
@@ -98,6 +101,7 @@ void _connect(
     if (listener.hasListener) {
       listener.sink.add(
         BrilliantDevice(
+          device: device,
           name: _deviceNameFromAdvName(device.advName),
           uuid: device.remoteId.toString(),
           state: state,
@@ -156,10 +160,15 @@ BrilliantDeviceName _deviceNameFromAdvName(String advName) {
 }
 
 class BrilliantBluetooth {
+  static void init() async {
+    await FlutterBluePlus.startScan();
+    await FlutterBluePlus.stopScan();
+  }
+
   static void scan(StreamController<BrilliantScannedDevice> listener) async {
     late ScanResult nearestDevice;
 
-    FlutterBluePlus.onScanResults.listen((results) {
+    StreamSubscription scan = FlutterBluePlus.onScanResults.listen((results) {
       if (results.isEmpty) {
         return;
       }
@@ -181,6 +190,8 @@ class BrilliantBluetooth {
         );
       }
     });
+
+    FlutterBluePlus.cancelWhenScanComplete(scan);
 
     await _startScan(true);
   }
@@ -204,13 +215,20 @@ class BrilliantBluetooth {
 
     await _startScan(false);
 
-    FlutterBluePlus.scanResults.listen((results) {
+    StreamSubscription scan = FlutterBluePlus.scanResults.listen((results) {
       for (int i = 0; i < results.length; i++) {
         if (results[i].device.remoteId.toString() == deviceUuid) {
           print("Reconnecting to: ${results[i].device.remoteId.toString()}");
+          BrilliantBluetooth.stopScan();
           _connect(results[i].device, listener);
         }
       }
     });
+
+    FlutterBluePlus.cancelWhenScanComplete(scan);
+  }
+
+  static void disconnect(BrilliantDevice device) {
+    device.device.disconnect();
   }
 }
