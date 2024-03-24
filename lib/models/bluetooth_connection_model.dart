@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -41,12 +40,12 @@ class BluetoothConnectionModel extends ChangeNotifier {
   void deletePairing() => _updateState(_Event.deletePairing);
 
   // Private constructor and bluetooth stream listeners
-  final _scanStreamController = StreamController<BrilliantScannedDevice>();
+  final _scanStreamController = StreamController<BrilliantDevice>();
   final _connectionStreamController = StreamController<BrilliantDevice>();
 
   BluetoothConnectionModel() {
     _scanStreamController.stream
-        .where((event) => event.rssi > -55)
+        .where((device) => device.rssi! > -55)
         .timeout(const Duration(seconds: 2), onTimeout: (_) {
       _updateState(_Event.deviceLost);
     }).listen((device) {
@@ -64,6 +63,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
         case BrilliantConnectionState.invalid:
           _updateState(_Event.deviceInvalid, connectedDevice: device);
           break;
+        default:
       }
     });
   }
@@ -74,12 +74,12 @@ class BluetoothConnectionModel extends ChangeNotifier {
 
   // Private state variables
   _State _currentState = _State.init;
-  BrilliantScannedDevice? _nearbyDevice;
+  BrilliantDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
 
   void _updateState(
     _Event event, {
-    BrilliantScannedDevice? nearbyDevice,
+    BrilliantDevice? nearbyDevice,
     BrilliantDevice? connectedDevice,
   }) async {
     if (event != _lastEvent) {
@@ -132,10 +132,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
             _currentState = _State.scanning;
             break;
           case _Event.pairingButtonPressed:
-            BrilliantBluetooth.connect(
-              _nearbyDevice!,
-              _connectionStreamController,
-            );
+            _nearbyDevice!.connect(_connectionStreamController);
             BrilliantBluetooth.stopScan();
             _currentState = _State.connecting;
             break;
@@ -198,7 +195,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
             _currentState = _State.disconnected;
             break;
           case _Event.deletePairing:
-            BrilliantBluetooth.disconnect(_connectedDevice!);
+            _connectedDevice!.disconnect();
             _connectedDevice = null;
             final savedData = await SharedPreferences.getInstance();
             await savedData.remove('pairedDeviceUuid');
@@ -214,9 +211,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
             _currentState = _State.connected;
             break;
           case _Event.deletePairing:
-            if (_connectedDevice != null) {
-              BrilliantBluetooth.disconnect(_connectedDevice!);
-            }
+            _connectedDevice?.disconnect();
             _connectedDevice = null;
             final savedData = await SharedPreferences.getInstance();
             await savedData.remove('pairedDeviceUuid');
@@ -289,7 +284,6 @@ class BluetoothConnectionModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    print("disposing");
     BrilliantBluetooth.stopScan();
     _scanStreamController.close();
     _connectionStreamController.close();
