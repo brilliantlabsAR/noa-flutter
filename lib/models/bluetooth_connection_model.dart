@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+final _log = Logger("Bluetooth Model");
 
 enum _State {
   init,
@@ -26,6 +29,8 @@ enum _Event {
   pairingButtonPressed,
   pairingCancelPressed,
   deletePairing,
+  responseString,
+  responseData,
 }
 
 class BluetoothConnectionModel extends ChangeNotifier {
@@ -42,6 +47,8 @@ class BluetoothConnectionModel extends ChangeNotifier {
   // Private constructor and bluetooth stream listeners
   final _scanStreamController = StreamController<BrilliantDevice>();
   final _connectionStreamController = StreamController<BrilliantDevice>();
+  final _stringRxStreamController = StreamController<String>();
+  final _dataRxStreamController = StreamController<List<int>>();
 
   BluetoothConnectionModel() {
     _scanStreamController.stream
@@ -66,11 +73,18 @@ class BluetoothConnectionModel extends ChangeNotifier {
         default:
       }
     });
+
+    _stringRxStreamController.stream.listen((string) {
+      _updateState(_Event.responseString, responseString: string);
+    });
+
+    _dataRxStreamController.stream.listen((data) {
+      _updateState(_Event.responseData, responseData: data);
+    });
   }
 
   // TEMP
   _State? _lastState;
-  _Event? _lastEvent;
 
   // Private state variables
   _State _currentState = _State.init;
@@ -81,12 +95,9 @@ class BluetoothConnectionModel extends ChangeNotifier {
     _Event event, {
     BrilliantDevice? nearbyDevice,
     BrilliantDevice? connectedDevice,
+    String? responseString,
+    List<int>? responseData,
   }) async {
-    if (event != _lastEvent) {
-      print("Event: $event");
-      _lastEvent = event;
-    }
-
     // Change state based on events
     switch (_currentState) {
       case _State.init:
@@ -146,11 +157,14 @@ class BluetoothConnectionModel extends ChangeNotifier {
       case _State.connecting:
         switch (event) {
           case _Event.deviceConnected:
-            _connectedDevice = connectedDevice!;
             SharedPreferences savedData = await SharedPreferences.getInstance();
-            await savedData.setString('pairedDeviceUuid', connectedDevice.uuid);
-            // TODO go to checkingVersion once implemented
-            _currentState = _State.connected;
+            await savedData.setString(
+                'pairedDeviceUuid', connectedDevice!.uuid);
+            _connectedDevice = connectedDevice;
+            _connectedDevice!.stringRxListener = _stringRxStreamController;
+            _connectedDevice!.dataRxListener = _dataRxStreamController;
+            _connectedDevice!.writeString("print(frame.FIRMWARE_VERSION)");
+            _currentState = _State.checkingVersion;
             break;
           case _Event.deviceInvalid:
             _currentState = _State.requiresRepair;
@@ -160,7 +174,13 @@ class BluetoothConnectionModel extends ChangeNotifier {
         break;
       case _State.checkingVersion:
         switch (event) {
-          // TODO
+          case _Event.responseString:
+            if (responseString == "v23.234.1234") {
+              _currentState = _State.uploadingApp;
+            } else {
+              _currentState = _State.updatingFirmware;
+            }
+            break;
           default:
         }
         break;
@@ -208,6 +228,8 @@ class BluetoothConnectionModel extends ChangeNotifier {
         switch (event) {
           case _Event.deviceConnected:
             _connectedDevice = connectedDevice!;
+            _connectedDevice!.stringRxListener = _stringRxStreamController;
+            _connectedDevice!.dataRxListener = _dataRxStreamController;
             _currentState = _State.connected;
             break;
           case _Event.deletePairing:
@@ -275,7 +297,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
         break;
     }
     if (_currentState != _lastState) {
-      print("New state: $_currentState");
+      _log.info("Bluetooth Model: $_lastState → ($event) → $_currentState");
       _lastState = _currentState;
     }
 
