@@ -23,7 +23,7 @@ class PairingPage extends ConsumerWidget {
       backgroundColor: colorDark,
       appBar: AppBar(
         backgroundColor: colorDark,
-        title: Image.asset('assets/brilliant_logo.png'),
+        title: Image.asset('assets/images/brilliant_logo.png'),
       ),
       body: Column(
         children: [
@@ -67,7 +67,7 @@ class PairingPage extends ConsumerWidget {
                     ),
                   ), //
                   Expanded(
-                    child: Image.asset('assets/temp_frame.png'),
+                    child: Image.asset('assets/images/temp_frame.png'),
                   ),
                   GestureDetector(
                     onTap: () {

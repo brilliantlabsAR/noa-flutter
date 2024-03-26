@@ -59,26 +59,26 @@ class LoginPage extends StatelessWidget {
       backgroundColor: colorDark,
       appBar: AppBar(
         backgroundColor: colorDark,
-        title: Image.asset('assets/brilliant_logo.png'),
+        title: Image.asset('assets/images/brilliant_logo.png'),
       ),
       body: Column(
         children: [
-          Expanded(child: Image.asset('assets/noa_logo.png')),
+          Expanded(child: Image.asset('assets/images/noa_logo.png')),
           Column(
             children: [
               _loginButton(
                 context,
-                'assets/sign_in_with_apple_button.png',
+                'assets/images/sign_in_with_apple_button.png',
                 SignIn().withApple,
               ),
               _loginButton(
                 context,
-                'assets/sign_in_with_google_button.png',
+                'assets/images/sign_in_with_google_button.png',
                 SignIn().withGoogle,
               ),
               _loginButton(
                 context,
-                'assets/sign_in_with_discord_button.png',
+                'assets/images/sign_in_with_discord_button.png',
                 SignIn().withDiscord,
               ),
             ],

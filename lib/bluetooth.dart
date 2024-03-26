@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:logging/logging.dart';
 
@@ -153,6 +155,11 @@ class BrilliantDevice {
     data.insert(0, 0x01);
 
     await _txChannel.write(data, withoutResponse: true);
+  }
+
+  Future<Stream<int>?> uploadScript(String filePath) async {
+    String file = await rootBundle.loadString(filePath);
+    print(file);
   }
 
   Future<void> _enableServices() async {

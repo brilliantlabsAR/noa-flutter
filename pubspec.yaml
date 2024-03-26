@@ -32,6 +32,7 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
   assets:
-    - assets/
-    - assets/2x/
     - .env
+    - assets/images/
+    - assets/images/2x/
+    - assets/lua_scripts/

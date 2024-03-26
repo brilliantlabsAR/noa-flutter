@@ -83,13 +83,13 @@ class BluetoothConnectionModel extends ChangeNotifier {
     });
   }
 
-  // TEMP
-  _State? _lastState;
-
   // Private state variables
   _State _currentState = _State.init;
   BrilliantDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
+
+  // Logging variable
+  _State? _lastState;
 
   void _updateState(
     _Event event, {
@@ -104,7 +104,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
         switch (event) {
           case _Event.startPairing:
             SharedPreferences savedData = await SharedPreferences.getInstance();
-            String? deviceUuid = savedData.getString('pairedDeviceUuid');
+            String? deviceUuid = savedData.getString('pairedDevice');
 
             // If already paired
             if (deviceUuid != null) {
@@ -157,9 +157,6 @@ class BluetoothConnectionModel extends ChangeNotifier {
       case _State.connecting:
         switch (event) {
           case _Event.deviceConnected:
-            SharedPreferences savedData = await SharedPreferences.getInstance();
-            await savedData.setString(
-                'pairedDeviceUuid', connectedDevice!.uuid);
             _connectedDevice = connectedDevice;
             _connectedDevice!.stringRxListener = _stringRxStreamController;
             _connectedDevice!.dataRxListener = _dataRxStreamController;
@@ -175,7 +172,8 @@ class BluetoothConnectionModel extends ChangeNotifier {
       case _State.checkingVersion:
         switch (event) {
           case _Event.responseString:
-            if (responseString == "v23.234.1234") {
+            if (responseString == "v24.065.1346") {
+              _connectedDevice!.uploadScript('assets/lua_scripts/main.lua');
               _currentState = _State.uploadingApp;
             } else {
               _currentState = _State.updatingFirmware;
@@ -191,9 +189,10 @@ class BluetoothConnectionModel extends ChangeNotifier {
         }
         break;
       case _State.uploadingApp:
-        // TODO
         switch (event) {
           default:
+            SharedPreferences savedData = await SharedPreferences.getInstance();
+            await savedData.setString('pairedDevice', _connectedDevice!.uuid);
         }
         break;
       case _State.requiresRepair:
@@ -218,7 +217,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
             _connectedDevice!.disconnect();
             _connectedDevice = null;
             final savedData = await SharedPreferences.getInstance();
-            await savedData.remove('pairedDeviceUuid');
+            await savedData.remove('pairedDevice');
             _currentState = _State.init;
             break;
           default:
@@ -236,7 +235,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
             _connectedDevice?.disconnect();
             _connectedDevice = null;
             final savedData = await SharedPreferences.getInstance();
-            await savedData.remove('pairedDeviceUuid');
+            await savedData.remove('pairedDevice');
             _currentState = _State.init;
             break;
           default:
@@ -296,6 +295,8 @@ class BluetoothConnectionModel extends ChangeNotifier {
         pairingComplete = true;
         break;
     }
+
+    // Logging
     if (_currentState != _lastState) {
       _log.info("Bluetooth Model: $_lastState → ($event) → $_currentState");
       _lastState = _currentState;
