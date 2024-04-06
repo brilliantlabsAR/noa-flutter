@@ -93,4 +93,4 @@ Sometimes it may be necessary to regenerate the platform files. To do this, dele
         ...
     ```
 
-    1. Finally, you may want to do a find and replace all of the string `xyz.brilliant.noa` to your own package name
+    1. Finally, you may want to find and replace all occurrences of the string `xyz.brilliant` to your own reverse-domain bundle identifier
