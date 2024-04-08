@@ -105,6 +105,14 @@ class BrilliantDevice {
     await device.disconnect();
   }
 
+  Future<void> sendBreakSignal() async {
+    writeString("\x03");
+  }
+
+  Future<void> sendResetSignal() async {
+    await writeString("\x04");
+  }
+
   Future<String?> writeString(String string) async {
     _log.info("brilliantDevice.writeString() sending string data");
     Completer<String?> completer = Completer();
@@ -157,9 +165,44 @@ class BrilliantDevice {
     await _txChannel.write(data, withoutResponse: true);
   }
 
-  Future<Stream<int>?> uploadScript(String filePath) async {
+  Future<void> uploadScript(String fileName, String filePath) async {
     String file = await rootBundle.loadString(filePath);
-    print(file);
+
+    file = file.replaceAll("\n", "\\n");
+    file = file.replaceAll("'", "\\'");
+    file = file.replaceAll('"', '\\"');
+
+    await sendBreakSignal();
+    var resp1 =
+        await writeString("f=frame.file.open('$fileName', 'w');print(nil)");
+    print(resp1);
+
+    int index = 0;
+    // int chunkSize = maxStringLength! - 22;
+    int chunkSize = 50;
+    while (index < file.length - 1) {
+      // Don't go over the end of the string
+      if (index + chunkSize > file.length) {
+        chunkSize = file.length - index - 1;
+      }
+
+      // Don't split on an escape character
+      if (file[index + chunkSize] == '\\') {
+        chunkSize -= 1;
+      }
+
+      String chunk = file.substring(index, index + chunkSize);
+
+      print("Writing ${chunk.length} bytes: [$chunk]");
+
+      var resp2 = await writeString("f:write('$chunk');print(nil)");
+      print(resp2);
+
+      index += chunkSize;
+    }
+
+    var resp3 = await writeString("f:close();print(nil)");
+    print(resp3);
   }
 
   Future<void> _enableServices() async {

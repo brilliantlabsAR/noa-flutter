@@ -143,13 +143,14 @@ class BluetoothConnectionModel extends ChangeNotifier {
         if (_luaResponse == "v24.065.1346") {
           state.changeIf(event == Event.luaResponse, State.uploadMainLua);
         } else {
-          state.changeIf(event == Event.luaResponse, State.updatingFirmware);
+          // TODO go to State.updatingFirmware instead
+          state.changeIf(event == Event.luaResponse, State.uploadMainLua);
         }
         break;
 
       case State.uploadMainLua:
-        state.onEntry(() =>
-            _connectedDevice!.uploadScript('assets/lua_scripts/main.lua'));
+        state.onEntry(() => _connectedDevice!
+            .uploadScript('main.lua', 'assets/lua_scripts/main.lua'));
 
         if (_luaResponse == "") {
           state.changeIf(event == Event.luaResponse, State.uploadGraphicsLua);
@@ -159,8 +160,8 @@ class BluetoothConnectionModel extends ChangeNotifier {
         break;
 
       case State.uploadGraphicsLua:
-        state.onEntry(() =>
-            _connectedDevice!.uploadScript('assets/lua_scripts/graphics.lua'));
+        // state.onEntry(() =>
+        //     _connectedDevice!.uploadScript('assets/lua_scripts/graphics.lua'));
 
         if (_luaResponse == "") {
           state.changeIf(event == Event.luaResponse, State.uploadStateLua);
@@ -170,8 +171,8 @@ class BluetoothConnectionModel extends ChangeNotifier {
         break;
 
       case State.uploadStateLua:
-        state.onEntry(() =>
-            _connectedDevice!.uploadScript('assets/lua_scripts/state.lua'));
+        // state.onEntry(() =>
+        //     _connectedDevice!.uploadScript('assets/lua_scripts/state.lua'));
 
         if (_luaResponse == "") {
           state.changeIf(event == Event.luaResponse, State.connected);
