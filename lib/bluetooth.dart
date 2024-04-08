@@ -219,6 +219,11 @@ class BrilliantBluetooth {
   }
 
   static void scan(StreamController<BrilliantDevice> listener) async {
+    if (FlutterBluePlus.isScanningNow) {
+      _log.info("BrilliantDevice.scan() already scanning");
+      return;
+    }
+
     _log.info("BrilliantDevice.scan() scanning");
     late ScanResult nearestDevice;
 

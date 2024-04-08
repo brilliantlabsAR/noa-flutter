@@ -8,7 +8,7 @@ import 'package:noa/models/bluetooth_connection_model.dart';
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/pages/login.dart';
 
-final bluetooth = ChangeNotifierProvider<BluetoothConnectionModel>((ref) {
+final bluetoothModel = ChangeNotifierProvider<BluetoothConnectionModel>((ref) {
   return BluetoothConnectionModel();
 });
 

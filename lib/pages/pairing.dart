@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/main.dart';
+import 'package:noa/models/bluetooth_connection_model.dart' as bluetooth;
 import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
@@ -12,12 +13,64 @@ class PairingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Start pairing as soon as we enter the screen
-      ref.read(bluetooth).startPairing();
+      ref.read(bluetoothModel).triggerEvent(bluetooth.Event.startScanning);
       // Leave once done
-      if (ref.watch(bluetooth).pairingComplete) {
+      if (ref.watch(bluetoothModel).state.currentState ==
+              bluetooth.State.connected ||
+          ref.watch(bluetoothModel).state.currentState ==
+              bluetooth.State.disconnected) {
         switchPage(context, const NoaPage());
       }
     });
+
+    String pairingBoxText = "";
+    String pairingBoxButtonText = "";
+    bool pairingBoxButtonEnabled = false;
+
+    switch (ref.watch(bluetoothModel).state.currentState) {
+      case bluetooth.State.init:
+      case bluetooth.State.scanning:
+        pairingBoxText = "Bring your device close";
+        pairingBoxButtonText = "Searching";
+        pairingBoxButtonEnabled = false;
+        break;
+      case bluetooth.State.found:
+        pairingBoxText = "Frame found";
+        pairingBoxButtonText = "Pair";
+        pairingBoxButtonEnabled = true;
+        break;
+      case bluetooth.State.connect:
+        pairingBoxText = "Frame found";
+        pairingBoxButtonText = "Connecting";
+        pairingBoxButtonEnabled = false;
+        break;
+      case bluetooth.State.checkVersion:
+        pairingBoxText = "Checking firmware";
+        pairingBoxButtonText = "Connecting";
+        pairingBoxButtonEnabled = false;
+        break;
+      case bluetooth.State.updatingFirmware:
+        pairingBoxText = "Updating";
+        pairingBoxButtonText = "Keep your device close";
+        pairingBoxButtonEnabled = false;
+        break;
+      case bluetooth.State.uploadMainLua:
+      case bluetooth.State.uploadGraphicsLua:
+      case bluetooth.State.uploadStateLua:
+        pairingBoxText = "Uploading Noa";
+        pairingBoxButtonText = "Keep your device close";
+        pairingBoxButtonEnabled = false;
+        break;
+      case bluetooth.State.requiresRepair:
+        pairingBoxText = "Un-pair Frame first";
+        pairingBoxButtonText = "Try again";
+        pairingBoxButtonEnabled = true;
+        break;
+      case bluetooth.State.connected:
+        break;
+      case bluetooth.State.disconnected:
+        break;
+    }
 
     return Scaffold(
       backgroundColor: colorDark,
@@ -48,7 +101,9 @@ class PairingPage extends ConsumerWidget {
                       padding: const EdgeInsets.only(top: 20, right: 20),
                       child: GestureDetector(
                         onTap: () {
-                          ref.read(bluetooth).pairingCancelPressed();
+                          ref
+                              .read(bluetoothModel)
+                              .triggerEvent(bluetooth.Event.cancelPressed);
                         },
                         child: const Icon(
                           Icons.cancel,
@@ -58,7 +113,7 @@ class PairingPage extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    ref.watch(bluetooth).pairingBoxText,
+                    pairingBoxText,
                     style: const TextStyle(
                       fontFamily: 'SF Pro Display',
                       color: colorDark,
@@ -71,13 +126,13 @@ class PairingPage extends ConsumerWidget {
                   ),
                   GestureDetector(
                     onTap: () {
-                      ref.read(bluetooth).pairingButtonPressed();
+                      ref
+                          .read(bluetoothModel)
+                          .triggerEvent(bluetooth.Event.buttonPressed);
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        color: ref.watch(bluetooth).pairingBoxButtonEnabled
-                            ? colorDark
-                            : colorLight,
+                        color: pairingBoxButtonEnabled ? colorDark : colorLight,
                         borderRadius:
                             const BorderRadius.all(Radius.circular(20)),
                       ),
@@ -86,7 +141,7 @@ class PairingPage extends ConsumerWidget {
                           left: 31, right: 31, bottom: 28),
                       child: Center(
                         child: Text(
-                          ref.watch(bluetooth).pairingBoxButtonText,
+                          pairingBoxButtonText,
                           style: textStyleWhiteWidget,
                         ),
                       ),
