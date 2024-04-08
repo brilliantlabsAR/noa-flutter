@@ -151,34 +151,34 @@ class BluetoothConnectionModel extends ChangeNotifier {
       case State.uploadMainLua:
         state.onEntry(() => _connectedDevice!
             .uploadScript('main.lua', 'assets/lua_scripts/main.lua'));
-
-        if (_luaResponse == "") {
+        if (_luaResponse == "main.lua uploaded") {
           state.changeIf(event == Event.luaResponse, State.uploadGraphicsLua);
-        } else {
+        } else if (_luaResponse != 'nil') {
           state.changeIf(event == Event.luaResponse, State.requiresRepair);
         }
+        state.changeIf(event == Event.deviceDisconnected, State.requiresRepair);
         break;
 
       case State.uploadGraphicsLua:
-        // state.onEntry(() =>
-        //     _connectedDevice!.uploadScript('assets/lua_scripts/graphics.lua'));
-
-        if (_luaResponse == "") {
-          state.changeIf(event == Event.luaResponse, State.uploadStateLua);
-        } else {
+        state.onEntry(() => _connectedDevice!
+            .uploadScript('graphics.lua', 'assets/lua_scripts/graphics.lua'));
+        if (_luaResponse == "graphics.lua uploaded") {
+          state.changeIf(event == Event.luaResponse, State.uploadGraphicsLua);
+        } else if (_luaResponse != 'nil') {
           state.changeIf(event == Event.luaResponse, State.requiresRepair);
         }
+        state.changeIf(event == Event.deviceDisconnected, State.requiresRepair);
         break;
 
       case State.uploadStateLua:
-        // state.onEntry(() =>
-        //     _connectedDevice!.uploadScript('assets/lua_scripts/state.lua'));
-
-        if (_luaResponse == "") {
-          state.changeIf(event == Event.luaResponse, State.connected);
-        } else {
+        state.onEntry(() => _connectedDevice!
+            .uploadScript('state.lua', 'assets/lua_scripts/state.lua'));
+        if (_luaResponse == "state.lua uploaded") {
+          state.changeIf(event == Event.luaResponse, State.uploadGraphicsLua);
+        } else if (_luaResponse != 'nil') {
           state.changeIf(event == Event.luaResponse, State.requiresRepair);
         }
+        state.changeIf(event == Event.deviceDisconnected, State.requiresRepair);
         break;
 
       case State.updatingFirmware:

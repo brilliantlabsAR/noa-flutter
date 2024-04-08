@@ -106,14 +106,15 @@ class BrilliantDevice {
   }
 
   Future<void> sendBreakSignal() async {
-    writeString("\x03");
+    await writeString("\x03", awaitResponse: false);
   }
 
   Future<void> sendResetSignal() async {
     await writeString("\x04");
   }
 
-  Future<String?> writeString(String string) async {
+  Future<String?> writeString(String string,
+      {bool awaitResponse = true}) async {
     _log.info("brilliantDevice.writeString() sending string data");
     Completer<String?> completer = Completer();
 
@@ -128,6 +129,11 @@ class BrilliantDevice {
     }
 
     await _txChannel.write(utf8.encode(string), withoutResponse: true);
+
+    if (awaitResponse == false) {
+      completer.complete();
+      return completer.future;
+    }
 
     late StreamSubscription subscription;
 
@@ -173,36 +179,43 @@ class BrilliantDevice {
     file = file.replaceAll('"', '\\"');
 
     await sendBreakSignal();
-    var resp1 =
+    var resp =
         await writeString("f=frame.file.open('$fileName', 'w');print(nil)");
-    print(resp1);
+
+    if (resp != "nil") {
+      return Future.error("$resp");
+    }
 
     int index = 0;
-    // int chunkSize = maxStringLength! - 22;
-    int chunkSize = 50;
-    while (index < file.length - 1) {
+    int chunkSize = maxStringLength! - 22;
+
+    while (index < file.length) {
       // Don't go over the end of the string
       if (index + chunkSize > file.length) {
-        chunkSize = file.length - index - 1;
+        chunkSize = file.length - index;
       }
 
       // Don't split on an escape character
-      if (file[index + chunkSize] == '\\') {
+      if (file[index + chunkSize - 1] == '\\') {
         chunkSize -= 1;
       }
 
       String chunk = file.substring(index, index + chunkSize);
 
-      print("Writing ${chunk.length} bytes: [$chunk]");
+      resp = await writeString("f:write('$chunk');print(nil)");
 
-      var resp2 = await writeString("f:write('$chunk');print(nil)");
-      print(resp2);
+      if (resp != "nil") {
+        return Future.error("$resp");
+      }
 
       index += chunkSize;
     }
 
-    var resp3 = await writeString("f:close();print(nil)");
-    print(resp3);
+    resp = await writeString("f:close();print('$fileName uploaded')");
+
+    if (resp != "nil") {
+      return Future.error("$resp");
+    }
   }
 
   Future<void> _enableServices() async {
