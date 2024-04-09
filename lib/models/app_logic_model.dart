@@ -25,7 +25,6 @@ enum State {
 
 enum Event {
   init,
-  startScanning,
   deviceFound,
   deviceLost,
   deviceConnected,
@@ -54,6 +53,7 @@ class AppLogicModel extends ChangeNotifier {
   final _dataRxStreamController = StreamController<List<int>>();
 
   AppLogicModel() {
+    // Monitors Bluetooth scan events
     _scanStreamController.stream
         .where((device) => device.rssi! > -55)
         .timeout(const Duration(seconds: 2), onTimeout: (_) {
@@ -63,6 +63,7 @@ class AppLogicModel extends ChangeNotifier {
       triggerEvent(Event.deviceFound);
     });
 
+    // Monitors Bluetooth connection events
     _connectionStreamController.stream.listen((device) async {
       _connectedDevice = device;
       switch (device.state) {
@@ -81,11 +82,13 @@ class AppLogicModel extends ChangeNotifier {
       }
     });
 
+    // Monitors received strings from Bluetooth
     _stringRxStreamController.stream.listen((string) {
       _luaResponse = string;
       triggerEvent(Event.luaResponse);
     });
 
+    // Monitors received data from Bluetooth
     _dataRxStreamController.stream.listen((data) {
       _dataResponse = data;
       triggerEvent(Event.responseData);
@@ -108,9 +111,9 @@ class AppLogicModel extends ChangeNotifier {
           String? deviceUuid = savedData.getString('pairedDevice');
 
           if (deviceUuid == null) {
-            state.changeOn(Event.startScanning, State.scanning);
+            state.changeOn(Event.init, State.scanning);
           } else {
-            state.changeOn(Event.startScanning, State.disconnected,
+            state.changeOn(Event.init, State.disconnected,
                 transitionTask: () => BrilliantBluetooth.reconnect(
                       deviceUuid,
                       _connectionStreamController,
