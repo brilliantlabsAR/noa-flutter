@@ -17,7 +17,7 @@ class NoaMessageModel extends ChangeNotifier {
 
   NoaMessageModel() {
     addMessage(
-      "I’m looking for some new sneakers. Could you help me find some?",
+      "I'm looking for some new sneakers. Could you help me find some?",
       "User",
       DateTime.now(),
     );
@@ -32,7 +32,7 @@ class NoaMessageModel extends ChangeNotifier {
       DateTime.now().add(const Duration(seconds: 4)),
     );
     addMessage(
-      "Those look like some nice designer kicks! If you’re on a budget check these out from Camperlab, or if you want to splash out, Balenciaga have something similar.",
+      "Those look like some nice designer kicks! If you're on a budget check these out from Camperlab, or if you want to splash out, Balenciaga have something similar.",
       "Noa",
       DateTime.now().add(const Duration(seconds: 5)),
     );

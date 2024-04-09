@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:noa/main.dart';
-import 'package:noa/models/bluetooth_connection_model.dart' as bluetooth;
+import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
@@ -14,10 +13,8 @@ class PairingPage extends ConsumerWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // TODO can we leave the page earlier?
       // Leave once done
-      if (ref.watch(bluetoothModel).state.current ==
-              bluetooth.State.connected ||
-          ref.watch(bluetoothModel).state.current ==
-              bluetooth.State.disconnected) {
+      if (ref.watch(app.model).state.current == app.State.connected ||
+          ref.watch(app.model).state.current == app.State.disconnected) {
         switchPage(context, const NoaPage());
       }
     });
@@ -26,48 +23,48 @@ class PairingPage extends ConsumerWidget {
     String pairingBoxButtonText = "";
     bool pairingBoxButtonEnabled = false;
 
-    switch (ref.watch(bluetoothModel).state.current) {
-      case bluetooth.State.init:
-      case bluetooth.State.scanning:
+    switch (ref.watch(app.model).state.current) {
+      case app.State.init:
+      case app.State.scanning:
         pairingBoxText = "Bring your device close";
         pairingBoxButtonText = "Searching";
         pairingBoxButtonEnabled = false;
         break;
-      case bluetooth.State.found:
+      case app.State.found:
         pairingBoxText = "Frame found";
         pairingBoxButtonText = "Pair";
         pairingBoxButtonEnabled = true;
         break;
-      case bluetooth.State.connect:
+      case app.State.connect:
         pairingBoxText = "Frame found";
         pairingBoxButtonText = "Connecting";
         pairingBoxButtonEnabled = false;
         break;
-      case bluetooth.State.checkVersion:
+      case app.State.checkVersion:
         pairingBoxText = "Checking firmware";
         pairingBoxButtonText = "Connecting";
         pairingBoxButtonEnabled = false;
         break;
-      case bluetooth.State.updatingFirmware:
+      case app.State.updatingFirmware:
         pairingBoxText = "Updating";
         pairingBoxButtonText = "Keep your device close";
         pairingBoxButtonEnabled = false;
         break;
-      case bluetooth.State.uploadMainLua:
-      case bluetooth.State.uploadGraphicsLua:
-      case bluetooth.State.uploadStateLua:
+      case app.State.uploadMainLua:
+      case app.State.uploadGraphicsLua:
+      case app.State.uploadStateLua:
         pairingBoxText = "Uploading Noa";
         pairingBoxButtonText = "Keep your device close";
         pairingBoxButtonEnabled = false;
         break;
-      case bluetooth.State.requiresRepair:
+      case app.State.requiresRepair:
         pairingBoxText = "Un-pair Frame first";
         pairingBoxButtonText = "Try again";
         pairingBoxButtonEnabled = true;
         break;
-      case bluetooth.State.connected:
+      case app.State.connected:
         break;
-      case bluetooth.State.disconnected:
+      case app.State.disconnected:
         break;
     }
 
@@ -101,8 +98,8 @@ class PairingPage extends ConsumerWidget {
                       child: GestureDetector(
                         onTap: () {
                           ref
-                              .read(bluetoothModel)
-                              .triggerEvent(bluetooth.Event.cancelPressed);
+                              .read(app.model)
+                              .triggerEvent(app.Event.cancelPressed);
                         },
                         child: const Icon(
                           Icons.cancel,
@@ -125,9 +122,7 @@ class PairingPage extends ConsumerWidget {
                   ),
                   GestureDetector(
                     onTap: () {
-                      ref
-                          .read(bluetoothModel)
-                          .triggerEvent(bluetooth.Event.buttonPressed);
+                      ref.read(app.model).triggerEvent(app.Event.buttonPressed);
                     },
                     child: Container(
                       decoration: BoxDecoration(

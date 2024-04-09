@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/api.dart';
-import 'package:noa/main.dart';
-import 'package:noa/models/bluetooth_connection_model.dart' as bluetooth;
+import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
@@ -21,7 +20,7 @@ Widget _loginButton(
       try {
         await action();
         if (context.mounted) {
-          ref.read(bluetoothModel).triggerEvent(bluetooth.Event.startScanning);
+          ref.read(app.model).triggerEvent(app.Event.startScanning);
           switchPage(context, const PairingPage());
         }
       } on CheckInternetConnectionError catch (_) {

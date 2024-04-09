@@ -4,13 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
-import 'package:noa/models/bluetooth_connection_model.dart';
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/pages/login.dart';
-
-final bluetoothModel = ChangeNotifierProvider<BluetoothConnectionModel>((ref) {
-  return BluetoothConnectionModel();
-});
 
 final messages = ChangeNotifierProvider<NoaMessageModel>((ref) {
   return NoaMessageModel();

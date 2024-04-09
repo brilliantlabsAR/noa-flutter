@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/api.dart';
-import 'package:noa/main.dart';
-import 'package:noa/models/bluetooth_connection_model.dart' as bluetooth;
+import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/pages/login.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
@@ -87,9 +86,7 @@ class _AccountPageState extends ConsumerState<AccountPage> {
                 children: [
                   _linkedFooterText("Logout", false, () async {
                     await NoaApi.deleteSavedAuthToken();
-                    ref
-                        .read(bluetoothModel)
-                        .triggerEvent(bluetooth.Event.deletePressed);
+                    ref.read(app.model).triggerEvent(app.Event.deletePressed);
                     if (context.mounted) {
                       Navigator.pop(context);
                       switchPage(context, const LoginPage());

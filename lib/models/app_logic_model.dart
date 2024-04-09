@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
@@ -37,7 +38,7 @@ enum Event {
   responseData,
 }
 
-class BluetoothConnectionModel extends ChangeNotifier {
+class AppLogicModel extends ChangeNotifier {
   // Private state variables
   StateMachine state = StateMachine(State.init);
   bool _eventBeingProcessed = false;
@@ -52,7 +53,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
   final _stringRxStreamController = StreamController<String>();
   final _dataRxStreamController = StreamController<List<int>>();
 
-  BluetoothConnectionModel() {
+  AppLogicModel() {
     _scanStreamController.stream
         .where((device) => device.rssi! > -55)
         .timeout(const Duration(seconds: 2), onTimeout: (_) {
@@ -231,3 +232,7 @@ class BluetoothConnectionModel extends ChangeNotifier {
     super.dispose();
   }
 }
+
+final model = ChangeNotifierProvider<AppLogicModel>((ref) {
+  return AppLogicModel();
+});
