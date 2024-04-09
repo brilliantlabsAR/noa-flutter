@@ -6,9 +6,8 @@ local state = State.new()
 
 local image_data_sent = false
 local audio_data_sent = false
-local last_exposure_time = 0
 
-SCRIPT_VERSION = "0.0"  -- TODO: auto-insert this into script and use a SHA
+SCRIPT_VERSION = "0.0" -- TODO: auto-insert this into script and use a SHA
 MESSAGE_START_FLAG = "\x10"
 MESSAGE_TEXT_FLAG = "\x11"
 MESSAGE_AUDIO_FLAG = "\x12"
@@ -44,6 +43,8 @@ end
 
 frame.bluetooth.receive_callback(bluetooth_callback)
 
+frame.camera.auto(true, 'center_weighted')
+
 while true do
     if state:is("START") then
         state:on_entry(function()
@@ -57,7 +58,7 @@ while true do
             frame.camera.capture()
             graphics:clear()
             graphics:append_text("Noa: *Listening*")
-            frame.microphone.record{}
+            frame.microphone.record {}
             send_data(MESSAGE_START_FLAG)
             image_data_sent = false
             audio_data_sent = false
@@ -129,11 +130,6 @@ while true do
     end
 
     graphics:print_text()
-
-    if (frame.time.utc() - last_exposure_time) > 0.033 then
-        frame.camera.auto()
-        last_exposure_time = frame.time.utc()
-    end
 
     collectgarbage("collect")
 end

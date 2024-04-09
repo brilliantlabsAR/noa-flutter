@@ -178,6 +178,7 @@ class BrilliantDevice {
 
     String file = await rootBundle.loadString(filePath);
 
+    file = file.replaceAll('\\', '\\\\');
     file = file.replaceAll("\n", "\\n");
     file = file.replaceAll("'", "\\'");
     file = file.replaceAll('"', '\\"');
