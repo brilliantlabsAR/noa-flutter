@@ -3,19 +3,24 @@ import 'package:logging/logging.dart';
 final _log = Logger("State Machine Helper");
 
 class StateMachine {
-  dynamic currentState;
-  dynamic _lastState;
+  dynamic current;
+  dynamic _next;
+  dynamic _event;
   bool _onEntryHandled = false;
 
   StateMachine(initialState) {
-    currentState = initialState;
-    _lastState = initialState;
+    current = initialState;
+    _next = initialState;
   }
 
-  void changeIf(bool condition, newState, {Function? transitionTask}) {
-    if (condition) {
-      _lastState = currentState;
-      currentState = newState;
+  void event(event) {
+    _event = event;
+  }
+
+  void changeOn(event, next, {Function? transitionTask}) {
+    if (event == _event) {
+      _event = null;
+      _next = next;
       _onEntryHandled = false;
 
       if (transitionTask != null) {
@@ -23,8 +28,17 @@ class StateMachine {
         transitionTask();
       }
 
-      _log.info("State machine: Changed from $_lastState → $currentState");
+      _log.info("State machine: $event triggered change $current → $next");
     }
+  }
+
+  bool changePending() {
+    if (_next == current) {
+      return false;
+    }
+
+    current = _next;
+    return true;
   }
 
   void onEntry(Function task) {

@@ -20,10 +20,10 @@ enum State {
   requiresRepair,
   connected,
   disconnected,
-  deletePairing,
 }
 
 enum Event {
+  init,
   startScanning,
   deviceFound,
   deviceLost,
@@ -40,6 +40,7 @@ enum Event {
 class BluetoothConnectionModel extends ChangeNotifier {
   // Private state variables
   StateMachine state = StateMachine(State.init);
+  bool _eventBeingProcessed = false;
   BrilliantDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
   String? _luaResponse;
@@ -91,125 +92,135 @@ class BluetoothConnectionModel extends ChangeNotifier {
   }
 
   void triggerEvent(Event event) async {
-    _log.info("Bluetooth Model: New event: $event");
-
-    switch (state.currentState) {
-      case State.init:
-        SharedPreferences savedData = await SharedPreferences.getInstance();
-        String? deviceUuid = savedData.getString('pairedDevice');
-
-        if (deviceUuid == null) {
-          state.changeIf(event == Event.startScanning, State.scanning);
-        } else {
-          state.changeIf(event == Event.startScanning, State.disconnected,
-              transitionTask: () => BrilliantBluetooth.reconnect(
-                    deviceUuid,
-                    _connectionStreamController,
-                  ));
-        }
-        break;
-
-      case State.scanning:
-        state.onEntry(() => BrilliantBluetooth.scan(_scanStreamController));
-        state.changeIf(event == Event.deviceFound, State.found);
-        state.changeIf(event == Event.cancelPressed, State.disconnected,
-            transitionTask: () => BrilliantBluetooth.stopScan());
-        break;
-
-      case State.found:
-        state.changeIf(event == Event.deviceLost, State.scanning);
-        state.changeIf(event == Event.buttonPressed, State.connect,
-            transitionTask: () => BrilliantBluetooth.stopScan());
-        state.changeIf(event == Event.cancelPressed, State.disconnected,
-            transitionTask: () => BrilliantBluetooth.stopScan());
-        break;
-
-      case State.connect:
-        state
-            .onEntry(() => _nearbyDevice!.connect(_connectionStreamController));
-        state.changeIf(event == Event.deviceConnected, State.checkVersion);
-        state.changeIf(event == Event.deviceInvalid, State.requiresRepair);
-        break;
-
-      case State.checkVersion:
-        state.onEntry(() async {
-          SharedPreferences savedData = await SharedPreferences.getInstance();
-          await savedData.setString('pairedDevice', _connectedDevice!.uuid);
-          _connectedDevice!.stringRxListener = _stringRxStreamController;
-          _connectedDevice!.dataRxListener = _dataRxStreamController;
-          _connectedDevice!.writeString("print(frame.FIRMWARE_VERSION)");
-        });
-
-        if (_luaResponse == "v24.065.1346") {
-          state.changeIf(event == Event.luaResponse, State.uploadMainLua);
-        } else {
-          // TODO go to State.updatingFirmware instead
-          state.changeIf(event == Event.luaResponse, State.uploadMainLua);
-        }
-        break;
-
-      case State.uploadMainLua:
-        state.onEntry(() => _connectedDevice!
-            .uploadScript('main.lua', 'assets/lua_scripts/main.lua'));
-        if (_luaResponse == "main.lua uploaded") {
-          state.changeIf(event == Event.luaResponse, State.uploadGraphicsLua);
-        } else if (_luaResponse != 'nil') {
-          state.changeIf(event == Event.luaResponse, State.requiresRepair);
-        }
-        state.changeIf(event == Event.deviceDisconnected, State.requiresRepair);
-        break;
-
-      case State.uploadGraphicsLua:
-        state.onEntry(() => _connectedDevice!
-            .uploadScript('graphics.lua', 'assets/lua_scripts/graphics.lua'));
-        if (_luaResponse == "graphics.lua uploaded") {
-          state.changeIf(event == Event.luaResponse, State.uploadGraphicsLua);
-        } else if (_luaResponse != 'nil') {
-          state.changeIf(event == Event.luaResponse, State.requiresRepair);
-        }
-        state.changeIf(event == Event.deviceDisconnected, State.requiresRepair);
-        break;
-
-      case State.uploadStateLua:
-        state.onEntry(() => _connectedDevice!
-            .uploadScript('state.lua', 'assets/lua_scripts/state.lua'));
-        if (_luaResponse == "state.lua uploaded") {
-          state.changeIf(event == Event.luaResponse, State.uploadGraphicsLua);
-        } else if (_luaResponse != 'nil') {
-          state.changeIf(event == Event.luaResponse, State.requiresRepair);
-        }
-        state.changeIf(event == Event.deviceDisconnected, State.requiresRepair);
-        break;
-
-      case State.updatingFirmware:
-        // TODO
-        break;
-
-      case State.requiresRepair:
-        state.changeIf(event == Event.buttonPressed, State.scanning);
-        state.changeIf(event == Event.cancelPressed, State.disconnected);
-        break;
-
-      case State.connected:
-        state.changeIf(event == Event.deviceDisconnected, State.disconnected);
-        state.changeIf(event == Event.deletePressed, State.deletePairing);
-        break;
-
-      case State.disconnected:
-        state.changeIf(event == Event.deviceConnected, State.connected);
-        state.changeIf(event == Event.deletePressed, State.deletePairing);
-
-      case State.deletePairing:
-        state.onEntry(() async {
-          final savedData = await SharedPreferences.getInstance();
-          await savedData.remove('pairedDevice');
-        });
-
-        state.changeIf(true, State.init);
-        break;
+    if (_eventBeingProcessed) {
+      _log.severe("Bluetooth Model: Too many events: $event");
     }
 
+    _eventBeingProcessed = true;
+
+    state.event(event);
+
+    do {
+      switch (state.current) {
+        case State.init:
+          SharedPreferences savedData = await SharedPreferences.getInstance();
+          String? deviceUuid = savedData.getString('pairedDevice');
+
+          if (deviceUuid == null) {
+            state.changeOn(Event.startScanning, State.scanning);
+          } else {
+            state.changeOn(Event.startScanning, State.disconnected,
+                transitionTask: () => BrilliantBluetooth.reconnect(
+                      deviceUuid,
+                      _connectionStreamController,
+                    ));
+          }
+          break;
+
+        case State.scanning:
+          state.onEntry(() => BrilliantBluetooth.scan(_scanStreamController));
+          state.changeOn(Event.deviceFound, State.found);
+          state.changeOn(Event.cancelPressed, State.disconnected,
+              transitionTask: () => BrilliantBluetooth.stopScan());
+          break;
+
+        case State.found:
+          state.changeOn(Event.deviceLost, State.scanning);
+          state.changeOn(Event.buttonPressed, State.connect,
+              transitionTask: () => BrilliantBluetooth.stopScan());
+          state.changeOn(Event.cancelPressed, State.disconnected,
+              transitionTask: () => BrilliantBluetooth.stopScan());
+          break;
+
+        case State.connect:
+          state.onEntry(
+              () => _nearbyDevice!.connect(_connectionStreamController));
+          state.changeOn(Event.deviceConnected, State.checkVersion);
+          state.changeOn(Event.deviceInvalid, State.requiresRepair);
+          break;
+
+        case State.checkVersion:
+          state.onEntry(() async {
+            SharedPreferences savedData = await SharedPreferences.getInstance();
+            await savedData.setString('pairedDevice', _connectedDevice!.uuid);
+            _connectedDevice!.stringRxListener = _stringRxStreamController;
+            _connectedDevice!.dataRxListener = _dataRxStreamController;
+            _connectedDevice!.writeString("print(frame.FIRMWARE_VERSION)");
+          });
+
+          if (_luaResponse == "v24.065.1346") {
+            state.changeOn(Event.luaResponse, State.uploadMainLua);
+          } else {
+            // TODO go to State.updatingFirmware instead
+            state.changeOn(Event.luaResponse, State.uploadMainLua);
+          }
+          break;
+
+        case State.uploadMainLua:
+          state.onEntry(() => _connectedDevice!
+              .uploadScript('main.lua', 'assets/lua_scripts/main.lua'));
+          if (_luaResponse == "main.lua uploaded") {
+            state.changeOn(Event.luaResponse, State.uploadGraphicsLua);
+          } else if (_luaResponse != 'nil') {
+            state.changeOn(Event.luaResponse, State.requiresRepair);
+          }
+          state.changeOn(Event.deviceDisconnected, State.requiresRepair);
+          break;
+
+        case State.uploadGraphicsLua:
+          state.onEntry(() => _connectedDevice!
+              .uploadScript('graphics.lua', 'assets/lua_scripts/graphics.lua'));
+          if (_luaResponse == "graphics.lua uploaded") {
+            state.changeOn(Event.luaResponse, State.uploadStateLua);
+          } else if (_luaResponse != 'nil') {
+            state.changeOn(Event.luaResponse, State.requiresRepair);
+          }
+          state.changeOn(Event.deviceDisconnected, State.requiresRepair);
+          break;
+
+        case State.uploadStateLua:
+          state.onEntry(() => _connectedDevice!
+              .uploadScript('state.lua', 'assets/lua_scripts/state.lua'));
+          if (_luaResponse == "state.lua uploaded") {
+            state.changeOn(Event.luaResponse, State.connected,
+                transitionTask: () => _connectedDevice!.sendResetSignal());
+          } else if (_luaResponse != 'nil') {
+            state.changeOn(Event.luaResponse, State.requiresRepair);
+          }
+          state.changeOn(Event.deviceDisconnected, State.requiresRepair);
+          break;
+
+        case State.updatingFirmware:
+          // TODO
+          break;
+
+        case State.requiresRepair:
+          state.changeOn(Event.buttonPressed, State.scanning);
+          state.changeOn(Event.cancelPressed, State.disconnected);
+          break;
+
+        case State.connected:
+          state.changeOn(Event.deviceDisconnected, State.disconnected);
+          state.changeOn(Event.deletePressed, State.init,
+              transitionTask: () async {
+            final savedData = await SharedPreferences.getInstance();
+            await savedData.remove('pairedDevice');
+          });
+          break;
+
+        case State.disconnected:
+          state.changeOn(Event.deviceConnected, State.connected);
+          state.changeOn(Event.deletePressed, State.init,
+              transitionTask: () async {
+            final savedData = await SharedPreferences.getInstance();
+            await savedData.remove('pairedDevice');
+          });
+      }
+    } while (state.changePending());
+
     notifyListeners();
+
+    _eventBeingProcessed = false;
   }
 
   @override

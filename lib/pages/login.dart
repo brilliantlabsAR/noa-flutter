@@ -1,5 +1,8 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/api.dart';
+import 'package:noa/main.dart';
+import 'package:noa/models/bluetooth_connection_model.dart' as bluetooth;
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
@@ -7,12 +10,18 @@ import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/sign_in.dart';
 import 'package:noa/util/switch_page.dart';
 
-Widget _loginButton(BuildContext context, String image, Function action) {
+Widget _loginButton(
+  BuildContext context,
+  WidgetRef ref,
+  String image,
+  Function action,
+) {
   return GestureDetector(
     onTap: () async {
       try {
         await action();
         if (context.mounted) {
+          ref.read(bluetoothModel).triggerEvent(bluetooth.Event.startScanning);
           switchPage(context, const PairingPage());
         }
       } on CheckInternetConnectionError catch (_) {
@@ -40,11 +49,11 @@ Widget _loginButton(BuildContext context, String image, Function action) {
   );
 }
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Skip this screen if already signed in
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
@@ -68,16 +77,19 @@ class LoginPage extends StatelessWidget {
             children: [
               _loginButton(
                 context,
+                ref,
                 'assets/images/sign_in_with_apple_button.png',
                 SignIn().withApple,
               ),
               _loginButton(
                 context,
+                ref,
                 'assets/images/sign_in_with_google_button.png',
                 SignIn().withGoogle,
               ),
               _loginButton(
                 context,
+                ref,
                 'assets/images/sign_in_with_discord_button.png',
                 SignIn().withDiscord,
               ),

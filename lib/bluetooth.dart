@@ -106,11 +106,13 @@ class BrilliantDevice {
   }
 
   Future<void> sendBreakSignal() async {
+    _log.info("brilliantDevice.sendBreakSignal()");
     await writeString("\x03", awaitResponse: false);
   }
 
   Future<void> sendResetSignal() async {
-    await writeString("\x04");
+    _log.info("brilliantDevice.sendResetSignal()");
+    await writeString("\x04", awaitResponse: false);
   }
 
   Future<String?> writeString(String string,
@@ -172,6 +174,8 @@ class BrilliantDevice {
   }
 
   Future<void> uploadScript(String fileName, String filePath) async {
+    _log.info("brilliantDevice.uploadScript() uploading '$fileName'");
+
     String file = await rootBundle.loadString(filePath);
 
     file = file.replaceAll("\n", "\\n");
@@ -213,7 +217,7 @@ class BrilliantDevice {
 
     resp = await writeString("f:close();print('$fileName uploaded')");
 
-    if (resp != "nil") {
+    if (resp != "$fileName uploaded") {
       return Future.error("$resp");
     }
   }

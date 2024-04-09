@@ -12,12 +12,11 @@ class PairingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Start pairing as soon as we enter the screen
-      ref.read(bluetoothModel).triggerEvent(bluetooth.Event.startScanning);
+      // TODO can we leave the page earlier?
       // Leave once done
-      if (ref.watch(bluetoothModel).state.currentState ==
+      if (ref.watch(bluetoothModel).state.current ==
               bluetooth.State.connected ||
-          ref.watch(bluetoothModel).state.currentState ==
+          ref.watch(bluetoothModel).state.current ==
               bluetooth.State.disconnected) {
         switchPage(context, const NoaPage());
       }
@@ -27,7 +26,7 @@ class PairingPage extends ConsumerWidget {
     String pairingBoxButtonText = "";
     bool pairingBoxButtonEnabled = false;
 
-    switch (ref.watch(bluetoothModel).state.currentState) {
+    switch (ref.watch(bluetoothModel).state.current) {
       case bluetooth.State.init:
       case bluetooth.State.scanning:
         pairingBoxText = "Bring your device close";
