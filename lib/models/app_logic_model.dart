@@ -13,6 +13,7 @@ enum State {
   scanning,
   found,
   connect,
+  sendBreak,
   checkVersion,
   uploadMainLua,
   uploadGraphicsLua,
@@ -25,6 +26,7 @@ enum State {
 
 enum Event {
   init,
+  timeout,
   deviceFound,
   deviceLost,
   deviceConnected,
@@ -139,14 +141,21 @@ class AppLogicModel extends ChangeNotifier {
         case State.connect:
           state.onEntry(
               () => _nearbyDevice!.connect(_connectionStreamController));
-          state.changeOn(Event.deviceConnected, State.checkVersion);
           state.changeOn(Event.deviceInvalid, State.requiresRepair);
+          state.changeOn(Event.deviceConnected, State.sendBreak);
+          break;
+
+        case State.sendBreak:
+          state.onEntry(() async {
+            await _connectedDevice!.sendBreakSignal();
+            Timer(const Duration(milliseconds: 100),
+                () => triggerEvent(Event.timeout));
+          });
+          state.changeOn(Event.timeout, State.checkVersion);
           break;
 
         case State.checkVersion:
           state.onEntry(() async {
-            SharedPreferences savedData = await SharedPreferences.getInstance();
-            await savedData.setString('pairedDevice', _connectedDevice!.uuid);
             _connectedDevice!.stringRxListener = _stringRxStreamController;
             _connectedDevice!.dataRxListener = _dataRxStreamController;
             _connectedDevice!.writeString("print(frame.FIRMWARE_VERSION)");
@@ -202,6 +211,11 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.buttonPressed, State.scanning);
           state.changeOn(Event.cancelPressed, State.disconnected);
           break;
+
+        // case State.saveDevice:
+        // SharedPreferences savedData = await SharedPreferences.getInstance();
+        // await savedData.setString('pairedDevice', _connectedDevice!.uuid);
+        // break;
 
         case State.connected:
           state.changeOn(Event.deviceDisconnected, State.disconnected);

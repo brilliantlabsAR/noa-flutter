@@ -12,11 +12,11 @@ class SplashPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.read(app.model).triggerEvent(app.Event.init);
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(app.model).triggerEvent(app.Event.init);
       Timer(Duration(seconds: 2), () {
-        if (ref.watch(app.model).state.current == app.State.scanning) {
+        if (ref.watch(app.model).state.current == app.State.scanning ||
+            ref.watch(app.model).state.current == app.State.found) {
           switchPage(context, const LoginPage());
         } else if (ref.watch(app.model).state.current == app.State.connected ||
             ref.watch(app.model).state.current == app.State.disconnected) {

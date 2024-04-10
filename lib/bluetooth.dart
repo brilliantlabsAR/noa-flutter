@@ -183,9 +183,11 @@ class BrilliantDevice {
     file = file.replaceAll("'", "\\'");
     file = file.replaceAll('"', '\\"');
 
-    await sendBreakSignal();
     var resp =
-        await writeString("f=frame.file.open('$fileName', 'w');print(nil)");
+        await writeString("f=frame.file.open('$fileName', 'w');print(nil)")
+            .onError((error, _) {
+      return Future.error("$error");
+    });
 
     if (resp != "nil") {
       return Future.error("$resp");
@@ -207,7 +209,10 @@ class BrilliantDevice {
 
       String chunk = file.substring(index, index + chunkSize);
 
-      resp = await writeString("f:write('$chunk');print(nil)");
+      resp =
+          await writeString("f:write('$chunk');print(nil)").onError((error, _) {
+        return Future.error("$error");
+      });
 
       if (resp != "nil") {
         return Future.error("$resp");
@@ -216,7 +221,10 @@ class BrilliantDevice {
       index += chunkSize;
     }
 
-    resp = await writeString("f:close();print('$fileName uploaded')");
+    resp = await writeString("f:close();print('$fileName uploaded')")
+        .onError((error, _) {
+      return Future.error("$error");
+    });
 
     if (resp != "$fileName uploaded") {
       return Future.error("$resp");
