@@ -21,6 +21,7 @@ enum State {
   updatingFirmware,
   requiresRepair,
   connected,
+  processFrameData,
   disconnected,
   reset,
 }
@@ -52,6 +53,8 @@ class AppLogicModel extends ChangeNotifier {
   BrilliantDevice? _connectedDevice;
   String? _luaResponse;
   List<int>? _dataResponse;
+  List<int> _audioData = List.empty(growable: true);
+  List<int> _imageData = List.empty(growable: true);
 
   // Bluetooth stream listeners
   final _scanStreamController = StreamController<BrilliantDevice>();
@@ -252,8 +255,41 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.connected:
+          if (event == Event.responseData) {
+            switch (_dataResponse?[0]) {
+              // Start flag
+              case 0x10:
+                print("Start");
+                _audioData.clear();
+                _imageData.clear();
+                break;
+
+              // Audio flag
+              case 0x12:
+                _audioData += _dataResponse!.sublist(1);
+                break;
+
+              // Image flag
+              case 0x13:
+                _imageData += _dataResponse!.sublist(1);
+                break;
+
+              // Done flag
+              case 0x16:
+                print(
+                    "Done. audioData = ${_audioData.length} bytes, imageData = ${_imageData.length} bytes");
+
+                break;
+            }
+          }
+
           state.changeOn(Event.deviceDisconnected, State.disconnected);
           state.changeOn(Event.deletePressed, State.reset);
+          break;
+
+        case State.processFrameData:
+          state.onEntry(() async {});
+          state.changeOn(Event.done, State.connected);
           break;
 
         case State.disconnected:

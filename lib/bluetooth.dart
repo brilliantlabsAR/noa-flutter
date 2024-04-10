@@ -256,10 +256,12 @@ class BrilliantDevice {
               StreamSubscription subscription =
                   _rxChannel.onValueReceived.listen((data) {
                 if (data[0] == 0x01) {
-                  _log.finer("brilliantDevice received data: $data");
-                  dataRxListener?.add(data);
+                  _log.finer(
+                      "brilliantDevice received data: ${data.sublist(1)}");
+                  dataRxListener?.add(data.sublist(1));
                 } else {
-                  _log.finer("brilliantDevice received string: $data");
+                  _log.finer(
+                      "brilliantDevice received string: ${utf8.decode(data)}");
                   stringRxListener?.add(utf8.decode(data));
                 }
               });
