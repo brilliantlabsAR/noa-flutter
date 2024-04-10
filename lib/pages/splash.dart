@@ -14,12 +14,10 @@ class SplashPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(app.model).triggerEvent(app.Event.init);
-      Timer(Duration(seconds: 2), () {
-        if (ref.watch(app.model).state.current == app.State.scanning ||
-            ref.watch(app.model).state.current == app.State.found) {
+      Timer(const Duration(milliseconds: 1500), () {
+        if (ref.watch(app.model).pairedDevice == null) {
           switchPage(context, const LoginPage());
-        } else if (ref.watch(app.model).state.current == app.State.connected ||
-            ref.watch(app.model).state.current == app.State.disconnected) {
+        } else {
           switchPage(context, const NoaPage());
         }
       });

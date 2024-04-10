@@ -26,7 +26,8 @@ enum State {
 
 enum Event {
   init,
-  timeout,
+  done,
+  error,
   deviceFound,
   deviceLost,
   deviceConnected,
@@ -40,8 +41,11 @@ enum Event {
 }
 
 class AppLogicModel extends ChangeNotifier {
-  // Private state variables
+  // Public state variables
   StateMachine state = StateMachine(State.init);
+  String? pairedDevice;
+
+  // Private state variables
   bool _eventBeingProcessed = false;
   BrilliantDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
@@ -97,7 +101,7 @@ class AppLogicModel extends ChangeNotifier {
     });
   }
 
-  void triggerEvent(Event event) async {
+  void triggerEvent(Event event) {
     if (_eventBeingProcessed) {
       _log.severe("Bluetooth Model: Too many events: $event");
     }
@@ -109,15 +113,18 @@ class AppLogicModel extends ChangeNotifier {
     do {
       switch (state.current) {
         case State.init:
-          SharedPreferences savedData = await SharedPreferences.getInstance();
-          String? deviceUuid = savedData.getString('pairedDevice');
+          state.onEntry(() async {
+            SharedPreferences savedData = await SharedPreferences.getInstance();
+            pairedDevice = savedData.getString('pairedDevice');
+            triggerEvent(Event.done);
+          });
 
-          if (deviceUuid == null) {
-            state.changeOn(Event.init, State.scanning);
+          if (pairedDevice == null) {
+            state.changeOn(Event.done, State.scanning);
           } else {
-            state.changeOn(Event.init, State.disconnected,
+            state.changeOn(Event.done, State.disconnected,
                 transitionTask: () => BrilliantBluetooth.reconnect(
-                      deviceUuid,
+                      pairedDevice!,
                       _connectionStreamController,
                     ));
           }
@@ -147,60 +154,90 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.sendBreak:
           state.onEntry(() async {
-            await _connectedDevice!.sendBreakSignal();
-            Timer(const Duration(milliseconds: 100),
-                () => triggerEvent(Event.timeout));
+            try {
+              await _connectedDevice!.sendBreakSignal();
+              triggerEvent(Event.done);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
           });
-          state.changeOn(Event.timeout, State.checkVersion);
+          state.changeOn(Event.done, State.checkVersion);
+          state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.checkVersion:
           state.onEntry(() async {
             _connectedDevice!.stringRxListener = _stringRxStreamController;
             _connectedDevice!.dataRxListener = _dataRxStreamController;
-            _connectedDevice!.writeString("print(frame.FIRMWARE_VERSION)");
+            try {
+              await _connectedDevice!
+                  .sendString("print(frame.FIRMWARE_VERSION)")
+                  .timeout(const Duration(seconds: 1));
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
           });
-
           if (_luaResponse == "v24.065.1346") {
             state.changeOn(Event.luaResponse, State.uploadMainLua);
           } else {
             // TODO go to State.updatingFirmware instead
             state.changeOn(Event.luaResponse, State.uploadMainLua);
           }
+          state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.uploadMainLua:
-          state.onEntry(() => _connectedDevice!
-              .uploadScript('main.lua', 'assets/lua_scripts/main.lua'));
-          if (_luaResponse == "main.lua uploaded") {
-            state.changeOn(Event.luaResponse, State.uploadGraphicsLua);
-          } else if (_luaResponse != 'nil') {
-            state.changeOn(Event.luaResponse, State.requiresRepair);
-          }
-          state.changeOn(Event.deviceDisconnected, State.requiresRepair);
+          state.onEntry(() async {
+            try {
+              await _connectedDevice!.uploadScript(
+                'main.lua',
+                'assets/lua_scripts/main.lua',
+              );
+              triggerEvent(Event.done);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+
+          state.changeOn(Event.done, State.uploadGraphicsLua);
+          state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.uploadGraphicsLua:
-          state.onEntry(() => _connectedDevice!
-              .uploadScript('graphics.lua', 'assets/lua_scripts/graphics.lua'));
-          if (_luaResponse == "graphics.lua uploaded") {
-            state.changeOn(Event.luaResponse, State.uploadStateLua);
-          } else if (_luaResponse != 'nil') {
-            state.changeOn(Event.luaResponse, State.requiresRepair);
-          }
-          state.changeOn(Event.deviceDisconnected, State.requiresRepair);
+          state.onEntry(() async {
+            try {
+              await _connectedDevice!.uploadScript(
+                'graphics.lua',
+                'assets/lua_scripts/graphics.lua',
+              );
+              triggerEvent(Event.done);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+
+          state.changeOn(Event.done, State.uploadStateLua);
+          state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.uploadStateLua:
-          state.onEntry(() => _connectedDevice!
-              .uploadScript('state.lua', 'assets/lua_scripts/state.lua'));
-          if (_luaResponse == "state.lua uploaded") {
-            state.changeOn(Event.luaResponse, State.connected,
-                transitionTask: () => _connectedDevice!.sendResetSignal());
-          } else if (_luaResponse != 'nil') {
-            state.changeOn(Event.luaResponse, State.requiresRepair);
-          }
-          state.changeOn(Event.deviceDisconnected, State.requiresRepair);
+          state.onEntry(() async {
+            try {
+              await _connectedDevice!.uploadScript(
+                'state.lua',
+                'assets/lua_scripts/state.lua',
+              );
+              triggerEvent(Event.done);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+
+          state.changeOn(Event.done, State.connected, transitionTask: () async {
+            SharedPreferences savedData = await SharedPreferences.getInstance();
+            await savedData.setString('pairedDevice', _connectedDevice!.uuid);
+          });
+          state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.updatingFirmware:
@@ -211,11 +248,6 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.buttonPressed, State.scanning);
           state.changeOn(Event.cancelPressed, State.disconnected);
           break;
-
-        // case State.saveDevice:
-        // SharedPreferences savedData = await SharedPreferences.getInstance();
-        // await savedData.setString('pairedDevice', _connectedDevice!.uuid);
-        // break;
 
         case State.connected:
           state.changeOn(Event.deviceDisconnected, State.disconnected);

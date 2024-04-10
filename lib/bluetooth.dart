@@ -107,26 +107,31 @@ class BrilliantDevice {
 
   Future<void> sendBreakSignal() async {
     _log.info("brilliantDevice.sendBreakSignal()");
-    await writeString("\x03", awaitResponse: false);
+    await sendString("\x03", awaitResponse: false);
+    Completer completer = Completer();
+    Timer(const Duration(milliseconds: 100), () => completer.complete());
+    return completer.future;
   }
 
   Future<void> sendResetSignal() async {
     _log.info("brilliantDevice.sendResetSignal()");
-    await writeString("\x04", awaitResponse: false);
+    await sendString("\x04", awaitResponse: false);
+    Completer completer = Completer();
+    Timer(const Duration(milliseconds: 100), () => completer.complete());
+    return completer.future;
   }
 
-  Future<String?> writeString(String string,
-      {bool awaitResponse = true}) async {
-    _log.info("brilliantDevice.writeString() sending string data");
+  Future<String?> sendString(String string, {bool awaitResponse = true}) async {
+    _log.info("brilliantDevice.sendString()");
     Completer<String?> completer = Completer();
 
     if (state != BrilliantConnectionState.connected) {
-      _log.warning("brilliantDevice.writeString() device not connected");
+      _log.warning("brilliantDevice.sendString() device not connected");
       return Future.error("Device not connected");
     }
 
     if (string.length > maxStringLength!) {
-      _log.warning("brilliantDevice.writeString() payload exceeds mtu");
+      _log.warning("brilliantDevice.sendString() payload exceeds mtu");
       return Future.error("Payload exceeds allowed length of $maxStringLength");
     }
 
@@ -155,16 +160,16 @@ class BrilliantDevice {
     return completer.future;
   }
 
-  Future<void> writeData(List<int> data) async {
-    _log.info("brilliantDevice.writeData() sending byte data");
+  Future<void> sendData(List<int> data) async {
+    _log.info("brilliantDevice.sendData()");
 
     if (state != BrilliantConnectionState.connected) {
-      _log.warning("brilliantDevice.writeData() device not connected");
+      _log.warning("brilliantDevice.sendData() device not connected");
       return Future.error("Device not connected");
     }
 
     if (data.length > maxDataLength!) {
-      _log.warning("brilliantDevice.writeData() payload exceeds mtu");
+      _log.warning("brilliantDevice.sendData() payload exceeds mtu");
       return Future.error("Payload exceeds allowed length of $maxDataLength");
     }
 
@@ -174,7 +179,7 @@ class BrilliantDevice {
   }
 
   Future<void> uploadScript(String fileName, String filePath) async {
-    _log.info("brilliantDevice.uploadScript() uploading '$fileName'");
+    _log.info("brilliantDevice.uploadScript('$fileName')");
 
     String file = await rootBundle.loadString(filePath);
 
@@ -184,10 +189,8 @@ class BrilliantDevice {
     file = file.replaceAll('"', '\\"');
 
     var resp =
-        await writeString("f=frame.file.open('$fileName', 'w');print(nil)")
-            .onError((error, _) {
-      return Future.error("$error");
-    });
+        await sendString("f=frame.file.open('$fileName', 'w');print(nil)")
+            .onError((error, _) => Future.error("$error"));
 
     if (resp != "nil") {
       return Future.error("$resp");
@@ -210,7 +213,7 @@ class BrilliantDevice {
       String chunk = file.substring(index, index + chunkSize);
 
       resp =
-          await writeString("f:write('$chunk');print(nil)").onError((error, _) {
+          await sendString("f:write('$chunk');print(nil)").onError((error, _) {
         return Future.error("$error");
       });
 
@@ -221,7 +224,7 @@ class BrilliantDevice {
       index += chunkSize;
     }
 
-    resp = await writeString("f:close();print('$fileName uploaded')")
+    resp = await sendString("f:close();print('$fileName uploaded')")
         .onError((error, _) {
       return Future.error("$error");
     });
