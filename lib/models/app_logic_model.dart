@@ -22,6 +22,7 @@ enum State {
   requiresRepair,
   connected,
   disconnected,
+  reset,
 }
 
 enum Event {
@@ -227,6 +228,7 @@ class AppLogicModel extends ChangeNotifier {
                 'state.lua',
                 'assets/lua_scripts/state.lua',
               );
+              await _connectedDevice!.sendResetSignal();
               triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.error);
@@ -251,20 +253,23 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.connected:
           state.changeOn(Event.deviceDisconnected, State.disconnected);
-          state.changeOn(Event.deletePressed, State.init,
-              transitionTask: () async {
-            final savedData = await SharedPreferences.getInstance();
-            await savedData.remove('pairedDevice');
-          });
+          state.changeOn(Event.deletePressed, State.reset);
           break;
 
         case State.disconnected:
           state.changeOn(Event.deviceConnected, State.connected);
-          state.changeOn(Event.deletePressed, State.init,
-              transitionTask: () async {
+          state.changeOn(Event.deletePressed, State.reset);
+
+        case State.reset:
+          state.onEntry(() async {
+            await _connectedDevice?.disconnect();
+            // pairedDevice = null;
             final savedData = await SharedPreferences.getInstance();
             await savedData.remove('pairedDevice');
+            triggerEvent(Event.done);
           });
+          state.changeOn(Event.done, State.init);
+          break;
       }
     } while (state.changePending());
 

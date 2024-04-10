@@ -36,24 +36,29 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = true;
         break;
       case app.State.connect:
+      case app.State.sendBreak:
+      case app.State.checkVersion:
         pairingBoxText = "Frame found";
         pairingBoxButtonText = "Connecting";
         pairingBoxButtonEnabled = false;
         break;
-      case app.State.checkVersion:
-        pairingBoxText = "Checking firmware";
-        pairingBoxButtonText = "Connecting";
-        pairingBoxButtonEnabled = false;
-        break;
       case app.State.updatingFirmware:
-        pairingBoxText = "Updating";
+        pairingBoxText = "Updating software";
         pairingBoxButtonText = "Keep your device close";
         pairingBoxButtonEnabled = false;
         break;
       case app.State.uploadMainLua:
+        pairingBoxText = "Setting up Noa 50%";
+        pairingBoxButtonText = "Keep your device close";
+        pairingBoxButtonEnabled = false;
+        break;
       case app.State.uploadGraphicsLua:
+        pairingBoxText = "Setting up Noa 68%";
+        pairingBoxButtonText = "Keep your device close";
+        pairingBoxButtonEnabled = false;
+        break;
       case app.State.uploadStateLua:
-        pairingBoxText = "Uploading Noa";
+        pairingBoxText = "Setting up Noa 83%";
         pairingBoxButtonText = "Keep your device close";
         pairingBoxButtonEnabled = false;
         break;

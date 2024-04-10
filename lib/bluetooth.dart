@@ -100,7 +100,7 @@ class BrilliantDevice {
     });
   }
 
-  void disconnect() async {
+  Future<void> disconnect() async {
     _log.info("brilliantDevice.disconnect() disconnecting");
     await device.disconnect();
   }
@@ -212,10 +212,8 @@ class BrilliantDevice {
 
       String chunk = file.substring(index, index + chunkSize);
 
-      resp =
-          await sendString("f:write('$chunk');print(nil)").onError((error, _) {
-        return Future.error("$error");
-      });
+      resp = await sendString("f:write('$chunk');print(nil)")
+          .onError((error, _) => Future.error("$error"));
 
       if (resp != "nil") {
         return Future.error("$resp");
@@ -224,12 +222,10 @@ class BrilliantDevice {
       index += chunkSize;
     }
 
-    resp = await sendString("f:close();print('$fileName uploaded')")
-        .onError((error, _) {
-      return Future.error("$error");
-    });
+    resp = await sendString("f:close();print('nil')")
+        .onError((error, _) => Future.error("$error"));
 
-    if (resp != "$fileName uploaded") {
+    if (resp != "nil") {
       return Future.error("$resp");
     }
   }
