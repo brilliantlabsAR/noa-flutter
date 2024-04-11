@@ -33,6 +33,7 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - assets/
     - assets/images/
     - assets/images/2x/
     - assets/lua_scripts/

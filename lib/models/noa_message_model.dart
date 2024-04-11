@@ -12,6 +12,7 @@ class NoaMessage {
   });
 }
 
+// TODO remove this once no longer needed
 class NoaMessageModel extends ChangeNotifier {
   List<NoaMessage> messages = [];
 

@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:noa/api.dart';
 import 'package:noa/bluetooth.dart';
+import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final _log = Logger("Bluetooth Model");
+final _log = Logger("App Logic");
 
 enum State {
   init,
@@ -21,7 +23,6 @@ enum State {
   updatingFirmware,
   requiresRepair,
   connected,
-  processFrameData,
   disconnected,
   reset,
 }
@@ -38,8 +39,9 @@ enum Event {
   buttonPressed,
   cancelPressed,
   deletePressed,
-  luaResponse,
-  responseData,
+  deviceStringResponse,
+  deviceDataResponse,
+  noaResponse,
 }
 
 class AppLogicModel extends ChangeNotifier {
@@ -55,12 +57,16 @@ class AppLogicModel extends ChangeNotifier {
   List<int>? _dataResponse;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
+  List<NoaMessage> _noaMessages = List.empty(growable: true);
 
   // Bluetooth stream listeners
   final _scanStreamController = StreamController<BrilliantDevice>();
   final _connectionStreamController = StreamController<BrilliantDevice>();
   final _stringRxStreamController = StreamController<String>();
   final _dataRxStreamController = StreamController<List<int>>();
+
+  // Noa steam listener
+  final _noaStreamController = StreamController<NoaMessage>();
 
   AppLogicModel() {
     // Monitors Bluetooth scan events
@@ -95,19 +101,31 @@ class AppLogicModel extends ChangeNotifier {
     // Monitors received strings from Bluetooth
     _stringRxStreamController.stream.listen((string) {
       _luaResponse = string;
-      triggerEvent(Event.luaResponse);
+      triggerEvent(Event.deviceStringResponse);
     });
 
     // Monitors received data from Bluetooth
     _dataRxStreamController.stream.listen((data) {
       _dataResponse = data;
-      triggerEvent(Event.responseData);
+      triggerEvent(Event.deviceDataResponse);
     });
+
+    // Monitor noa responses
+    _noaStreamController.stream.listen((message) {
+      _noaMessages.add(NoaMessage(
+        message: message.message,
+        from: message.from,
+        time: message.time,
+      ));
+      triggerEvent(Event.noaResponse);
+    });
+
+    // TODO register noaStreamController with API
   }
 
   void triggerEvent(Event event) {
     if (_eventBeingProcessed) {
-      _log.severe("Bluetooth Model: Too many events: $event");
+      _log.severe("App Logic: Too many events: $event");
     }
 
     _eventBeingProcessed = true;
@@ -182,10 +200,10 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           if (_luaResponse == "v24.065.1346") {
-            state.changeOn(Event.luaResponse, State.uploadMainLua);
+            state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
           } else {
             // TODO go to State.updatingFirmware instead
-            state.changeOn(Event.luaResponse, State.uploadMainLua);
+            state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
           }
           state.changeOn(Event.error, State.requiresRepair);
           break;
@@ -255,41 +273,34 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.connected:
-          if (event == Event.responseData) {
+          if (event == Event.deviceDataResponse) {
             switch (_dataResponse?[0]) {
               // Start flag
               case 0x10:
-                print("Start");
+                _log.info("App logic: Received start flag from device");
                 _audioData.clear();
                 _imageData.clear();
                 break;
-
-              // Audio flag
               case 0x12:
                 _audioData += _dataResponse!.sublist(1);
                 break;
-
-              // Image flag
               case 0x13:
                 _imageData += _dataResponse!.sublist(1);
                 break;
-
-              // Done flag
               case 0x16:
-                print(
-                    "Done. audioData = ${_audioData.length} bytes, imageData = ${_imageData.length} bytes");
-
+                _log.info(
+                    "App logic: Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
+                NoaApi.getMessage(_audioData, _imageData, _noaMessages);
                 break;
             }
           }
 
+          if (event == Event.noaResponse) {
+            // TODO send string to device
+          }
+
           state.changeOn(Event.deviceDisconnected, State.disconnected);
           state.changeOn(Event.deletePressed, State.reset);
-          break;
-
-        case State.processFrameData:
-          state.onEntry(() async {});
-          state.changeOn(Event.done, State.connected);
           break;
 
         case State.disconnected:
@@ -299,7 +310,6 @@ class AppLogicModel extends ChangeNotifier {
         case State.reset:
           state.onEntry(() async {
             await _connectedDevice?.disconnect();
-            // pairedDevice = null;
             final savedData = await SharedPreferences.getInstance();
             await savedData.remove('pairedDevice');
             triggerEvent(Event.done);
@@ -319,6 +329,9 @@ class AppLogicModel extends ChangeNotifier {
     BrilliantBluetooth.stopScan();
     _scanStreamController.close();
     _connectionStreamController.close();
+    _stringRxStreamController.close();
+    _dataRxStreamController.close();
+    _noaStreamController.close();
     super.dispose();
   }
 }
