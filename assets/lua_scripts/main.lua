@@ -84,7 +84,7 @@ while true do
 
         if state:has_been() > 2 then
             state:switch_on_tap("WAIT")
-            state:switch_on_double_tap("SLEEP")
+            -- state:switch_on_double_tap("SLEEP")
         end
         state:switch_after(10, "WAIT")
     elseif state:is("WAIT") then
@@ -107,16 +107,16 @@ while true do
             send_data(MESSAGE_END_FLAG)
         end
         state:switch_on_tap("LISTEN")
-        state:switch_on_double_tap("SLEEP")
+        -- state:switch_on_double_tap("SLEEP")
     elseif state:is("SHOW") then
         graphics:on_complete(function()
             state:switch("HOLD")
         end)
         state:switch_on_tap("LISTEN")
-        state:switch_on_double_tap("SLEEP")
+        -- state:switch_on_double_tap("SLEEP")
     elseif state:is("HOLD") then
         state:switch_on_tap("LISTEN")
-        state:switch_on_double_tap("SLEEP")
+        -- state:switch_on_double_tap("SLEEP")
     elseif state:is("SLEEP") then
         state:on_entry(function()
             frame.sleep()

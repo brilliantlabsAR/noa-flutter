@@ -33,22 +33,18 @@ enum NoaApiAuthProvider {
 }
 
 class NoaApi {
-  // StreamController<NoaMessage>? serverResponseListener;
-
-  // NoaApi({
-  //   required this.serverResponseListener,
-  // });
-
-  static Future<void> obtainAuthToken(
-      String idToken, NoaApiAuthProvider authProvider) async {
+  static Future<String> obtainAuthToken(
+    String id,
+    NoaApiAuthProvider provider,
+  ) async {
     try {
-      await checkInternetConnection();
+      // await checkInternetConnection(); // TODO needed?
 
       final response = await http.post(
         Uri.parse('https://api.brilliant.xyz/noa/signin'),
         body: {
-          'id_token': idToken,
-          'social_type': authProvider.value,
+          'id_token': id,
+          'social_type': provider.value,
           'app': 'flutter',
         },
       );
@@ -59,8 +55,7 @@ class NoaApi {
 
       final decoded = jsonDecode(response.body);
 
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setString('userToken', decoded['token']);
+      return decoded['token'];
     } catch (error) {
       return Future.error(error);
     }
@@ -80,14 +75,14 @@ class NoaApi {
     await preferences.remove('userToken');
   }
 
-  static Future<dynamic> getProfile() async {
+  static Future<dynamic> getUser(String userAuthToken) async {
     try {
-      await checkInternetConnection();
-      final authToken = await loadSavedAuthToken();
+      // await checkInternetConnection();
+
       final response = await http.get(
         Uri.parse('https://api.brilliant.xyz/noa/profile_info'),
         headers: {
-          "Authorization": authToken,
+          "Authorization": userAuthToken,
         },
       );
       if (response.statusCode != 200) {
@@ -143,6 +138,7 @@ class NoaApi {
 
       streamedResponse.stream.listen((value) {
         var body = jsonDecode(String.fromCharCodes(value));
+        print(body);
         responseListener!.add(NoaMessage(
           message: body['response'],
           from: 'Noa',

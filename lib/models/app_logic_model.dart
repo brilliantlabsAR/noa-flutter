@@ -6,13 +6,15 @@ import 'package:logging/logging.dart';
 import 'package:noa/api.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/models/noa_message_model.dart';
+import 'package:noa/models/noa_user_model.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final _log = Logger("App Logic");
 
 enum State {
-  init,
+  waitForLogin,
+  getPairedDevice,
   scanning,
   found,
   connect,
@@ -33,6 +35,7 @@ enum Event {
   init,
   done,
   error,
+  loggedIn,
   deviceFound,
   deviceLost,
   deviceConnected,
@@ -48,8 +51,9 @@ enum Event {
 
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
-  StateMachine state = StateMachine(State.init);
+  StateMachine state = StateMachine(State.waitForLogin);
   String? pairedDevice;
+  NoaUser noaUser = NoaUser();
 
   // Private state variables
   bool _eventBeingProcessed = false;
@@ -59,8 +63,8 @@ class AppLogicModel extends ChangeNotifier {
   List<int>? _dataResponse;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
-  // NoaApi noaApi = NoaApi(serverResponseListener: _noaStreamController);
   List<NoaMessage> _noaMessages = List.empty(growable: true);
+  String? _userAuthToken;
 
   // Bluetooth stream listeners
   final _scanStreamController = StreamController<BrilliantDevice>();
@@ -124,6 +128,13 @@ class AppLogicModel extends ChangeNotifier {
     });
   }
 
+  void loggedIn(String userAuthToken) async {
+    _userAuthToken = userAuthToken;
+    final savedData = await SharedPreferences.getInstance();
+    await savedData.setString('userAuthToken', userAuthToken);
+    triggerEvent(Event.loggedIn);
+  }
+
   void triggerEvent(Event event) {
     if (_eventBeingProcessed) {
       _log.severe("App Logic: Too many events: $event");
@@ -135,7 +146,28 @@ class AppLogicModel extends ChangeNotifier {
 
     do {
       switch (state.current) {
-        case State.init:
+        case State.waitForLogin:
+          state.onEntry(() async {
+            SharedPreferences savedData = await SharedPreferences.getInstance();
+            _userAuthToken = savedData.getString('userAuthToken');
+            if (_userAuthToken != null) {
+              final userInfo = await NoaApi.getUser(_userAuthToken!);
+              noaUser.update(
+                email: userInfo['email'],
+                plan: userInfo['plan']['name'],
+                tokensUsed: userInfo['usage']['total_input'] +
+                    userInfo['usage']['total_output'],
+                requestsUsed: userInfo['usage']['total_requests'],
+                maxTokens: userInfo['plan']['allowed_tokens'],
+                maxRequests: userInfo['plan']['max_requests'],
+              );
+              triggerEvent(Event.loggedIn);
+            }
+          });
+          state.changeOn(Event.loggedIn, State.getPairedDevice);
+          break;
+
+        case State.getPairedDevice:
           state.onEntry(() async {
             SharedPreferences savedData = await SharedPreferences.getInstance();
             pairedDevice = savedData.getString('pairedDevice');
@@ -337,9 +369,10 @@ class AppLogicModel extends ChangeNotifier {
             await _connectedDevice?.disconnect();
             final savedData = await SharedPreferences.getInstance();
             await savedData.remove('pairedDevice');
+            await savedData.remove('userAuthToken');
             triggerEvent(Event.done);
           });
-          state.changeOn(Event.done, State.init);
+          state.changeOn(Event.done, State.waitForLogin);
           break;
       }
     } while (state.changePending());

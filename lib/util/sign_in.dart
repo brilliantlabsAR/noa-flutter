@@ -6,7 +6,7 @@ import 'package:noa/api.dart';
 class SignIn {
   withApple() async {}
 
-  Future<void> withGoogle() async {
+  Future<String> withGoogle() async {
     try {
       await checkInternetConnection();
 
@@ -17,7 +17,7 @@ class SignIn {
 
       final GoogleSignInAuthentication auth = await account!.authentication;
 
-      await NoaApi.obtainAuthToken(
+      return await NoaApi.obtainAuthToken(
         auth.idToken ?? "",
         NoaApiAuthProvider.google,
       );

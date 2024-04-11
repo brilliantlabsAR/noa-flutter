@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/api.dart';
+import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
@@ -17,10 +18,7 @@ Widget _loginButton(
   return GestureDetector(
     onTap: () async {
       try {
-        await action();
-        if (context.mounted) {
-          switchPage(context, const PairingPage());
-        }
+        ref.read(app.model).loggedIn(await action());
       } on CheckInternetConnectionError catch (_) {
         if (context.mounted) {
           alertDialog(
@@ -51,16 +49,12 @@ class LoginPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Skip this screen if already signed in
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await NoaApi.loadSavedAuthToken();
-        if (context.mounted) {
-          switchPage(context, const PairingPage());
-        }
-      } catch (_) {}
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ref.watch(app.model).state.current != app.State.waitForLogin) {
+        switchPage(context, const PairingPage());
+      }
     });
-    // Otherwise show the page
+
     return Scaffold(
       backgroundColor: colorDark,
       appBar: AppBar(
