@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
@@ -23,6 +24,7 @@ enum State {
   updatingFirmware,
   requiresRepair,
   connected,
+  sendResponseToDevice,
   disconnected,
   reset,
 }
@@ -57,6 +59,7 @@ class AppLogicModel extends ChangeNotifier {
   List<int>? _dataResponse;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
+  // NoaApi noaApi = NoaApi(serverResponseListener: _noaStreamController);
   List<NoaMessage> _noaMessages = List.empty(growable: true);
 
   // Bluetooth stream listeners
@@ -119,8 +122,6 @@ class AppLogicModel extends ChangeNotifier {
       ));
       triggerEvent(Event.noaResponse);
     });
-
-    // TODO register noaStreamController with API
   }
 
   void triggerEvent(Event event) {
@@ -290,15 +291,39 @@ class AppLogicModel extends ChangeNotifier {
               case 0x16:
                 _log.info(
                     "App logic: Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
-                NoaApi.getMessage(_audioData, _imageData, _noaMessages);
+                NoaApi.getMessage(
+                  _audioData,
+                  _imageData,
+                  _noaMessages,
+                  _noaStreamController,
+                );
                 break;
             }
           }
 
-          if (event == Event.noaResponse) {
-            // TODO send string to device
-          }
+          state.changeOn(Event.noaResponse, State.sendResponseToDevice);
+          state.changeOn(Event.deviceDisconnected, State.disconnected);
+          state.changeOn(Event.deletePressed, State.reset);
+          break;
 
+        case State.sendResponseToDevice:
+          state.onEntry(() async {
+            print(_noaMessages.last.message);
+            print(_noaMessages.last.time);
+            try {
+              // TODO split string before sending
+              List<int> data = utf8.encode(_noaMessages.last.message).toList();
+              data.insert(0, 0x11);
+              await _connectedDevice!
+                  .sendData(data)
+                  .timeout(const Duration(seconds: 1));
+            } catch (error) {
+              _log.warning("App Logic: Error responding to device: $error");
+            }
+            triggerEvent(Event.done);
+          });
+
+          state.changeOn(Event.done, State.connected);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
           state.changeOn(Event.deletePressed, State.reset);
           break;

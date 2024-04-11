@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:logging/logging.dart';
@@ -173,9 +172,10 @@ class BrilliantDevice {
       return Future.error("Payload exceeds allowed length of $maxDataLength");
     }
 
-    data.insert(0, 0x01);
+    var finalData = data.toList();
+    finalData.insert(0, 0x01);
 
-    await _txChannel.write(data, withoutResponse: true);
+    await _txChannel.write(finalData, withoutResponse: true);
   }
 
   Future<void> uploadScript(String fileName, String filePath) async {

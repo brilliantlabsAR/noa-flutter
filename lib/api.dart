@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -32,6 +33,12 @@ enum NoaApiAuthProvider {
 }
 
 class NoaApi {
+  // StreamController<NoaMessage>? serverResponseListener;
+
+  // NoaApi({
+  //   required this.serverResponseListener,
+  // });
+
   static Future<void> obtainAuthToken(
       String idToken, NoaApiAuthProvider authProvider) async {
     try {
@@ -92,8 +99,11 @@ class NoaApi {
     }
   }
 
-  static Future<void> getMessage(List<int> rawAudio, List<int> rawImage,
-      List<NoaMessage> noaHistory) async {
+  static Future<void> getMessage(
+      List<int> rawAudio,
+      List<int> rawImage,
+      List<NoaMessage> noaHistory,
+      StreamController<NoaMessage>? responseListener) async {
     try {
       await checkInternetConnection();
       final authToken = await loadSavedAuthToken();
@@ -115,10 +125,7 @@ class NoaApi {
       request.fields['config'] =
           '{"vision": "claude-3-haiku-20240307", address: "Stockholm, Sweden", local_time: $currentTime}';
 
-      // var file = File('assets/test.wav');
       ByteData audio = await rootBundle.load('assets/test.wav');
-
-      // var audio = await audio.readAsBytes();
       request.files.add(http.MultipartFile.fromBytes(
         'audio',
         audio.buffer.asUint8List(),
@@ -126,8 +133,6 @@ class NoaApi {
       ));
 
       ByteData image = await rootBundle.load('assets/test.wav');
-      // var image = File('assets/test.jpg');
-      // var bytes = await image.readAsBytes();
       request.files.add(http.MultipartFile.fromBytes(
         'image',
         image.buffer.asUint8List(),
@@ -135,8 +140,15 @@ class NoaApi {
       ));
 
       var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-      print(response.body);
+
+      streamedResponse.stream.listen((value) {
+        var body = jsonDecode(String.fromCharCodes(value));
+        responseListener!.add(NoaMessage(
+          message: body['response'],
+          from: 'Noa',
+          time: DateTime.now(),
+        ));
+      });
     } catch (error) {
       return Future.error(Exception(error));
     }
