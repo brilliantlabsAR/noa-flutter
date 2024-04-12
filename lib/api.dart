@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
+
 
 import 'package:flutter/services.dart';
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/check_internet_connection.dart';
+import 'package:noa/util/utils.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -125,19 +127,63 @@ class NoaApi {
       request.fields['config'] =
           '{"vision": "claude-3-haiku-20240307", address: "Stockholm, Sweden", local_time: $currentTime}';
 
-      ByteData audio = await rootBundle.load('assets/test.wav');
+
+
+      final wavFileData = await Utils.rawToWave(
+        Uint8List.fromList(rawAudio),
+        8000, // Pass sampleRate, bitPerSample, and channel here
+        16,
+        1,
+      );
+
+      // Create http.MultipartFile from WAV file data
+      // final audioFile = http.MultipartFile.fromBytes(
+      //   'audio',
+      //   wavFileData,
+      //   filename: 'test.wav',
+      // );
+
+
       request.files.add(http.MultipartFile.fromBytes(
         'audio',
-        audio.buffer.asUint8List(),
+        wavFileData,
         filename: 'test.wav',
       ));
 
-      ByteData image = await rootBundle.load('assets/test.wav');
-      request.files.add(http.MultipartFile.fromBytes(
-        'image',
-        image.buffer.asUint8List(),
-        filename: 'test.jpg',
-      ));
+      // Convert raw image data to JPEG using the new function
+      final jpegImage = await Utils.processAndSaveImage(Uint8List.fromList(rawImage));
+
+      if (jpegImage != null) {
+        // Read the JPEG file as bytes
+        final File imageFile = File(jpegImage);
+        final imageBytes = await imageFile.readAsBytes();
+
+        // Add the image file to the request
+        request.files.add(http.MultipartFile.fromBytes(
+          'image',
+          imageBytes,
+          filename: 'test.jpg',
+        ));
+      } else {
+        print('Failed to process and save image.');
+        return;
+      }
+
+
+      //
+      // ByteData audio = await rootBundle.load('assets/test.wav');
+      // request.files.add(http.MultipartFile.fromBytes(
+      //   'audio',
+      //   audio.buffer.asUint8List(),
+      //   filename: 'test.wav',
+      // ));
+
+      // ByteData image = await rootBundle.load('assets/test.wav');
+      // request.files.add(http.MultipartFile.fromBytes(
+      //   'image',
+      //   image.buffer.asUint8List(),
+      //   filename: 'test.jpg',
+      // ));
 
       var streamedResponse = await request.send();
 
@@ -153,4 +199,7 @@ class NoaApi {
       return Future.error(Exception(error));
     }
   }
+
+
+
 }
