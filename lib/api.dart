@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/utils.dart';
-
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
