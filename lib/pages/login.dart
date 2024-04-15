@@ -7,6 +7,7 @@ import 'package:noa/util/alert_dialog.dart';
 import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/sign_in.dart';
 import 'package:noa/util/switch_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 Widget _loginButton(
   BuildContext context,
@@ -49,8 +50,25 @@ Widget _loginButton(
 class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
 
+
+  Future<void> _requestPermissions() async {
+    // Permissions to request
+    List<Permission> permissions = [
+      Permission.location,
+      Permission.bluetooth,
+      Permission.bluetoothConnect,
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.storage,
+      Permission.mediaLibrary,
+    ];
+
+    // Request permissions
+    await permissions.request();
+  }
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    _requestPermissions();
     // Skip this screen if already signed in
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {

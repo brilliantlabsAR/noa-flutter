@@ -50,8 +50,11 @@ class NoaApi {
         Uri.parse('https://api.brilliant.xyz/noa/signin'),
         body: {
           'id_token': idToken,
-          'social_type': authProvider.value,
-          'app': 'flutter',
+          "name":"Subhajit Pal",
+          "email":"subhajitpal@technoexponent.com",
+          'social_type': "1",
+          "social_id" : "112509537595770132004"
+          //'app': 'flutter',
         },
       );
 

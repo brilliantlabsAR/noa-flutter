@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:logging/logging.dart';
@@ -284,6 +285,8 @@ class BrilliantDevice {
 
 class BrilliantBluetooth {
   static void init() async {
+
+
     await FlutterBluePlus.startScan();
     await FlutterBluePlus.stopScan();
   }
@@ -361,6 +364,9 @@ class BrilliantBluetooth {
   }
 
   static Future<void> _startScan(bool continuousUpdates) async {
+    if(Platform.isAndroid) {
+      await FlutterBluePlus.turnOn();
+    }
     await FlutterBluePlus.startScan(
       withServices: [
         Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
