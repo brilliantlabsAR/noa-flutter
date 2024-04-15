@@ -24,10 +24,9 @@ if (flutterVersionName == null) {
 
 android {
     namespace "xyz.brilliant.noaflutter"
-    compileSdk 33
+    compileSdkVersion 34
     ndkVersion flutter.ndkVersion
-    versionCode 1
-    versionName "0.0.1"
+
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -49,8 +48,8 @@ android {
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         minSdkVersion 24
         targetSdk 33
-        targetSdkVersion flutter.targetSdkVersion
-
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
     }
     signingConfigs {
         release {
