@@ -28,7 +28,8 @@ enum State {
   connected,
   sendResponseToDevice,
   disconnected,
-  reset,
+  logout,
+  deleteAccount
 }
 
 enum Event {
@@ -43,6 +44,7 @@ enum Event {
   deviceInvalid,
   buttonPressed,
   cancelPressed,
+  logoutPressed,
   deletePressed,
   deviceStringResponse,
   deviceDataResponse,
@@ -149,18 +151,17 @@ class AppLogicModel extends ChangeNotifier {
         case State.waitForLogin:
           state.onEntry(() async {
             SharedPreferences savedData = await SharedPreferences.getInstance();
+            print(_userAuthToken);
             _userAuthToken = savedData.getString('userAuthToken');
             if (_userAuthToken != null) {
               final userInfo = await NoaApi.getUser(_userAuthToken!);
               noaUser.update(
                 email: userInfo['email'],
-                plan: userInfo['plan']['name'],
-                tokensUsed: userInfo['usage']['total_input'] +
-                    userInfo['usage']['total_output'],
-                requestsUsed: userInfo['usage']['total_requests'],
-                maxTokens: userInfo['plan']['allowed_tokens'],
-                maxRequests: userInfo['plan']['max_requests'],
+                plan: userInfo['plan'],
+                creditsUsed: userInfo['credit_used'],
+                maxCredits: userInfo['credit_total'],
               );
+              print(noaUser.email);
               triggerEvent(Event.loggedIn);
             }
           });
@@ -324,6 +325,7 @@ class AppLogicModel extends ChangeNotifier {
                 _log.info(
                     "App logic: Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                 NoaApi.getMessage(
+                  _userAuthToken!,
                   _audioData,
                   _imageData,
                   _noaMessages,
@@ -335,7 +337,8 @@ class AppLogicModel extends ChangeNotifier {
 
           state.changeOn(Event.noaResponse, State.sendResponseToDevice);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
-          state.changeOn(Event.deletePressed, State.reset);
+          state.changeOn(Event.logoutPressed, State.logout);
+          state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
 
         case State.sendResponseToDevice:
@@ -357,19 +360,33 @@ class AppLogicModel extends ChangeNotifier {
 
           state.changeOn(Event.done, State.connected);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
-          state.changeOn(Event.deletePressed, State.reset);
+          state.changeOn(Event.logoutPressed, State.logout);
+          state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
 
         case State.disconnected:
           state.changeOn(Event.deviceConnected, State.connected);
-          state.changeOn(Event.deletePressed, State.reset);
+          state.changeOn(Event.logoutPressed, State.logout);
+          state.changeOn(Event.deletePressed, State.deleteAccount);
+          break;
 
-        case State.reset:
+        case State.logout:
           state.onEntry(() async {
             await _connectedDevice?.disconnect();
+            await NoaApi.signOut(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
-            await savedData.remove('pairedDevice');
-            await savedData.remove('userAuthToken');
+            await savedData.clear();
+            triggerEvent(Event.done);
+          });
+          state.changeOn(Event.done, State.waitForLogin);
+          break;
+
+        case State.deleteAccount:
+          state.onEntry(() async {
+            await _connectedDevice?.disconnect();
+            await NoaApi.deleteUser(_userAuthToken!);
+            final savedData = await SharedPreferences.getInstance();
+            await savedData.clear();
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);

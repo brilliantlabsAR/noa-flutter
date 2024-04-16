@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:noa/api.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
-import 'package:noa/pages/login.dart';
+import 'package:noa/pages/splash.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:noa/widgets/top_title_bar.dart';
@@ -47,10 +46,8 @@ class AccountPage extends ConsumerWidget {
               children: [
                 _accountInfoText(
                     "Signed In As", ref.watch(app.model).noaUser.email),
-                _accountInfoText("Tokens Used",
-                    "${ref.watch(app.model).noaUser.tokensUsed} / ${ref.watch(app.model).noaUser.maxTokens}"),
-                _accountInfoText("Requests Used",
-                    "${ref.watch(app.model).noaUser.requestsUsed} / ${ref.watch(app.model).noaUser.maxRequests}"),
+                _accountInfoText("Credits Used",
+                    "${ref.watch(app.model).noaUser.creditsUsed} / ${ref.watch(app.model).noaUser.maxCredits}"),
                 _accountInfoText("Plan", ref.watch(app.model).noaUser.plan)
               ],
             ),
@@ -63,11 +60,10 @@ class AccountPage extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _linkedFooterText("Logout", false, () async {
-                    await NoaApi.deleteSavedAuthToken();
-                    ref.read(app.model).triggerEvent(app.Event.deletePressed);
+                    ref.read(app.model).triggerEvent(app.Event.logoutPressed);
                     if (context.mounted) {
                       Navigator.pop(context);
-                      switchPage(context, const LoginPage());
+                      switchPage(context, const SplashPage());
                     }
                   }),
                   _linkedFooterText("Privacy Policy", false, () {
@@ -77,7 +73,12 @@ class AccountPage extends ConsumerWidget {
                     // TODO
                   }),
                   _linkedFooterText("Delete Account", true, () {
-                    // TODO
+                    // TODO ask user to confirm
+                    ref.read(app.model).triggerEvent(app.Event.deletePressed);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      switchPage(context, const SplashPage());
+                    }
                   }),
                 ],
               ),

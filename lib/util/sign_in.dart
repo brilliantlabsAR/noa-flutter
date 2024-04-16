@@ -1,7 +1,7 @@
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:noa/util/check_internet_connection.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:noa/api.dart';
+import 'package:noa/util/check_internet_connection.dart';
 
 class SignIn {
   withApple() async {}
@@ -11,13 +11,13 @@ class SignIn {
       await checkInternetConnection();
 
       final GoogleSignInAccount? account = await GoogleSignIn(
-        clientId: dotenv.env['GOOGLE_CLIENT_ID'],
+        clientId: dotenv.env['GOOGLE_IOS_CLIENT_ID'],
         scopes: ['email'],
       ).signIn();
 
       final GoogleSignInAuthentication auth = await account!.authentication;
 
-      return await NoaApi.obtainAuthToken(
+      return await NoaApi.signIn(
         auth.idToken ?? "",
         NoaApiAuthProvider.google,
       );
