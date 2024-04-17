@@ -119,7 +119,7 @@ class NoaApi {
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.brilliant.xyz/noa/mm'),
+        Uri.parse('https://api.brilliant.xyz/noa/'),
       );
 
       request.headers.addAll({
@@ -143,6 +143,8 @@ class NoaApi {
         1,
       );
 
+     File? audiofile = await Utils.saveWavFileToDeviceStorage(wavFileData);
+
       // Create http.MultipartFile from WAV file data
       // final audioFile = http.MultipartFile.fromBytes(
       //   'audio',
@@ -151,11 +153,20 @@ class NoaApi {
       // );
 
 
-      request.files.add(http.MultipartFile.fromBytes(
-        'audio',
-        wavFileData,
-        filename: 'test.wav',
-      ));
+      if(audiofile!=null) {
+        // request.files.add(http.MultipartFile.fromBytes(
+        //   'audio',
+        //   wavFileData,
+        //   filename: 'test.wav',
+        // ));
+
+        request.files.add(http.MultipartFile(
+          'audio',
+          audiofile.readAsBytes().asStream(), // Provide a stream of file bytes
+          audiofile.lengthSync(), // Provide the file length
+          filename: 'test.wav',
+        ));
+      }
 
       // Convert raw image data to JPEG using the new function
       final jpegImage = await Utils.processAndSaveImage(Uint8List.fromList(rawImage));

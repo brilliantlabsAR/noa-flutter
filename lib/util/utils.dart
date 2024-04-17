@@ -60,6 +60,26 @@ class Utils{
     builder.addByte((value >> 8) & 0xFF);
   }
 
+  static Future<File?> saveWavFileToDeviceStorage(Uint8List wavFileData) async {
+    try {
+      final Directory documentsDirectory = await getApplicationDocumentsDirectory();
+      final String filePath = '${documentsDirectory.path}/output.wav';
+
+      // Write the WAV file to the documents directory
+      final File file = File(filePath);
+      await file.writeAsBytes(wavFileData);
+
+      // Optionally, you can show a message to indicate that the file has been saved
+      print('WAV file saved to: $filePath');
+
+      return file;
+    } catch (e) {
+      print('Error saving WAV file: $e');
+      return null;
+      // Handle any errors that occur during the file saving process
+    }
+  }
+
   static Future<String?> processAndSaveImage(Uint8List imageBuffer) async {
     try {
       // Decode the byte array into an Image
