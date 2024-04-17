@@ -61,9 +61,9 @@ class BrilliantDevice {
     _log.info("brilliantDevice.connect() connecting");
     try {
       await device.connect(
-        autoConnect: true,
-        timeout: const Duration(seconds: 2),
-        mtu: null,
+     //   autoConnect: true,
+        timeout: const Duration(seconds: 5),
+       // mtu: null,
       );
     } catch (error) {
       _log.warning("brilliantDevice.connect() failed to connect");
@@ -79,8 +79,12 @@ class BrilliantDevice {
             await _enableServices();
             _log.info("brilliantDevice.connect() services enabled");
             state = BrilliantConnectionState.connected;
-            maxStringLength = device.mtuNow - 3;
-            maxDataLength = device.mtuNow - 4;
+            var mtuSubscription = device.mtu.listen((int mtu) {
+              maxStringLength = mtu - 3;
+              maxDataLength = mtu - 4;
+              print(mtu);
+            });
+            device.cancelWhenDisconnected(mtuSubscription);
           } catch (error) {
             await device.disconnect();
             _log.warning("brilliantDevice.connect() failed to enable services");

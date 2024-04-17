@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/check_internet_connection.dart';
+import 'package:noa/util/location_state.dart';
 import 'package:noa/util/utils.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -113,6 +114,9 @@ class NoaApi {
       await checkInternetConnection();
       final authToken = await loadSavedAuthToken();
 
+      String currentAddress = globalProviderContainer.read(nameProvider);
+      print('Current Name: $currentAddress');
+
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.brilliant.xyz/noa/mm'),
@@ -128,7 +132,7 @@ class NoaApi {
       request.fields['messages'] = '[{"role":"user", "content":"hello"}]';
       request.fields['experiment'] = '1';
       request.fields['config'] =
-          '{"vision": "claude-3-haiku-20240307", address: "Stockholm, Sweden", local_time: $currentTime}';
+          '{"vision": "claude-3-haiku-20240307", address: $currentAddress, local_time: $currentTime}';
 
 
 

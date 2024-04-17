@@ -19,6 +19,8 @@ dependencies:
   logging: ^1.2.0
   path_provider:
   permission_handler:
+  geolocator:
+  geocoding: ^3.0.0
 
 dev_dependencies:
   flutter_test:

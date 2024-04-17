@@ -34,6 +34,14 @@ class Utils{
       // Write the audio data
       output.add(rawPCMBytes);
 
+      final Directory documentsDirectory = await getApplicationDocumentsDirectory();
+      final String filePath = '${documentsDirectory.path}/output.wav';
+
+      // Write the WAV file to the documents directory
+      final File file = File(filePath);
+      await file.writeAsBytes(output.toBytes());
+
+
       return output.toBytes();
     } finally {
       // Close resources if needed
