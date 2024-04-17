@@ -1,15 +1,31 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:noa/locationService.dart';
 import 'package:noa/main.dart';
 import 'package:noa/style.dart';
+import 'package:noa/util/location_state.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 
 class NoaPage extends ConsumerWidget {
   const NoaPage({super.key});
+  Future<void> _getLocation() async {
+    try {
+      Position position = await LocationService().getCurrentLocation();
+      String? address =
+      await LocationService().getAddressFromCoordinates(position);
 
+      updateName(address?? "not Specified");
+
+      print(address);
+    } catch (e) {
+      print("Error fetching location: $e");
+    }
+  }
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    _getLocation();
     return Scaffold(
       backgroundColor: colorWhite,
 
