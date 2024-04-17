@@ -26,6 +26,7 @@ Widget _loginButton(
 
 
         await action();
+
         if (context.mounted) {
           switchPage(context, const PairingPage());
         }

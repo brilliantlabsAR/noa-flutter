@@ -130,11 +130,11 @@ class NoaApi {
 
       request.fields['prompt'] = 'find software developer jobs';
       request.fields['messages'] = '[{"role":"user", "content":"hello"}]';
-      request.fields['experiment'] = '1';
-      request.fields['config'] =
-          '{"vision": "claude-3-haiku-20240307", address: $currentAddress, local_time: $currentTime}';
-
-
+      request.fields['location'] = currentAddress;
+      request.fields['time'] = currentTime;
+      request.fields['temperature'] = "1.0";
+      request.fields['experimental'] =
+          '{"vision": "claude-3-haiku-20240307"}';
 
       final wavFileData = await Utils.rawToWave(
         Uint8List.fromList(rawAudio),
