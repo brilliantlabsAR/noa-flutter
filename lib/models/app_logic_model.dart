@@ -151,21 +151,21 @@ class AppLogicModel extends ChangeNotifier {
         case State.waitForLogin:
           state.onEntry(() async {
             SharedPreferences savedData = await SharedPreferences.getInstance();
-            print(_userAuthToken);
             _userAuthToken = savedData.getString('userAuthToken');
             if (_userAuthToken != null) {
-              final userInfo = await NoaApi.getUser(_userAuthToken!);
-              noaUser.update(
-                email: userInfo['email'],
-                plan: userInfo['plan'],
-                creditsUsed: userInfo['credit_used'],
-                maxCredits: userInfo['credit_total'],
-              );
-              print(noaUser.email);
               triggerEvent(Event.loggedIn);
             }
           });
-          state.changeOn(Event.loggedIn, State.getPairedDevice);
+          state.changeOn(Event.loggedIn, State.getPairedDevice,
+              transitionTask: () async {
+            final userInfo = await NoaApi.getUser(_userAuthToken!);
+            noaUser.update(
+              email: userInfo['email'],
+              plan: userInfo['plan'],
+              creditsUsed: userInfo['credit_used'],
+              maxCredits: userInfo['credit_total'],
+            );
+          });
           break;
 
         case State.getPairedDevice:
