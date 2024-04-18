@@ -1,13 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/check_internet_connection.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class NoaApiNoAuthTokenError implements Exception {
   NoaApiNoAuthTokenError();
@@ -33,22 +30,13 @@ enum NoaApiAuthProvider {
 }
 
 class NoaApi {
-  // StreamController<NoaMessage>? serverResponseListener;
-
-  // NoaApi({
-  //   required this.serverResponseListener,
-  // });
-
-  static Future<void> obtainAuthToken(
-      String idToken, NoaApiAuthProvider authProvider) async {
+  static Future<String> signIn(String id, NoaApiAuthProvider provider) async {
     try {
-      await checkInternetConnection();
-
       final response = await http.post(
-        Uri.parse('https://api.brilliant.xyz/noa/signin'),
+        Uri.parse('https://api.brilliant.xyz/noa/user/signin'),
         body: {
-          'id_token': idToken,
-          'social_type': authProvider.value,
+          'id_token': id,
+          'social_type': provider.value,
           'app': 'flutter',
         },
       );
@@ -59,63 +47,72 @@ class NoaApi {
 
       final decoded = jsonDecode(response.body);
 
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setString('userToken', decoded['token']);
+      return decoded['token'];
     } catch (error) {
       return Future.error(error);
     }
   }
 
-  static Future<String> loadSavedAuthToken() async {
-    final preferences = await SharedPreferences.getInstance();
-    final authToken = preferences.getString('userToken');
-    if (authToken == null) {
-      return Future.error(NoaApiNoAuthTokenError());
-    }
-    return authToken;
-  }
-
-  static Future<void> deleteSavedAuthToken() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove('userToken');
-  }
-
-  static Future<dynamic> getProfile() async {
+  static Future<void> signOut(String userAuthToken) async {
     try {
-      await checkInternetConnection();
-      final authToken = await loadSavedAuthToken();
+      final response = await http.post(
+        Uri.parse('https://api.brilliant.xyz/noa/user/signout'),
+        headers: {"Authorization": userAuthToken},
+      );
+
+      if (response.statusCode != 200) {
+        throw NoaApiServerError(response.statusCode);
+      }
+    } catch (error) {
+      return Future.error(error);
+    }
+  }
+
+  static Future<dynamic> getUser(String userAuthToken) async {
+    try {
       final response = await http.get(
-        Uri.parse('https://api.brilliant.xyz/noa/profile_info'),
-        headers: {
-          "Authorization": authToken,
-        },
+        Uri.parse('https://api.brilliant.xyz/noa/user'),
+        headers: {"Authorization": userAuthToken},
       );
       if (response.statusCode != 200) {
         throw NoaApiServerError(response.statusCode);
       }
-      return jsonDecode(response.body);
+      return jsonDecode(response.body)['user'];
     } catch (error) {
       return Future.error(Exception(error));
     }
   }
 
+  static Future<void> deleteUser(String userAuthToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.brilliant.xyz/noa/user/delete'),
+        headers: {"Authorization": userAuthToken},
+      );
+
+      if (response.statusCode != 200) {
+        throw NoaApiServerError(response.statusCode);
+      }
+    } catch (error) {
+      return Future.error(error);
+    }
+  }
+
   static Future<void> getMessage(
+      String userAuthToken,
       List<int> rawAudio,
       List<int> rawImage,
       List<NoaMessage> noaHistory,
       StreamController<NoaMessage>? responseListener) async {
     try {
       await checkInternetConnection();
-      final authToken = await loadSavedAuthToken();
 
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.brilliant.xyz/noa/mm'),
       );
 
-      request.headers.addAll({
-        HttpHeaders.authorizationHeader: authToken,
-      });
+      request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
 
       var currentTime = DateTime.now().toString();
 
@@ -143,6 +140,7 @@ class NoaApi {
 
       streamedResponse.stream.listen((value) {
         var body = jsonDecode(String.fromCharCodes(value));
+        print(body);
         responseListener!.add(NoaMessage(
           message: body['response'],
           from: 'Noa',

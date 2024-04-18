@@ -6,13 +6,15 @@ import 'package:logging/logging.dart';
 import 'package:noa/api.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/models/noa_message_model.dart';
+import 'package:noa/models/noa_user_model.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final _log = Logger("App Logic");
 
 enum State {
-  init,
+  waitForLogin,
+  getPairedDevice,
   scanning,
   found,
   connect,
@@ -26,13 +28,15 @@ enum State {
   connected,
   sendResponseToDevice,
   disconnected,
-  reset,
+  logout,
+  deleteAccount
 }
 
 enum Event {
   init,
   done,
   error,
+  loggedIn,
   deviceFound,
   deviceLost,
   deviceConnected,
@@ -40,6 +44,7 @@ enum Event {
   deviceInvalid,
   buttonPressed,
   cancelPressed,
+  logoutPressed,
   deletePressed,
   deviceStringResponse,
   deviceDataResponse,
@@ -48,8 +53,9 @@ enum Event {
 
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
-  StateMachine state = StateMachine(State.init);
+  StateMachine state = StateMachine(State.waitForLogin);
   String? pairedDevice;
+  NoaUser noaUser = NoaUser();
 
   // Private state variables
   bool _eventBeingProcessed = false;
@@ -59,8 +65,8 @@ class AppLogicModel extends ChangeNotifier {
   List<int>? _dataResponse;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
-  // NoaApi noaApi = NoaApi(serverResponseListener: _noaStreamController);
   List<NoaMessage> _noaMessages = List.empty(growable: true);
+  String? _userAuthToken;
 
   // Bluetooth stream listeners
   final _scanStreamController = StreamController<BrilliantDevice>();
@@ -124,6 +130,13 @@ class AppLogicModel extends ChangeNotifier {
     });
   }
 
+  void loggedIn(String userAuthToken) async {
+    _userAuthToken = userAuthToken;
+    final savedData = await SharedPreferences.getInstance();
+    await savedData.setString('userAuthToken', userAuthToken);
+    triggerEvent(Event.loggedIn);
+  }
+
   void triggerEvent(Event event) {
     if (_eventBeingProcessed) {
       _log.severe("App Logic: Too many events: $event");
@@ -135,7 +148,27 @@ class AppLogicModel extends ChangeNotifier {
 
     do {
       switch (state.current) {
-        case State.init:
+        case State.waitForLogin:
+          state.onEntry(() async {
+            SharedPreferences savedData = await SharedPreferences.getInstance();
+            _userAuthToken = savedData.getString('userAuthToken');
+            if (_userAuthToken != null) {
+              triggerEvent(Event.loggedIn);
+            }
+          });
+          state.changeOn(Event.loggedIn, State.getPairedDevice,
+              transitionTask: () async {
+            final userInfo = await NoaApi.getUser(_userAuthToken!);
+            noaUser.update(
+              email: userInfo['email'],
+              plan: userInfo['plan'],
+              creditsUsed: userInfo['credit_used'],
+              maxCredits: userInfo['credit_total'],
+            );
+          });
+          break;
+
+        case State.getPairedDevice:
           state.onEntry(() async {
             SharedPreferences savedData = await SharedPreferences.getInstance();
             pairedDevice = savedData.getString('pairedDevice');
@@ -292,6 +325,7 @@ class AppLogicModel extends ChangeNotifier {
                 _log.info(
                     "App logic: Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                 NoaApi.getMessage(
+                  _userAuthToken!,
                   _audioData,
                   _imageData,
                   _noaMessages,
@@ -303,7 +337,8 @@ class AppLogicModel extends ChangeNotifier {
 
           state.changeOn(Event.noaResponse, State.sendResponseToDevice);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
-          state.changeOn(Event.deletePressed, State.reset);
+          state.changeOn(Event.logoutPressed, State.logout);
+          state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
 
         case State.sendResponseToDevice:
@@ -325,21 +360,36 @@ class AppLogicModel extends ChangeNotifier {
 
           state.changeOn(Event.done, State.connected);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
-          state.changeOn(Event.deletePressed, State.reset);
+          state.changeOn(Event.logoutPressed, State.logout);
+          state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
 
         case State.disconnected:
           state.changeOn(Event.deviceConnected, State.connected);
-          state.changeOn(Event.deletePressed, State.reset);
+          state.changeOn(Event.logoutPressed, State.logout);
+          state.changeOn(Event.deletePressed, State.deleteAccount);
+          break;
 
-        case State.reset:
+        case State.logout:
           state.onEntry(() async {
             await _connectedDevice?.disconnect();
+            await NoaApi.signOut(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
-            await savedData.remove('pairedDevice');
+            await savedData.clear();
             triggerEvent(Event.done);
           });
-          state.changeOn(Event.done, State.init);
+          state.changeOn(Event.done, State.waitForLogin);
+          break;
+
+        case State.deleteAccount:
+          state.onEntry(() async {
+            await _connectedDevice?.disconnect();
+            await NoaApi.deleteUser(_userAuthToken!);
+            final savedData = await SharedPreferences.getInstance();
+            await savedData.clear();
+            triggerEvent(Event.done);
+          });
+          state.changeOn(Event.done, State.waitForLogin);
           break;
       }
     } while (state.changePending());

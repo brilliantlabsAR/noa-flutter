@@ -24,7 +24,6 @@ class PairingPage extends ConsumerWidget {
     bool pairingBoxButtonEnabled = false;
 
     switch (ref.watch(app.model).state.current) {
-      case app.State.init:
       case app.State.scanning:
         pairingBoxText = "Bring your device close";
         pairingBoxButtonText = "Searching";
@@ -66,10 +65,6 @@ class PairingPage extends ConsumerWidget {
         pairingBoxText = "Un-pair Frame first";
         pairingBoxButtonText = "Try again";
         pairingBoxButtonEnabled = true;
-        break;
-      case app.State.connected:
-        break;
-      case app.State.disconnected:
         break;
     }
 
