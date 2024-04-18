@@ -105,22 +105,14 @@ class NoaApi {
       List<NoaMessage> noaHistory,
       StreamController<NoaMessage>? responseListener) async {
     try {
-      await checkInternetConnection();
+      await checkInternetConnection(); // TODO do we need this?
 
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.brilliant.xyz/noa/mm'),
+        Uri.parse('https://api.brilliant.xyz/noa'),
       );
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
-
-      var currentTime = DateTime.now().toString();
-
-      request.fields['prompt'] = 'find software developer jobs';
-      request.fields['messages'] = '[{"role":"user", "content":"hello"}]';
-      request.fields['experiment'] = '1';
-      request.fields['config'] =
-          '{"vision": "claude-3-haiku-20240307", address: "Stockholm, Sweden", local_time: $currentTime}';
 
       ByteData audio = await rootBundle.load('assets/test.wav');
       request.files.add(http.MultipartFile.fromBytes(
@@ -136,16 +128,34 @@ class NoaApi {
         filename: 'test.jpg',
       ));
 
+      request.fields['messages'] = ''; // TODO system message and history
+      request.fields['location'] = 'Stockholm Sweden';
+      request.fields['time'] = DateTime.now().toString();
+      request.fields['temperature'] = '1.0';
+      request.fields['experimental[vision]'] = 'claude-3-haiku-20240307';
+      print(request.fields);
+
       var streamedResponse = await request.send();
 
       streamedResponse.stream.listen((value) {
         var body = jsonDecode(String.fromCharCodes(value));
         print(body);
+
         responseListener!.add(NoaMessage(
-          message: body['response'],
-          from: 'Noa',
+          message: body['user_prompt'],
+          from: NoaRole.user,
           time: DateTime.now(),
+          // TODO append debug image
         ));
+
+        responseListener.add(NoaMessage(
+          message: body['message'],
+          from: NoaRole.noa,
+          time: DateTime.now(),
+          // TODO append response image
+        ));
+
+        // Update user stats
       });
     } catch (error) {
       return Future.error(Exception(error));

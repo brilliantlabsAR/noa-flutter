@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/main.dart';
+import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/style.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
@@ -19,7 +20,7 @@ class NoaPage extends ConsumerWidget {
         itemCount: ref.watch(messages).messages.length,
         itemBuilder: (context, index) {
           TextStyle style = textStyleLight;
-          if (ref.watch(messages).messages[index].from == 'Noa') {
+          if (ref.watch(messages).messages[index].from == NoaRole.noa) {
             style = textStyleDark;
           }
           return Column(
