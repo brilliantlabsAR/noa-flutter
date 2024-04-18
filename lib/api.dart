@@ -180,7 +180,7 @@ class NoaApi {
 
 
 
-  Uint8List signed8ToUnsigned16(List<int> rawAudio) {
+ static Uint8List signed8ToUnsigned16(List<int> rawAudio) {
     final unsignedArray = Uint8List(rawAudio.length * 2);
     for (int i = 0; i < rawAudio.length; i++) {
       final unsigned = (rawAudio[i] & 0xFF) << 8;
@@ -191,6 +191,16 @@ class NoaApi {
   }
 
 
+  static saveImage(Uint8List imageBytes) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/image.jpg');
+      await tempFile.writeAsBytes(imageBytes);
+      print('Image saved to: ${tempFile.path}');
+    } catch (e) {
+      print('Error saving image: $e');
+    }
+  }
 
 
   static Future<void> getMessage(
@@ -199,11 +209,16 @@ class NoaApi {
       List<NoaMessage> noaHistory,
       StreamController<NoaMessage>? responseListener) async {
     try {
+
+      saveImage(Uint8List.fromList(rawImage));
+
       await checkInternetConnection();
-      final authToken = await loadSavedAuthToken();
+      final authToken ="fsdfsdfs" ;//await loadSavedAuthToken();
 
       String currentAddress = globalProviderContainer.read(nameProvider);
       print('Current Name: $currentAddress');
+
+
 
       var request = http.MultipartRequest(
         'POST',
@@ -226,22 +241,15 @@ class NoaApi {
 
 
 
-      createPlayableAudioFile(rawAudio,8000,16,1);
+      createPlayableAudioFile(rawAudio,8000,8,1);
       final wavFileData = await Utils.rawToWave(
-        Uint8List.fromList(rawAudio),
+        signed8ToUnsigned16(rawAudio),
         8000, // Pass sampleRate, bitPerSample, and channel here
-        16,
+        8,
         1,
       );
 
      File? audiofile = await Utils.saveWavFileToDeviceStorage(wavFileData);
-
-      // Create http.MultipartFile from WAV file data
-      // final audioFile = http.MultipartFile.fromBytes(
-      //   'audio',
-      //   wavFileData,
-      //   filename: 'test.wav',
-      // );
 
 
       if(audiofile!=null) {
