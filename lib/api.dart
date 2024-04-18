@@ -1,14 +1,10 @@
 import 'dart:async';
 import 'dart:io';
-
-
 import 'package:flutter/services.dart';
 import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/location_state.dart';
 import 'package:noa/util/utils.dart';
-import 'package:path_provider/path_provider.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -107,100 +103,6 @@ class NoaApi {
   }
 
 
-  static Future<File> createPlayableAudioFile(List<int> rawAudio, int sampleRate, int bitDepth, int channels) async {
-    try {
-      // Get the application documents directory
-      final Directory documentsDirectory = await getApplicationDocumentsDirectory();
-
-      // Create a temporary WAV file
-      final File wavFile = File('${documentsDirectory.path}/temp_audio.wav');
-
-      // Write the WAV file header
-      await wavFile.writeAsBytes(createWavHeader(rawAudio.length, sampleRate, bitDepth, channels));
-
-      // Append the raw audio data to the WAV file
-      await wavFile.writeAsBytes(rawAudio, mode: FileMode.append);
-
-      return wavFile;
-    } catch (e) {
-      print('Error creating playable audio file: $e');
-      throw e; // You can handle the error accordingly
-    }
-  }
-
-  static List<int> createWavHeader(int dataSize, int sampleRate, int bitDepth, int channels) {
-    final header = <int>[];
-
-    // Chunk ID: "RIFF"
-    header.addAll(utf8.encode('RIFF'));
-
-    // Chunk size: 36 + data size
-    header.addAll(_int32Bytes(36 + dataSize));
-
-    // Format: "WAVE"
-    header.addAll(utf8.encode('WAVE'));
-
-    // Subchunk 1 ID: "fmt "
-    header.addAll(utf8.encode('fmt '));
-
-    // Subchunk 1 size: 16 for PCM
-    header.addAll(_int32Bytes(16));
-
-    // Audio format: 1 for PCM
-    header.addAll(_int16Bytes(1));
-
-    // Number of channels
-    header.addAll(_int16Bytes(channels));
-
-    // Sample rate
-    header.addAll(_int32Bytes(sampleRate));
-
-    // Byte rate
-    header.addAll(_int32Bytes(sampleRate * channels * bitDepth ~/ 8));
-
-    // Block align
-    header.addAll(_int16Bytes(channels * bitDepth ~/ 8));
-
-    // Bits per sample
-    header.addAll(_int16Bytes(bitDepth));
-
-    // Subchunk 2 ID: "data"
-    header.addAll(utf8.encode('data'));
-
-    // Subchunk 2 size: data size
-    header.addAll(_int32Bytes(dataSize));
-
-    return header;
-  }
-
-  static List<int> _int32Bytes(int value) => [value & 0xFF, (value >> 8) & 0xFF, (value >> 16) & 0xFF, (value >> 24) & 0xFF];
-  static List<int> _int16Bytes(int value) => [value & 0xFF, (value >> 8) & 0xFF];
-
-
-
-
-
- static Uint8List signed8ToUnsigned16(List<int> rawAudio) {
-    final unsignedArray = Uint8List(rawAudio.length * 2);
-    for (int i = 0; i < rawAudio.length; i++) {
-      final unsigned = (rawAudio[i] & 0xFF) << 8;
-      unsignedArray[i * 2] = (unsigned >> 8) & 0xFF;
-      unsignedArray[i * 2 + 1] = unsigned & 0xFF;
-    }
-    return unsignedArray;
-  }
-
-
-  static saveImage(Uint8List imageBytes) async {
-    try {
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/image.jpg');
-      await tempFile.writeAsBytes(imageBytes);
-      print('Image saved to: ${tempFile.path}');
-    } catch (e) {
-      print('Error saving image: $e');
-    }
-  }
 
 
   static Future<void> getMessage(
@@ -210,10 +112,10 @@ class NoaApi {
       StreamController<NoaMessage>? responseListener) async {
     try {
 
-      saveImage(Uint8List.fromList(rawImage));
+
 
       await checkInternetConnection();
-      final authToken ="fsdfsdfs" ;//await loadSavedAuthToken();
+      final authToken = await loadSavedAuthToken();
 
       String currentAddress = globalProviderContainer.read(nameProvider);
       print('Current Name: $currentAddress');
@@ -241,9 +143,9 @@ class NoaApi {
 
 
 
-      createPlayableAudioFile(rawAudio,8000,8,1);
+
       final wavFileData = await Utils.rawToWave(
-        signed8ToUnsigned16(rawAudio),
+        Uint8List.fromList(rawAudio),
         8000, // Pass sampleRate, bitPerSample, and channel here
         8,
         1,
@@ -285,23 +187,6 @@ class NoaApi {
         print('Failed to process and save image.');
         return;
       }
-
-
-      //
-      // ByteData audio = await rootBundle.load('assets/test.wav');
-      // request.files.add(http.MultipartFile.fromBytes(
-      //   'audio',
-      //   audio.buffer.asUint8List(),
-      //   filename: 'test.wav',
-      // ));
-
-      // ByteData image = await rootBundle.load('assets/test.wav');
-      // request.files.add(http.MultipartFile.fromBytes(
-      //   'image',
-      //   image.buffer.asUint8List(),
-      //   filename: 'test.jpg',
-      // ));
-
       var streamedResponse = await request.send();
 
       streamedResponse.stream.listen((value) {
