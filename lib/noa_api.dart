@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:noa/util/bytes_to_wav.dart';
 import 'package:noa/util/check_internet_connection.dart';
 
 final _log = Logger("Noa API");
@@ -176,14 +178,14 @@ class NoaApi {
 
   static Future<void> getMessage(
     String userAuthToken,
-    List<int> rawAudio,
-    List<int> rawImage,
+    Uint8List audio,
+    Uint8List image,
     List<NoaMessage> noaHistory,
     StreamController<NoaMessage> responseListener,
     StreamController<NoaUser> userInfoListener,
   ) async {
     _log.info(
-        "Sending request: audio[${rawAudio.length}], image[${rawImage.length}]");
+        "Sending request: audio[${audio.length}], image[${image.length}]");
     try {
       await checkInternetConnection(); // TODO do we need this?
 
@@ -194,19 +196,15 @@ class NoaApi {
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
 
-      // TODO convert audio from file
-      ByteData audio = await rootBundle.load('assets/test.wav');
       request.files.add(http.MultipartFile.fromBytes(
         'audio',
-        audio.buffer.asUint8List(),
+        bytesToWav(audio, 8, 8000),
         filename: 'test.wav',
       ));
 
-      // TODO attach image from file
-      ByteData image = await rootBundle.load('assets/test.wav');
       request.files.add(http.MultipartFile.fromBytes(
         'image',
-        image.buffer.asUint8List(),
+        image,
         filename: 'test.jpg',
       ));
 

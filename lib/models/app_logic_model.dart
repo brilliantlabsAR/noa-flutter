@@ -325,8 +325,8 @@ class AppLogicModel extends ChangeNotifier {
                     "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                 NoaApi.getMessage(
                   _userAuthToken!,
-                  _audioData,
-                  _imageData,
+                  Uint8List.fromList(_audioData),
+                  Uint8List.fromList(_imageData),
                   noaMessages,
                   _noaResponseStreamController,
                   _noaUserInfoStreamController,
