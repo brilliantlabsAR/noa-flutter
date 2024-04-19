@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:noa/models/noa_user_model.dart';
 
 enum NoaRole {
   system('system'),

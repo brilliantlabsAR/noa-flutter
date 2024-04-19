@@ -1,6 +1,6 @@
 import 'package:logging/logging.dart';
 
-final _log = Logger("State Machine Helper");
+final _log = Logger("State machine");
 
 class StateMachine {
   dynamic current;
@@ -24,11 +24,11 @@ class StateMachine {
       _onEntryHandled = false;
 
       if (transitionTask != null) {
-        _log.info("State machine: Executing transitionTask");
+        _log.info("Executing transitionTask");
         transitionTask();
       }
 
-      _log.info("State machine: $event triggered change $current → $next");
+      _log.info("$event triggered change $current → $next");
     }
   }
 
@@ -43,7 +43,7 @@ class StateMachine {
 
   void onEntry(Function task) {
     if (_onEntryHandled == false) {
-      _log.info("State machine: Executing onEntry task");
+      _log.info("Executing onEntry task");
       task();
       _onEntryHandled = true;
     }

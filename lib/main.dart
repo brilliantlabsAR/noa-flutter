@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/models/noa_message_model.dart';
-import 'package:noa/pages/login.dart';
 import 'package:noa/pages/splash.dart';
 
 final messages = ChangeNotifierProvider<NoaMessageModel>((ref) {

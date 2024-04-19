@@ -3,14 +3,13 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import 'package:noa/api.dart';
+import 'package:noa/noa_api.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/models/noa_message_model.dart';
-import 'package:noa/models/noa_user_model.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-final _log = Logger("App Logic");
+final _log = Logger("App logic");
 
 enum State {
   waitForLogin,
@@ -65,8 +64,8 @@ class AppLogicModel extends ChangeNotifier {
   List<int>? _dataResponse;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
-  List<NoaMessage> _noaMessages = List.empty(growable: true);
   String? _userAuthToken;
+  final List<NoaMessage> _noaMessages = List.empty(growable: true);
 
   // Bluetooth stream listeners
   final _scanStreamController = StreamController<BrilliantDevice>();
@@ -74,8 +73,9 @@ class AppLogicModel extends ChangeNotifier {
   final _stringRxStreamController = StreamController<String>();
   final _dataRxStreamController = StreamController<List<int>>();
 
-  // Noa steam listener
-  final _noaStreamController = StreamController<NoaMessage>();
+  // Noa steam listeners
+  final _noaResponseStreamController = StreamController<NoaMessage>();
+  final _noaUserInfoStreamController = StreamController<NoaUser>();
 
   AppLogicModel() {
     // Monitors Bluetooth scan events
@@ -120,13 +120,18 @@ class AppLogicModel extends ChangeNotifier {
     });
 
     // Monitor noa responses
-    _noaStreamController.stream.listen((message) {
+    _noaResponseStreamController.stream.listen((message) {
       _noaMessages.add(NoaMessage(
         message: message.message,
         from: message.from,
         time: message.time,
       ));
       triggerEvent(Event.noaResponse);
+    });
+
+    // Monitor user stats
+    _noaUserInfoStreamController.stream.listen((user) {
+      noaUser = user;
     });
   }
 
@@ -139,7 +144,7 @@ class AppLogicModel extends ChangeNotifier {
 
   void triggerEvent(Event event) {
     if (_eventBeingProcessed) {
-      _log.severe("App Logic: Too many events: $event");
+      _log.severe("Too many events: $event");
     }
 
     _eventBeingProcessed = true;
@@ -157,15 +162,8 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           state.changeOn(Event.loggedIn, State.getPairedDevice,
-              transitionTask: () async {
-            final userInfo = await NoaApi.getUser(_userAuthToken!);
-            noaUser.update(
-              email: userInfo['email'],
-              plan: userInfo['plan'],
-              creditsUsed: userInfo['credit_used'],
-              maxCredits: userInfo['credit_total'],
-            );
-          });
+              transitionTask: () => NoaApi.getUser(
+                  _userAuthToken!, _noaUserInfoStreamController));
           break;
 
         case State.getPairedDevice:
@@ -311,7 +309,7 @@ class AppLogicModel extends ChangeNotifier {
             switch (_dataResponse?[0]) {
               // Start flag
               case 0x10:
-                _log.info("App logic: Received start flag from device");
+                _log.info("Received start flag from device");
                 _audioData.clear();
                 _imageData.clear();
                 break;
@@ -323,13 +321,14 @@ class AppLogicModel extends ChangeNotifier {
                 break;
               case 0x16:
                 _log.info(
-                    "App logic: Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
+                    "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                 NoaApi.getMessage(
                   _userAuthToken!,
                   _audioData,
                   _imageData,
                   _noaMessages,
-                  _noaStreamController,
+                  _noaResponseStreamController,
+                  _noaUserInfoStreamController,
                 );
                 break;
             }
@@ -343,8 +342,6 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.sendResponseToDevice:
           state.onEntry(() async {
-            print(_noaMessages.last.message);
-            print(_noaMessages.last.time);
             try {
               // TODO split string before sending
               List<int> data = utf8.encode(_noaMessages.last.message).toList();
@@ -353,7 +350,7 @@ class AppLogicModel extends ChangeNotifier {
                   .sendData(data)
                   .timeout(const Duration(seconds: 1));
             } catch (error) {
-              _log.warning("App Logic: Error responding to device: $error");
+              _log.warning("Error responding to device: $error");
             }
             triggerEvent(Event.done);
           });
@@ -406,7 +403,7 @@ class AppLogicModel extends ChangeNotifier {
     _connectionStreamController.close();
     _stringRxStreamController.close();
     _dataRxStreamController.close();
-    _noaStreamController.close();
+    _noaResponseStreamController.close();
     super.dispose();
   }
 }

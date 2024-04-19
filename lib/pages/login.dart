@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:noa/api.dart';
+import 'package:noa/noa_api.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
