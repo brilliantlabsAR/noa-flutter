@@ -4,14 +4,9 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
-import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/check_internet_connection.dart';
 
 final _log = Logger("Noa API");
-
-class NoaApiNoAuthTokenError implements Exception {
-  NoaApiNoAuthTokenError();
-}
 
 class NoaApiServerError implements Exception {
   int serverErrorCode;
@@ -21,6 +16,11 @@ class NoaApiServerError implements Exception {
   String toString() {
     return "$serverErrorCode";
   }
+}
+
+// Authentication and account related classes
+class NoaApiNoAuthTokenError implements Exception {
+  NoaApiNoAuthTokenError();
 }
 
 enum NoaApiAuthProvider {
@@ -51,6 +51,31 @@ class NoaUser {
   }
 }
 
+// Noa messaging class
+enum NoaRole {
+  system('system'),
+  user('user'),
+  noa('noa');
+
+  const NoaRole(this.value);
+  final String value;
+}
+
+class NoaMessage {
+  String message;
+  NoaRole from;
+  DateTime time;
+  // TODO add image field
+
+  NoaMessage({
+    required this.message,
+    required this.from,
+    required this.time,
+    // TODO add image field
+  });
+}
+
+// All API endpoint features
 class NoaApi {
   static Future<String> signIn(
     String id,
@@ -125,7 +150,7 @@ class NoaApi {
       ));
 
       _log.info(
-          "email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
+          "Updated user account info: Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
     } catch (error) {
       return Future.error(Exception(error));
     }
@@ -169,6 +194,7 @@ class NoaApi {
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
 
+      // TODO convert audio from file
       ByteData audio = await rootBundle.load('assets/test.wav');
       request.files.add(http.MultipartFile.fromBytes(
         'audio',
@@ -176,6 +202,7 @@ class NoaApi {
         filename: 'test.wav',
       ));
 
+      // TODO attach image from file
       ByteData image = await rootBundle.load('assets/test.wav');
       request.files.add(http.MultipartFile.fromBytes(
         'image',
@@ -221,7 +248,9 @@ class NoaApi {
         ));
 
         _log.info(
-            "email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
+            "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\" ");
+        _log.info(
+            "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
       });
     } catch (error) {
       return Future.error(Exception(error));

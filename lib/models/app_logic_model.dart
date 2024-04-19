@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/noa_api.dart';
 import 'package:noa/bluetooth.dart';
-import 'package:noa/models/noa_message_model.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -55,6 +54,7 @@ class AppLogicModel extends ChangeNotifier {
   StateMachine state = StateMachine(State.waitForLogin);
   String? pairedDevice;
   NoaUser noaUser = NoaUser();
+  final List<NoaMessage> noaMessages = List.empty(growable: true);
 
   // Private state variables
   bool _eventBeingProcessed = false;
@@ -65,7 +65,6 @@ class AppLogicModel extends ChangeNotifier {
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
   String? _userAuthToken;
-  final List<NoaMessage> _noaMessages = List.empty(growable: true);
 
   // Bluetooth stream listeners
   final _scanStreamController = StreamController<BrilliantDevice>();
@@ -121,12 +120,14 @@ class AppLogicModel extends ChangeNotifier {
 
     // Monitor noa responses
     _noaResponseStreamController.stream.listen((message) {
-      _noaMessages.add(NoaMessage(
+      noaMessages.add(NoaMessage(
         message: message.message,
         from: message.from,
         time: message.time,
       ));
-      triggerEvent(Event.noaResponse);
+      if (message.from == NoaRole.noa) {
+        triggerEvent(Event.noaResponse);
+      }
     });
 
     // Monitor user stats
@@ -296,7 +297,7 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.updatingFirmware:
-          // TODO
+          // TODO DFU process
           break;
 
         case State.requiresRepair:
@@ -326,7 +327,7 @@ class AppLogicModel extends ChangeNotifier {
                   _userAuthToken!,
                   _audioData,
                   _imageData,
-                  _noaMessages,
+                  noaMessages,
                   _noaResponseStreamController,
                   _noaUserInfoStreamController,
                 );
@@ -344,7 +345,7 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             try {
               // TODO split string before sending
-              List<int> data = utf8.encode(_noaMessages.last.message).toList();
+              List<int> data = utf8.encode(noaMessages.last.message).toList();
               data.insert(0, 0x11);
               await _connectedDevice!
                   .sendData(data)
