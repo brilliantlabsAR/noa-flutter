@@ -200,7 +200,7 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          if (_luaResponse == "v24.065.1346") {
+          if (_luaResponse == "v24.110.0659") {
             state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
           } else {
             // TODO go to State.updatingFirmware instead
