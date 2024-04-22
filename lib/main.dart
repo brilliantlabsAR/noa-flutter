@@ -9,7 +9,7 @@ import 'package:noa/pages/splash.dart';
 void main() async {
   await dotenv.load(); // Load environment variables
 
-  Logger.root.level = Level.FINER;
+  Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((record) {
     if (kDebugMode) {
       print('${record.level.name} - ${record.loggerName}: ${record.message}');

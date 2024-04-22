@@ -374,6 +374,7 @@ class AppLogicModel extends ChangeNotifier {
             await NoaApi.signOut(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
+            pairedDevice = null;
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);
@@ -385,6 +386,7 @@ class AppLogicModel extends ChangeNotifier {
             await NoaApi.deleteUser(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
+            pairedDevice = null;
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);
