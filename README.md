@@ -73,6 +73,7 @@ Sometimes it may be necessary to regenerate the platform files. To do this, dele
             <string>bluetooth-central</string>
         </array>
         ...
+    </dict>
     ```
 
 1. Insert the following into `ios/Runner/Info.plist to enable Google sign in for iOS
@@ -91,6 +92,7 @@ Sometimes it may be necessary to regenerate the platform files. To do this, dele
             </dict>
         </array>
         ...
+    </dict>
     ```
 
     1. Finally, you may want to find and replace all occurrences of the string `xyz.brilliant` to your own reverse-domain bundle identifier
