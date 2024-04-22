@@ -10,18 +10,16 @@ Uint8List _uint16to8(int value) =>
 
 Uint8List offsetPcm(Uint8List inData) {
   List<int> outData = [];
-  inData.forEach((element) {
+  for (var element in inData) {
     outData.add((element + 128) % 256);
-  });
+  }
   var outDataUint8 = Uint8List.fromList(outData);
   return outDataUint8.buffer.asUint8List();
 }
 
 Uint8List bytesToWav(Uint8List pcmBytes, int bitDepth, int sampleRate) {
-  print("converting ${pcmBytes.length} bytes to wav");
   final output = BytesBuilder();
 
-  // Write the WAV header
   output.add(utf8.encode('RIFF'));
   output.add(_uint32to8(36 + pcmBytes.length));
   output.add(utf8.encode('WAVE'));
