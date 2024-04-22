@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:noa/main.dart';
+import 'package:noa/models/app_logic_model.dart' as app;
+import 'package:noa/noa_api.dart';
 import 'package:noa/style.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
@@ -16,10 +17,10 @@ class NoaPage extends ConsumerWidget {
       appBar: topTitleBar(context, 'NOA', false, false),
 
       body: ListView.builder(
-        itemCount: ref.watch(messages).messages.length,
+        itemCount: ref.watch(app.model).noaMessages.length,
         itemBuilder: (context, index) {
           TextStyle style = textStyleLight;
-          if (ref.watch(messages).messages[index].from == 'Noa') {
+          if (ref.watch(app.model).noaMessages[index].from == NoaRole.noa) {
             style = textStyleDark;
           }
           return Column(
@@ -27,11 +28,11 @@ class NoaPage extends ConsumerWidget {
             children: [
               if (index == 0 ||
                   ref
-                          .watch(messages)
-                          .messages[index]
+                          .watch(app.model)
+                          .noaMessages[index]
                           .time
                           .difference(
-                              ref.watch(messages).messages[index - 1].time)
+                              ref.watch(app.model).noaMessages[index - 1].time)
                           .inSeconds >
                       1700)
                 Container(
@@ -39,7 +40,7 @@ class NoaPage extends ConsumerWidget {
                   child: Row(
                     children: [
                       Text(
-                        "${ref.watch(messages).messages[index].time.hour.toString().padLeft(2, '0')}:${ref.watch(messages).messages[index].time.minute.toString().padLeft(2, '0')}",
+                        "${ref.watch(app.model).noaMessages[index].time.hour.toString().padLeft(2, '0')}:${ref.watch(app.model).noaMessages[index].time.minute.toString().padLeft(2, '0')}",
                         style: const TextStyle(color: colorLight),
                       ),
                       const Flexible(
@@ -54,7 +55,7 @@ class NoaPage extends ConsumerWidget {
               Container(
                 margin: const EdgeInsets.only(top: 10, left: 65, right: 42),
                 child: Text(
-                  ref.watch(messages).messages[index].message,
+                  ref.watch(app.model).noaMessages[index].message,
                   style: style,
                 ),
               ),

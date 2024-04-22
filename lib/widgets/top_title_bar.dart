@@ -8,6 +8,7 @@ AppBar topTitleBar(
     toolbarHeight: 84,
     automaticallyImplyLeading: false,
     backgroundColor: darkMode ? colorDark : colorWhite,
+    scrolledUnderElevation: 0,
     title: Text(
       title,
       style: darkMode ? textStyleWhiteTitle : textStyleDarkTitle,

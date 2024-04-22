@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:logging/logging.dart';
 
-final _log = Logger("Brilliant Bluetooth");
+final _log = Logger("Bluetooth");
 
 enum BrilliantDeviceName { frame, frameUpdate, monocle, monocleUpdate }
 
@@ -57,7 +57,7 @@ class BrilliantDevice {
   });
 
   void connect(StreamController<BrilliantDevice> listener) async {
-    _log.info("brilliantDevice.connect() connecting");
+    _log.info("Connecting");
     try {
       await device.connect(
         autoConnect: true,
@@ -65,7 +65,7 @@ class BrilliantDevice {
         mtu: null,
       );
     } catch (error) {
-      _log.warning("brilliantDevice.connect() failed to connect");
+      _log.warning("Failed to connect");
       state = BrilliantConnectionState.invalid;
       listener.sink.add(this);
     }
@@ -74,20 +74,20 @@ class BrilliantDevice {
       switch (connectionState) {
         case BluetoothConnectionState.connected:
           try {
-            _log.info("brilliantDevice.connect() connected");
+            _log.info("Connected");
             await _enableServices();
-            _log.info("brilliantDevice.connect() services enabled");
+            _log.info("Services enabled");
             state = BrilliantConnectionState.connected;
             maxStringLength = device.mtuNow - 3;
             maxDataLength = device.mtuNow - 4;
           } catch (error) {
             await device.disconnect();
-            _log.warning("brilliantDevice.connect() failed to enable services");
+            _log.warning("Failed to enable services");
             state = BrilliantConnectionState.invalid;
           }
           break;
         case BluetoothConnectionState.disconnected:
-          _log.info("brilliantDevice.connect() disconnected");
+          _log.info("Disconnected");
           // TODO differentiate as invalid when "Device has disconnected from us" error occurs
           state = BrilliantConnectionState.disconnected;
           break;
@@ -100,12 +100,12 @@ class BrilliantDevice {
   }
 
   Future<void> disconnect() async {
-    _log.info("brilliantDevice.disconnect() disconnecting");
+    _log.info("Disconnecting");
     await device.disconnect();
   }
 
   Future<void> sendBreakSignal() async {
-    _log.info("brilliantDevice.sendBreakSignal()");
+    _log.info("Sending break signal");
     await sendString("\x03", awaitResponse: false);
     Completer completer = Completer();
     Timer(const Duration(milliseconds: 100), () => completer.complete());
@@ -113,7 +113,7 @@ class BrilliantDevice {
   }
 
   Future<void> sendResetSignal() async {
-    _log.info("brilliantDevice.sendResetSignal()");
+    _log.info("Sending reset signal");
     await sendString("\x04", awaitResponse: false);
     Completer completer = Completer();
     Timer(const Duration(milliseconds: 100), () => completer.complete());
@@ -121,16 +121,16 @@ class BrilliantDevice {
   }
 
   Future<String?> sendString(String string, {bool awaitResponse = true}) async {
-    _log.info("brilliantDevice.sendString()");
+    _log.info("Sending string");
     Completer<String?> completer = Completer();
 
     if (state != BrilliantConnectionState.connected) {
-      _log.warning("brilliantDevice.sendString() device not connected");
+      _log.warning("Device not connected");
       return Future.error("Device not connected");
     }
 
     if (string.length > maxStringLength!) {
-      _log.warning("brilliantDevice.sendString() payload exceeds mtu");
+      _log.warning("Payload exceeds mtu");
       return Future.error("Payload exceeds allowed length of $maxStringLength");
     }
 
@@ -145,11 +145,11 @@ class BrilliantDevice {
 
     subscription = _rxChannel.onValueReceived
         .timeout(const Duration(seconds: 3), onTimeout: (_) {
-      _log.warning("brilliantDevice.writeString() device didn't respond");
+      _log.warning("Device didn't respond");
       subscription.cancel();
       completer.completeError("Device didn't respond");
     }).listen((value) {
-      _log.info("brilliantDevice.writeString() got response");
+      _log.info("Got response");
       subscription.cancel();
       completer.complete(utf8.decode(value));
     });
@@ -160,15 +160,15 @@ class BrilliantDevice {
   }
 
   Future<void> sendData(List<int> data) async {
-    _log.info("brilliantDevice.sendData()");
+    _log.info("Sending data");
 
     if (state != BrilliantConnectionState.connected) {
-      _log.warning("brilliantDevice.sendData() device not connected");
+      _log.warning("Device not connected");
       return Future.error("Device not connected");
     }
 
     if (data.length > maxDataLength!) {
-      _log.warning("brilliantDevice.sendData() payload exceeds mtu");
+      _log.warning("Payload exceeds mtu");
       return Future.error("Payload exceeds allowed length of $maxDataLength");
     }
 
@@ -179,7 +179,7 @@ class BrilliantDevice {
   }
 
   Future<void> uploadScript(String fileName, String filePath) async {
-    _log.info("brilliantDevice.uploadScript('$fileName')");
+    _log.info("Uploading $fileName");
 
     String file = await rootBundle.loadString(filePath);
 
@@ -239,29 +239,25 @@ class BrilliantDevice {
         // If Frame
         if (service.serviceUuid ==
             Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
-          _log.fine("brilliantDevice.connect() found Frame service");
+          _log.fine("Found Frame service");
           for (var characteristic in service.characteristics) {
             if (characteristic.characteristicUuid ==
                 Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
-              _log.fine(
-                  "brilliantDevice.connect() found Frame TX characteristic");
+              _log.fine("Found Frame TX characteristic");
               _txChannel = characteristic;
             }
             if (characteristic.characteristicUuid ==
                 Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
-              _log.fine(
-                  "brilliantDevice.connect() found Frame RX characteristic");
+              _log.fine("Found Frame RX characteristic");
               _rxChannel = characteristic;
 
               StreamSubscription subscription =
                   _rxChannel.onValueReceived.listen((data) {
                 if (data[0] == 0x01) {
-                  _log.finer(
-                      "brilliantDevice received data: ${data.sublist(1)}");
+                  _log.finer("Received data: ${data.sublist(1)}");
                   dataRxListener?.add(data.sublist(1));
                 } else {
-                  _log.finer(
-                      "brilliantDevice received string: ${utf8.decode(data)}");
+                  _log.finer("Received string: ${utf8.decode(data)}");
                   stringRxListener?.add(utf8.decode(data));
                 }
               });
@@ -269,14 +265,14 @@ class BrilliantDevice {
               device.cancelWhenDisconnected(subscription);
 
               await characteristic.setNotifyValue(true);
-              _log.fine("brilliantDevice.connect() enabled RX notification");
+              _log.fine("Enabled RX notification");
             }
           }
         }
         // TODO If DFU
       }
     } catch (error) {
-      _log.warning("brilliantDevice.connect() $error");
+      _log.warning("$error");
       return Future.error(error);
     }
   }
@@ -290,11 +286,11 @@ class BrilliantBluetooth {
 
   static void scan(StreamController<BrilliantDevice> listener) async {
     if (FlutterBluePlus.isScanningNow) {
-      _log.info("BrilliantDevice.scan() already scanning");
+      _log.info("Already scanning");
       return;
     }
 
-    _log.info("BrilliantDevice.scan() scanning");
+    _log.info("Scanning");
     late ScanResult nearestDevice;
 
     StreamSubscription scan = FlutterBluePlus.onScanResults.listen((results) {
@@ -311,7 +307,7 @@ class BrilliantBluetooth {
       }
 
       _log.fine(
-          "BrilliantDevice.scan() found ${nearestDevice.device.advName} - uuid: ${nearestDevice.device.remoteId.toString()} rssi: ${nearestDevice.rssi}");
+          "Found ${nearestDevice.device.advName} - uuid: ${nearestDevice.device.remoteId.toString()} rssi: ${nearestDevice.rssi}");
 
       listener.sink.add(
         BrilliantDevice(
@@ -330,7 +326,7 @@ class BrilliantBluetooth {
   }
 
   static void stopScan() async {
-    _log.info("BrilliantDevice.stopScan() stopping scan");
+    _log.info("Stopping scan");
     await FlutterBluePlus.stopScan();
   }
 
@@ -338,12 +334,12 @@ class BrilliantBluetooth {
     String deviceUuid,
     StreamController<BrilliantDevice> listener,
   ) async {
-    _log.info("BrilliantDevice.reconnect() will reconnect to $deviceUuid");
+    _log.info("Will reconnect to: $deviceUuid");
 
     StreamSubscription scan = FlutterBluePlus.scanResults.listen((results) {
       for (int i = 0; i < results.length; i++) {
         if (results[i].device.remoteId.toString() == deviceUuid) {
-          _log.info("BrilliantDevice.reconnect() found $deviceUuid");
+          _log.info("Found re-connectable device: $deviceUuid");
           BrilliantDevice(
             name: _deviceNameFromAdvName(results[i].device.advName),
             state: BrilliantConnectionState.scanned,
