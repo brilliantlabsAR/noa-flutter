@@ -59,6 +59,12 @@ class NoaPage extends ConsumerWidget {
                   style: style,
                 ),
               ),
+              if (ref.watch(app.model).noaMessages[index].image != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 10, left: 65, right: 42),
+                  child: Image.memory(
+                      ref.watch(app.model).noaMessages[index].image!),
+                ),
             ],
           );
         },

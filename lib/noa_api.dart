@@ -67,13 +67,13 @@ class NoaMessage {
   String message;
   NoaRole from;
   DateTime time;
-  // TODO add image field
+  Uint8List? image;
 
   NoaMessage({
     required this.message,
     required this.from,
     required this.time,
-    // TODO add image field
+    this.image,
   });
 }
 
@@ -199,13 +199,13 @@ class NoaApi {
       request.files.add(http.MultipartFile.fromBytes(
         'audio',
         bytesToWav(audio, 8, 8000),
-        filename: 'test.wav',
+        filename: 'audio.wav',
       ));
 
       request.files.add(http.MultipartFile.fromBytes(
         'image',
         image,
-        filename: 'test.jpg',
+        filename: 'image.jpg',
       ));
 
       request.fields['messages'] = ''; // TODO system message and history
@@ -223,7 +223,7 @@ class NoaApi {
           message: body['user_prompt'],
           from: NoaRole.user,
           time: DateTime.now(),
-          // TODO append debug image
+          image: image,
         ));
 
         responseListener.add(NoaMessage(
