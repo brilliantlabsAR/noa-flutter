@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:noa/util/bytes_to_wav.dart';
 import 'package:noa/util/check_internet_connection.dart';
+import 'package:image/image.dart';
 
 final _log = Logger("Noa API");
 
@@ -201,6 +202,8 @@ class NoaApi {
         bytesToWav(audio, 8, 8000),
         filename: 'audio.wav',
       ));
+
+      image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
 
       request.files.add(http.MultipartFile.fromBytes(
         'image',

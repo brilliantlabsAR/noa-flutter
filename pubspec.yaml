@@ -17,6 +17,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   flutter_riverpod: ^2.5.1
   logging: ^1.2.0
+  image: ^4.1.7
 
 dev_dependencies:
   flutter_test:
