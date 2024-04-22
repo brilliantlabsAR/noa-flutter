@@ -322,7 +322,7 @@ class BrilliantBluetooth {
 
     FlutterBluePlus.cancelWhenScanComplete(scan);
 
-    await _startScan(true);
+    await _startScan();
   }
 
   static void stopScan() async {
@@ -353,17 +353,17 @@ class BrilliantBluetooth {
 
     FlutterBluePlus.cancelWhenScanComplete(scan);
 
-    await _startScan(false);
+    await _startScan();
   }
 
-  static Future<void> _startScan(bool continuousUpdates) async {
+  static Future<void> _startScan() async {
     await FlutterBluePlus.startScan(
       withServices: [
         Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
         Guid('fe59'),
       ],
-      continuousUpdates: continuousUpdates,
-      removeIfGone: continuousUpdates ? const Duration(seconds: 2) : null,
+      continuousUpdates: true,
+      removeIfGone: const Duration(seconds: 2),
     );
   }
 }

@@ -124,6 +124,7 @@ class AppLogicModel extends ChangeNotifier {
         message: message.message,
         from: message.from,
         time: message.time,
+        image: message.image,
       ));
       if (message.from == NoaRole.noa) {
         triggerEvent(Event.noaResponse);

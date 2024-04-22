@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:noa/util/bytes_to_wav.dart';
 import 'package:noa/util/check_internet_connection.dart';
+import 'package:image/image.dart';
 
 final _log = Logger("Noa API");
 
@@ -67,13 +68,13 @@ class NoaMessage {
   String message;
   NoaRole from;
   DateTime time;
-  // TODO add image field
+  Uint8List? image;
 
   NoaMessage({
     required this.message,
     required this.from,
     required this.time,
-    // TODO add image field
+    this.image,
   });
 }
 
@@ -199,13 +200,15 @@ class NoaApi {
       request.files.add(http.MultipartFile.fromBytes(
         'audio',
         bytesToWav(audio, 8, 8000),
-        filename: 'test.wav',
+        filename: 'audio.wav',
       ));
+
+      image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
 
       request.files.add(http.MultipartFile.fromBytes(
         'image',
         image,
-        filename: 'test.jpg',
+        filename: 'image.jpg',
       ));
 
       request.fields['messages'] = ''; // TODO system message and history
@@ -223,7 +226,7 @@ class NoaApi {
           message: body['user_prompt'],
           from: NoaRole.user,
           time: DateTime.now(),
-          // TODO append debug image
+          image: image,
         ));
 
         responseListener.add(NoaMessage(
