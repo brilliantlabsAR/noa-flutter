@@ -76,6 +76,13 @@ class NoaMessage {
     required this.time,
     this.image,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      "role": from == NoaRole.noa ? "assistant" : "user",
+      "content": message,
+    };
+  }
 }
 
 // All API endpoint features
@@ -211,7 +218,7 @@ class NoaApi {
         filename: 'image.jpg',
       ));
 
-      request.fields['messages'] = ''; // TODO system message and history
+      request.fields['messages'] = jsonEncode(noaHistory);
       request.fields['location'] = 'Stockholm Sweden';
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = '1.0';
