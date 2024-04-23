@@ -215,7 +215,7 @@ class NoaApi {
       request.fields['location'] = 'Stockholm Sweden';
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = '1.0';
-      request.fields['experimental[vision]'] = 'claude-3-haiku-20240307';
+      request.fields['experimental'] = '{"vision":"claude-3-haiku-20240307"}';
 
       var streamedResponse = await request.send();
 
