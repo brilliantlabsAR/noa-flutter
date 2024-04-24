@@ -4,10 +4,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/util/bytes_to_wav.dart';
 import 'package:noa/util/check_internet_connection.dart';
-import 'package:image/image.dart';
+import 'package:noa/util/location.dart';
 
 final _log = Logger("Noa API");
 
@@ -192,8 +193,6 @@ class NoaApi {
     StreamController<NoaMessage> responseListener,
     StreamController<NoaUser> userInfoListener,
   ) async {
-    _log.info(
-        "Sending request: audio[${audio.length}], image[${image.length}]");
     try {
       await checkInternetConnection(); // TODO do we need this?
 
@@ -219,10 +218,13 @@ class NoaApi {
       ));
 
       request.fields['messages'] = jsonEncode(noaHistory);
-      request.fields['location'] = 'Stockholm Sweden';
+      request.fields['location'] = await Location.getAddress();
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = '1.0';
       request.fields['experimental'] = '{"vision":"claude-3-haiku-20240307"}';
+
+      _log.info(
+          "Sending request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
 
       var streamedResponse = await request.send();
 
@@ -256,7 +258,7 @@ class NoaApi {
         ));
 
         _log.info(
-            "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\" ");
+            "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
         _log.info(
             "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
       });

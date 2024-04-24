@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
+import 'package:noa/util/location.dart';
 
 void main() async {
   await dotenv.load(); // Load environment variables
@@ -17,6 +18,7 @@ void main() async {
   });
 
   BrilliantBluetooth.init();
+  await Location.requestPermission();
   runApp(const ProviderScope(child: MainApp()));
 }
 
