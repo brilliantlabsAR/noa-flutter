@@ -38,41 +38,39 @@ class Location {
       _log.info(
           "Got co-ordinates: Latitude: ${position.latitude}, longitude: ${position.longitude}, accuracy: ${position.accuracy}m");
 
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      Placemark placemark = (await placemarkFromCoordinates(
+              position.latitude, position.longitude))
+          .first;
 
       String returnString = "";
 
-      if (placemarks[0].name != null) {
-        returnString += placemarks[0].name!;
+      if (placemark.name != null) {
+        returnString += placemark.name!;
       }
 
-      if (placemarks[0].street != null &&
-          placemarks[0].street != placemarks[0].name) {
+      if (placemark.street != null && placemark.street != placemark.name) {
         returnString = appendComma(returnString);
-        returnString += placemarks[0].street!;
+        returnString += placemark.street!;
       }
 
-      if (placemarks[0].subLocality != null) {
+      if (placemark.subLocality != null) {
         returnString = appendComma(returnString);
-        returnString += placemarks[0].subLocality!;
+        returnString += placemark.subLocality!;
       }
 
-      if (placemarks[0].locality != null) {
+      if (placemark.locality != null) {
         returnString = appendComma(returnString);
-        returnString += placemarks[0].locality!;
+        returnString += placemark.locality!;
       }
 
-      if (placemarks[0].postalCode != null) {
+      if (placemark.postalCode != null) {
         returnString = appendComma(returnString);
-        returnString += placemarks[0].postalCode!;
+        returnString += placemark.postalCode!;
       }
 
-      if (placemarks[0].country != null) {
+      if (placemark.country != null) {
         returnString = appendComma(returnString);
-        returnString += placemarks[0].country!;
+        returnString += placemark.country!;
       }
 
       return returnString;
