@@ -72,19 +72,25 @@ class LoginPage extends ConsumerWidget {
     }
   }
   Future<void> _requestPermissions() async {
-    // Permissions to request
-    List<Permission> permissions = [
-      Permission.location,
-      Permission.bluetooth,
-      Permission.bluetoothConnect,
-      Permission.bluetoothConnect,
-      Permission.bluetoothScan,
-      Permission.storage,
-      Permission.mediaLibrary,
-    ];
 
-    // Request permissions
-    await permissions.request();
+    try {
+      // Permissions to request
+      List<Permission> permissions = [
+        Permission.location,
+        Permission.bluetooth,
+        Permission.bluetoothConnect,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+        Permission.storage,
+        Permission.mediaLibrary,
+      ];
+
+      // Request permissions
+      await permissions.request();
+    }
+    catch(ex){
+      print(ex.toString());
+    }
   }
 
   @override

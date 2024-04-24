@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
+import 'package:noa/util/alert_dialog.dart';
 import 'package:noa/util/switch_page.dart';
 
 class PairingPage extends ConsumerWidget {
   const PairingPage({super.key});
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,7 +19,35 @@ class PairingPage extends ConsumerWidget {
           ref.watch(app.model).state.current == app.State.disconnected) {
         switchPage(context, const NoaPage());
       }
+
     });
+    final gpsStatus = ref.watch(app.model).gpsStatusController.stream;
+    final bluetoothStatus = ref.watch(app.model).bluetoothController.stream;
+
+    // if (!gpsStatus.h || !bluetoothStatus) {
+    //   WidgetsBinding.instance?.addPostFrameCallback((_) {
+    //     showDialog(
+    //       context: context,
+    //       builder: (BuildContext context) {
+    //         return AlertDialog(
+    //           title: Text('GPS or Bluetooth Disabled'),
+    //           content: Text('Please enable GPS and Bluetooth to use this app.'),
+    //           actions: <Widget>[
+    //             TextButton(
+    //               onPressed: () {
+    //                 Navigator.of(context).pop();
+    //               },
+    //               child: Text('OK'),
+    //             ),
+    //           ],
+    //         );
+    //       },
+    //     );
+    //   });
+    // }
+
+
+
 
     String pairingBoxText = "";
     String pairingBoxButtonText = "";
@@ -79,7 +109,10 @@ class PairingPage extends ConsumerWidget {
         backgroundColor: colorDark,
         title: Image.asset('assets/images/brilliant_logo.png'),
       ),
-      body: Column(
+      body:
+
+
+      Column(
         children: [
           const Expanded(
             child: Center(
@@ -150,6 +183,50 @@ class PairingPage extends ConsumerWidget {
               ),
             ),
           ),
+
+          StreamBuilder<bool>(
+            stream: ref.watch(app.model).bluetoothController.stream,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+
+                bool status = snapshot.data ?? false;
+                if(!status)
+                {
+
+
+
+                  WidgetsBinding.instance?.addPostFrameCallback((_) {
+                    alertDialog(
+                      context,
+                      "Bluetooth is disabled",
+                      "Please turn on Bluetooth",
+                    );});
+                }
+                return SizedBox() ;
+              } else {
+                return SizedBox(); // Return an empty SizedBox while waiting for the GPS or Bluetooth status to be enabled
+              }
+            },),
+          StreamBuilder<bool>(
+            stream: ref.watch(app.model).gpsStatusController.stream,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+
+                bool status = snapshot.data ?? false;
+               if(!status)
+                 {
+                 WidgetsBinding.instance?.addPostFrameCallback((_) {
+                   alertDialog(
+                     context,
+                     "Gps is disabled",
+                     "Please turn on Gps",
+                   );});
+                 }
+                return SizedBox() ;
+              } else {
+                return SizedBox(); // Return an empty SizedBox while waiting for the GPS or Bluetooth status to be enabled
+              }
+            },),
         ],
       ),
     );

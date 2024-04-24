@@ -31,6 +31,7 @@ class SplashPage extends ConsumerWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(app.model).triggerEvent(app.Event.init);
       Timer(const Duration(milliseconds: 1500), () {
+
         if (ref.watch(app.model).pairedDevice == null) {
           switchPage(context, const LoginPage());
         } else {

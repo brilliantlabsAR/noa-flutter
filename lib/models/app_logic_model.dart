@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/api.dart';
 import 'package:noa/bluetooth.dart';
@@ -44,6 +46,7 @@ enum Event {
   deviceStringResponse,
   deviceDataResponse,
   noaResponse,
+
 }
 
 class AppLogicModel extends ChangeNotifier {
@@ -71,7 +74,37 @@ class AppLogicModel extends ChangeNotifier {
   // Noa steam listener
   final _noaStreamController = StreamController<NoaMessage>();
 
+  StreamController<bool> gpsStatusController = StreamController<bool>();
+  StreamController<bool> bluetoothController = StreamController<bool>();
+  bool ispopUpShowing = false;
+  void _listenToGPSStatusChanges() async {
+    gpsStatusController.add(await Geolocator.isLocationServiceEnabled());
+
+
+    var subscription = FlutterBluePlus.adapterState.listen((BluetoothAdapterState state) {
+      print(state);
+      bluetoothController.add(state == BluetoothAdapterState.on);
+    });
+
+    try {
+      Geolocator.getPositionStream().listen((position) {
+        // Do something when the position changes
+      });
+
+      StreamSubscription<ServiceStatus> serviceStatusStream = Geolocator
+          .getServiceStatusStream().listen(
+              (ServiceStatus status) {
+            gpsStatusController.add(status == ServiceStatus.enabled);
+          });
+    }
+    catch(ex){
+      print(ex);
+    }
+  }
+
+
   AppLogicModel() {
+    _listenToGPSStatusChanges();
     // Monitors Bluetooth scan events
     _scanStreamController.stream
         .where((device) => device.rssi! > -55)

@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:geolocator/geolocator.dart';
 
 class NoaMessage {
   String message;
@@ -12,8 +16,39 @@ class NoaMessage {
   });
 }
 
+
 // TODO remove this once no longer needed
 class NoaMessageModel extends ChangeNotifier {
+
+  StreamController<bool> gpsStatusController = StreamController<bool>();
+  StreamController<bool> bluetoothController = StreamController<bool>();
+  bool ispopUpShowing = false;
+  void _listenToGPSStatusChanges() async {
+    gpsStatusController.add(await Geolocator.isLocationServiceEnabled());
+
+
+    var subscription = FlutterBluePlus.adapterState.listen((BluetoothAdapterState state) {
+      print(state);
+      bluetoothController.add(state == BluetoothAdapterState.on);
+    });
+
+    try {
+      Geolocator.getPositionStream().listen((position) {
+        // Do something when the position changes
+      });
+
+      StreamSubscription<ServiceStatus> serviceStatusStream = Geolocator
+          .getServiceStatusStream().listen(
+              (ServiceStatus status) {
+            gpsStatusController.add(status == ServiceStatus.enabled);
+          });
+    }
+    catch(ex){
+      print(ex);
+    }
+  }
+
+
   List<NoaMessage> messages = [];
 
   NoaMessageModel() {
