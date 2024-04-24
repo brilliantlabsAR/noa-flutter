@@ -351,6 +351,7 @@ class AppLogicModel extends ChangeNotifier {
               await _connectedDevice!
                   .sendData(data)
                   .timeout(const Duration(seconds: 1));
+              await Future.delayed(const Duration(milliseconds: 300));
             } catch (error) {
               _log.warning("Error responding to device: $error");
             }

@@ -7,6 +7,8 @@ import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/util/location.dart';
 
+final globalPageStorageBucket = PageStorageBucket();
+
 void main() async {
   await dotenv.load(); // Load environment variables
 
