@@ -8,6 +8,8 @@ import 'package:noa/pages/splash.dart';
 import 'package:noa/util/location.dart';
 
 final globalPageStorageBucket = PageStorageBucket();
+String globalAppLog = "";
+String globalBluetoothLog = "";
 
 void main() async {
   await dotenv.load(); // Load environment variables
@@ -15,12 +17,22 @@ void main() async {
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((record) {
     if (kDebugMode) {
-      print('${record.level.name} - ${record.loggerName}: ${record.message}');
+      print('${record.level.name} - ${record.message}');
     }
+
+    if (record.loggerName == "Bluetooth") {
+      globalBluetoothLog +=
+          "${record.level.name} - ${record.loggerName}: ${record.message}\n";
+    } else {
+      globalAppLog +=
+          "${record.level.name} - ${record.loggerName}: ${record.message}\n";
+    }
+
+    // TODO limit the size of this string
   });
 
-  BrilliantBluetooth.init();
   await Location.requestPermission();
+  BrilliantBluetooth.init();
   runApp(const ProviderScope(child: MainApp()));
 }
 

@@ -65,9 +65,7 @@ Widget _slider(String title, int divisions, String token) {
             divisions: divisions,
             min: 0,
             max: divisions.toDouble(),
-            onChanged: (double newValue) {
-              print(newValue);
-            },
+            onChanged: (double newValue) {},
           ),
         ),
       ],
