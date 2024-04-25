@@ -18,6 +18,12 @@ dependencies:
   flutter_riverpod: ^2.5.1
   logging: ^1.2.0
   image: ^4.1.7
+  path_provider:
+  permission_handler:
+  geolocator:
+  geocoding: ^3.0.0
+  sign_in_with_apple: ^6.1.0
+  url_launcher: ^6.2.6
 
 dev_dependencies:
   flutter_test:
