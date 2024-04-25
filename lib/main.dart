@@ -1,27 +1,29 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
+import 'package:noa/util/app_log.dart';
 import 'package:noa/util/location.dart';
 
 final globalPageStorageBucket = PageStorageBucket();
 
 void main() async {
-  await dotenv.load(); // Load environment variables
+  // Load environment variables
+  await dotenv.load();
 
-  Logger.root.level = Level.INFO;
-  Logger.root.onRecord.listen((record) {
-    if (kDebugMode) {
-      print('${record.level.name} - ${record.loggerName}: ${record.message}');
-    }
-  });
+  // Start logging
+  final container = ProviderContainer();
+  container.read(appLog);
 
-  BrilliantBluetooth.init();
+  // Request user permissions
   await Location.requestPermission();
-  runApp(const ProviderScope(child: MainApp()));
+  BrilliantBluetooth.requestPermission();
+
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const MainApp(),
+  ));
 }
 
 class MainApp extends StatelessWidget {
