@@ -21,6 +21,8 @@ dependencies:
   permission_handler:
   geolocator:
   geocoding: ^3.0.0
+  sign_in_with_apple: ^6.1.0
+  url_launcher: ^6.2.6
 
 dev_dependencies:
   flutter_test:

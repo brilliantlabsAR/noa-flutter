@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
@@ -10,6 +11,8 @@ import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/sign_in.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../locationService.dart';
 import '../util/location_state.dart';
@@ -137,18 +140,118 @@ class LoginPage extends ConsumerWidget {
                 'assets/images/sign_in_with_discord_button.png',
                 SignIn().withDiscord,
               ),
+              SignInWithAppleButton(
+                onPressed: () async {
+                  final credential = await SignInWithApple.getAppleIDCredential(
+                    scopes: [
+                      AppleIDAuthorizationScopes.email,
+                      AppleIDAuthorizationScopes.fullName,
+                    ],
+                    webAuthenticationOptions: WebAuthenticationOptions(
+                      // TODO: Set the `clientId` and `redirectUri` arguments to the values you entered in the Apple Developer portal during the setup
+                      clientId:
+                      'xyz.brilliant.noaflutter',
+                      redirectUri:
+                      // For web your redirect URI needs to be the host of the "current page",
+                      // while for Android you will be using the API server that redirects back into your app via a deep link
+                      // NOTE(tp): For package local development use (as described in `Development.md`)
+                      // Uri.parse('https://siwa-flutter-plugin.dev/')
+                     Uri.parse(
+                        'https://flutter-sign-in-with-apple-example.glitch.me/callbacks/sign_in_with_apple',
+                      ),
+                    ),
+                    // TODO: Remove these if you have no need for them
+                    // nonce: 'example-nonce',
+                    // state: 'example-state',
+                  );
+
+                  // ignore: avoid_print
+                  print(credential);
+
+                  // This is the endpoint that will convert an authorization code obtained
+                  // via Sign in with Apple into a session in your system
+                  // final signInWithAppleEndpoint = Uri(
+                  //   scheme: 'https',
+                  //   host: 'flutter-sign-in-with-apple-example.glitch.me',
+                  //   path: '/sign_in_with_apple',
+                  //   queryParameters: <String, String>{
+                  //     'code': credential.authorizationCode,
+                  //     if (credential.givenName != null)
+                  //       'firstName': credential.givenName!,
+                  //     if (credential.familyName != null)
+                  //       'lastName': credential.familyName!,
+                  //     'useBundleId':
+                  //     !kIsWeb && (Platform.isIOS || Platform.isMacOS)
+                  //         ? 'true'
+                  //         : 'false',
+                  //     if (credential.state != null) 'state': credential.state!,
+                  //   },
+                  // );
+                  //
+                  // final session = await http.Client().post(
+                  //   signInWithAppleEndpoint,
+                  // );
+
+                  // If we got this far, a session based on the Apple ID credential has been created in your system,
+                  // and you can now set this as the app's session
+                  // ignore: avoid_print
+                  //print(session);
+                },
+              )
             ],
           )
         ],
       ),
-      bottomNavigationBar: const Padding(
-        padding: EdgeInsets.only(bottom: 48, top: 48),
-        child: Text(
-            // TODO add links here
-            "Privacy Policy and Terms and Conditions of Noa",
-            textAlign: TextAlign.center,
-            style: textStyleWhite),
+      bottomNavigationBar:  Padding(
+        padding: const EdgeInsets.only(bottom: 48, top: 48),
+        child: PrivacyPolicyAndTerms(),
       ),
     );
+  }
+
+
+
+}
+class PrivacyPolicyAndTerms extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: TextStyle(color: Colors.black),
+        children: <TextSpan>[
+          TextSpan(text: ''),
+          _buildClickableTextSpan(
+            text: 'Privacy Policy',
+            url: 'https://brilliant.xyz/pages/privacy-policy',
+          ),
+          TextSpan(text: ' and ',style: TextStyle(color: Colors.white)),
+          _buildClickableTextSpan(
+            text: 'Terms and Conditions',
+            url: 'https://brilliant.xyz/pages/terms-conditions',
+          ),
+          TextSpan(text: ' of Noa.',style: TextStyle(color: Colors.white)),
+        ],
+      ),
+    );
+  }
+
+  TextSpan _buildClickableTextSpan({required String text, required String url}) {
+    return TextSpan(
+      text: text,
+      style: TextStyle(color: Colors.pink),
+      recognizer: TapGestureRecognizer()
+        ..onTap = () {
+          launchURL(url);
+        },
+    );
+  }
+
+  void launchURL(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
   }
 }
