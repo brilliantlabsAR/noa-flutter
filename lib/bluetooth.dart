@@ -279,7 +279,7 @@ class BrilliantDevice {
 }
 
 class BrilliantBluetooth {
-  static void init() async {
+  static void requestPermission() async {
     await FlutterBluePlus.startScan();
     await FlutterBluePlus.stopScan();
   }
