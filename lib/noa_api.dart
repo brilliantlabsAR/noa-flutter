@@ -189,6 +189,8 @@ class NoaApi {
     String userAuthToken,
     Uint8List audio,
     Uint8List image,
+    String systemRole,
+    double temperature,
     List<NoaMessage> noaHistory,
     StreamController<NoaMessage> responseListener,
     StreamController<NoaUser> userInfoListener,
@@ -217,10 +219,11 @@ class NoaApi {
         filename: 'image.jpg',
       ));
 
+      request.fields['noa_system_prompt'] = systemRole;
       request.fields['messages'] = jsonEncode(noaHistory);
       request.fields['location'] = await Location.getAddress();
       request.fields['time'] = DateTime.now().toString();
-      request.fields['temperature'] = '1.0';
+      request.fields['temperature'] = temperature.toString();
       request.fields['experimental'] = '{"vision":"claude-3-haiku-20240307"}';
 
       _log.info(

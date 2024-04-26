@@ -49,12 +49,76 @@ enum Event {
   noaResponse,
 }
 
+enum TuneLength {
+  shortest('shortest'),
+  short('short'),
+  standard('standard'),
+  long('long'),
+  longest('longest');
+
+  const TuneLength(this.value);
+  final String value;
+}
+
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
   StateMachine state = StateMachine(State.waitForLogin);
   String? pairedDevice;
   NoaUser noaUser = NoaUser();
   final List<NoaMessage> noaMessages = List.empty(growable: true);
+
+  // User's tune preferences
+  String _tuneStyle = "";
+  String get tuneStyle => _tuneStyle;
+  set tuneStyle(String value) {
+    _tuneStyle = value;
+    () async {
+      final savedData = await SharedPreferences.getInstance();
+      savedData.setString("tuneStyle", _tuneStyle);
+    }();
+  }
+
+  String _tuneTone = "";
+  String get tuneTone => _tuneTone;
+  set tuneTone(String value) {
+    _tuneTone = value;
+    () async {
+      final savedData = await SharedPreferences.getInstance();
+      savedData.setString("tuneTone", _tuneTone);
+    }();
+  }
+
+  String _tuneFormat = "";
+  String get tuneFormat => _tuneFormat;
+  set tuneFormat(String value) {
+    _tuneFormat = value;
+    () async {
+      final savedData = await SharedPreferences.getInstance();
+      savedData.setString("tuneFormat", _tuneFormat);
+    }();
+  }
+
+  int _tuneTemperature = 50;
+  int get tuneTemperature => _tuneTemperature;
+  set tuneTemperature(int value) {
+    _tuneTemperature = value;
+    () async {
+      final savedData = await SharedPreferences.getInstance();
+      savedData.setInt("tuneTemperature", _tuneTemperature);
+    }();
+    notifyListeners();
+  }
+
+  TuneLength _tuneLength = TuneLength.standard;
+  TuneLength get tuneLength => _tuneLength;
+  set length(TuneLength value) {
+    _tuneLength = value;
+    () async {
+      final savedData = await SharedPreferences.getInstance();
+      savedData.setString("tuneLength", _tuneLength.name);
+    }();
+    notifyListeners();
+  }
 
   // Private state variables
   bool _eventBeingProcessed = false;
@@ -157,7 +221,14 @@ class AppLogicModel extends ChangeNotifier {
       switch (state.current) {
         case State.waitForLogin:
           state.onEntry(() async {
-            SharedPreferences savedData = await SharedPreferences.getInstance();
+            final savedData = await SharedPreferences.getInstance();
+            _tuneStyle = savedData.getString('tuneStyle') ?? "";
+            _tuneTone = savedData.getString('tuneTone') ?? "";
+            _tuneFormat = savedData.getString('tuneFormat') ?? "";
+            _tuneTemperature = savedData.getInt('tuneTemperature') ?? 50;
+            var len = savedData.getString('tuneLength') ?? 'standard';
+            _tuneLength = TuneLength.values
+                .firstWhere((e) => e.toString() == 'TuneLength.$len');
             _userAuthToken = savedData.getString('userAuthToken');
             if (_userAuthToken != null) {
               triggerEvent(Event.loggedIn);
@@ -170,7 +241,7 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.getPairedDevice:
           state.onEntry(() async {
-            SharedPreferences savedData = await SharedPreferences.getInstance();
+            final savedData = await SharedPreferences.getInstance();
             pairedDevice = savedData.getString('pairedDevice');
             triggerEvent(Event.done);
           });
@@ -324,10 +395,44 @@ class AppLogicModel extends ChangeNotifier {
               case 0x16:
                 _log.info(
                     "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
+                String tunePrompt = "";
+
+                if (_tuneStyle != "") {
+                  tunePrompt += " in the style of $_tuneStyle";
+                }
+
+                if (_tuneTone != "") {
+                  tunePrompt += " with a $_tuneTone tone";
+                }
+
+                if (_tuneFormat != "") {
+                  tunePrompt += " formatted as $_tuneFormat";
+                }
+
+                switch (_tuneLength) {
+                  case TuneLength.shortest:
+                    tunePrompt += ". Limit responses to 1 to 3 words";
+                    break;
+                  case TuneLength.short:
+                    tunePrompt += ". Limit responses to 1 sentence";
+                    break;
+                  case TuneLength.standard:
+                    tunePrompt += ". Limit responses to 1 to 2 sentences";
+                    break;
+                  case TuneLength.long:
+                    tunePrompt += ". Limit responses to 1 short paragraph";
+                    break;
+                  case TuneLength.longest:
+                    tunePrompt += ". Limit responses to 2 paragraphs";
+                    break;
+                }
+
                 NoaApi.getMessage(
                   _userAuthToken!,
                   Uint8List.fromList(_audioData),
                   Uint8List.fromList(_imageData),
+                  tunePrompt,
+                  _tuneTemperature / 50,
                   noaMessages,
                   _noaResponseStreamController,
                   _noaUserInfoStreamController,
