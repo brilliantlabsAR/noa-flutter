@@ -55,6 +55,13 @@ const TextStyle textStyleLight = TextStyle(
   fontWeight: FontWeight.w300,
 );
 
+const TextStyle textStylePink = TextStyle(
+  fontFamily: 'SF Pro Display',
+  color: colorPink,
+  fontSize: 14,
+  fontWeight: FontWeight.w300,
+);
+
 const TextStyle textStyleRed = TextStyle(
   fontFamily: 'SF Pro Display',
   color: colorRed,

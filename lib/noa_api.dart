@@ -98,12 +98,13 @@ class NoaApi {
         Uri.parse('https://api.brilliant.xyz/noa/user/signin'),
         body: {
           'id_token': id,
-          'social_type': provider.value,
+          'provider': provider.value,
           'app': 'flutter',
         },
       );
 
       if (response.statusCode != 200) {
+        _log.severe("Error signing in: ${response.body}");
         throw NoaApiServerError(response.statusCode);
       }
 
