@@ -78,7 +78,7 @@ class PairingPage extends ConsumerWidget {
         children: [
           const Expanded(
             child: Center(
-              child: Text("Setup you device", style: textStyleLightHeading),
+              child: Text("Setup your device", style: textStyleLightHeading),
             ),
           ),
           AspectRatio(

@@ -5,6 +5,7 @@ import 'package:noa/pages/splash.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:noa/widgets/top_title_bar.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Widget _accountInfoText(String title, String detail) {
   return Padding(
@@ -66,11 +67,19 @@ class AccountPage extends ConsumerWidget {
                       switchPage(context, const SplashPage());
                     }
                   }),
-                  _linkedFooterText("Privacy Policy", false, () {
-                    // TODO
+                  _linkedFooterText("Privacy Policy", false, () async {
+                    if (await canLaunchUrl(Uri.parse(
+                        "https://brilliant.xyz/pages/privacy-policy"))) {
+                      await launchUrl(Uri.parse(
+                          "https://brilliant.xyz/pages/privacy-policy"));
+                    }
                   }),
-                  _linkedFooterText("Terms & Conditions", false, () {
-                    // TODO
+                  _linkedFooterText("Terms & Conditions", false, () async {
+                    if (await canLaunchUrl(Uri.parse(
+                        "https://brilliant.xyz/pages/terms-conditions"))) {
+                      await launchUrl(Uri.parse(
+                          "https://brilliant.xyz/pages/terms-conditions"));
+                    }
                   }),
                   _linkedFooterText("Delete Account", true, () {
                     // TODO ask user to confirm
