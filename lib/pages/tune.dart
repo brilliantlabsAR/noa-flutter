@@ -24,7 +24,7 @@ Widget _textBox(WidgetRef ref, int index) {
       break;
   }
   return Padding(
-    padding: const EdgeInsets.only(bottom: 36),
+    padding: const EdgeInsets.only(bottom: 21),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -92,7 +92,7 @@ Widget _slider(WidgetRef ref, int index) {
       break;
   }
   return Padding(
-    padding: const EdgeInsets.only(bottom: 28),
+    padding: const EdgeInsets.only(bottom: 10),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

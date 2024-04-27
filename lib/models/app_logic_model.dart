@@ -141,6 +141,33 @@ class AppLogicModel extends ChangeNotifier {
   final _noaUserInfoStreamController = StreamController<NoaUser>();
 
   AppLogicModel() {
+    // Uncomment to create AppStore images
+    // noaMessages.add(NoaMessage(
+    //   message: "Recommend me some pizza places I near Union Square",
+    //   from: NoaRole.user,
+    //   time: DateTime.now().add(const Duration(seconds: 2)),
+    // ));
+
+    // noaMessages.add(NoaMessage(
+    //   message:
+    //       "You might want to check out Bravo Pizza, Union Square Pizza, or Joe's Pizza for some good pizza near Union Square.",
+    //   from: NoaRole.noa,
+    //   time: DateTime.now().add(const Duration(seconds: 3)),
+    // ));
+
+    // noaMessages.add(NoaMessage(
+    //   message: "Does Joe's have any good vegetarian options?",
+    //   from: NoaRole.user,
+    //   time: DateTime.now().add(const Duration(seconds: 4)),
+    // ));
+
+    // noaMessages.add(NoaMessage(
+    //   message:
+    //       "Joe's Pizza does offer vegetarian options, including a cheese-less veggie pie that's quite popular.",
+    //   from: NoaRole.noa,
+    //   time: DateTime.now().add(const Duration(seconds: 5)),
+    // ));
+
     // Monitors Bluetooth scan events
     _scanStreamController.stream
         .where((device) => device.rssi! > -55)
