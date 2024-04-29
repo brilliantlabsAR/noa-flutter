@@ -14,18 +14,15 @@
 		</dict>
 	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>This app always needs Bluetooth to function</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>This app needs Bluetooth Peripheral to function</string>
+	<string>Noa requires Bluetooth in order to communicate with your Frame device</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>This app always needs location and when in use to function</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>This app always needs location to function</string>
+	<string>Noa can give responses and recommendations based on your current location</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs location when in use to function</string>
+	<string>Noa can give responses and recommendations based on your current location</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>
+  		<string>location</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
