@@ -15,8 +15,6 @@
 	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Noa requires Bluetooth in order to communicate with your Frame device</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Noa can give responses and recommendations based on your current location</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Noa can give responses and recommendations based on your current location</string>
 	<key>UIBackgroundModes</key>

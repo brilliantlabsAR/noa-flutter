@@ -1,15 +1,19 @@
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart' as geocoding;
+import 'package:location/location.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger("Location");
 
-class Location {
+class LocationService {
   static Future<void> requestPermission() async {
-    if (await Geolocator.checkPermission() == LocationPermission.denied) {
+    Location location = Location();
+
+    if (await location.hasPermission() == PermissionStatus.denied) {
       _log.info("Requesting location permission from user");
-      await Geolocator.requestPermission();
+      await location.requestPermission();
     }
+
+    location.enableBackgroundMode(enable: true);
   }
 
   static Future<String> getAddress() async {
@@ -21,25 +25,27 @@ class Location {
     }
 
     try {
-      if (await Geolocator.isLocationServiceEnabled() == false) {
+      Location location = Location();
+
+      if (await location.serviceEnabled() == false) {
         _log.warning("Service is disabled in phone settings");
         return "";
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      PermissionStatus permission = await location.hasPermission();
+      if (permission == PermissionStatus.denied ||
+          permission == PermissionStatus.deniedForever) {
         _log.warning("User has denied location");
         return "";
       }
 
-      Position position = await Geolocator.getCurrentPosition();
+      LocationData position = await location.getLocation();
 
       _log.info(
           "Got co-ordinates: Latitude: ${position.latitude}, longitude: ${position.longitude}, accuracy: ${position.accuracy}m");
 
-      Placemark placemark = (await placemarkFromCoordinates(
-              position.latitude, position.longitude))
+      geocoding.Placemark placemark = (await geocoding.placemarkFromCoordinates(
+              position.latitude!, position.longitude!))
           .first;
 
       String returnString = "";

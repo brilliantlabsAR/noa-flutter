@@ -8,7 +8,7 @@ import 'package:image/image.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/util/bytes_to_wav.dart';
 import 'package:noa/util/check_internet_connection.dart';
-import 'package:noa/util/location.dart';
+import 'package:noa/util/location_service.dart';
 
 final _log = Logger("Noa API");
 
@@ -222,7 +222,7 @@ class NoaApi {
 
       request.fields['noa_system_prompt'] = systemRole;
       request.fields['messages'] = jsonEncode(noaHistory);
-      request.fields['location'] = await Location.getAddress();
+      request.fields['location'] = await LocationService.getAddress();
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = temperature.toString();
       request.fields['experimental'] = '{"vision":"claude-3-haiku-20240307"}';
