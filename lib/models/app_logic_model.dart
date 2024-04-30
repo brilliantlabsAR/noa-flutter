@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/noa_api.dart';
 import 'package:noa/bluetooth.dart';
+import 'package:noa/util/dfu.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,6 +48,7 @@ enum Event {
   deviceStringResponse,
   deviceDataResponse,
   noaResponse,
+  updateFirmware,
 }
 
 enum TuneLength {
@@ -126,6 +128,7 @@ class AppLogicModel extends ChangeNotifier {
   BrilliantDevice? _connectedDevice;
   String? _luaResponse;
   List<int>? _dataResponse;
+  String? _appFirmwareVersion;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
   String? _userAuthToken;
@@ -140,6 +143,9 @@ class AppLogicModel extends ChangeNotifier {
   final _noaResponseStreamController = StreamController<NoaMessage>();
   final _noaUserInfoStreamController = StreamController<NoaUser>();
 
+
+  // firmware update progress stream
+  StreamController<double> firmwareUpdateStreamController = StreamController<double>();
   AppLogicModel() {
     // Uncomment to create AppStore images
     // noaMessages.add(NoaMessage(
@@ -183,6 +189,11 @@ class AppLogicModel extends ChangeNotifier {
       _connectedDevice = device;
       switch (device.state) {
         case BrilliantConnectionState.connected:
+        if (_connectedDevice!.dfuDevice == true) {
+            _connectedDevice!.firmwareUpdateListener = firmwareUpdateStreamController;
+            triggerEvent(Event.updateFirmware);
+            break;
+          }
           _connectedDevice!.stringRxListener = _stringRxStreamController;
           _connectedDevice!.dataRxListener = _dataRxStreamController;
           triggerEvent(Event.deviceConnected);
@@ -303,6 +314,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.connect:
           state.onEntry(() async =>
               await _nearbyDevice!.connect(_connectionStreamController));
+          state.changeOn(Event.updateFirmware, State.updatingFirmware);
           state.changeOn(Event.deviceInvalid, State.requiresRepair);
           state.changeOn(Event.deviceConnected, State.sendBreak);
           break;
@@ -322,6 +334,7 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.checkVersion:
           state.onEntry(() async {
+            _appFirmwareVersion = await Firmware.currentVersion();
             _connectedDevice!.stringRxListener = _stringRxStreamController;
             _connectedDevice!.dataRxListener = _dataRxStreamController;
             try {
@@ -332,11 +345,17 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          if (_luaResponse == "v24.065.1346") {
+          _log.info("App logic: App Firmware version: $_appFirmwareVersion");
+          _log.info("App logic: Device version: $_luaResponse");
+          if (_luaResponse == _appFirmwareVersion) {
             state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
           } else {
-            // TODO go to State.updatingFirmware instead
-            state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
+            try {
+              _connectedDevice!.sendString("print(frame.update());", awaitResponse: false);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+            state.changeOn(Event.deviceDisconnected, State.updatingFirmware);
           }
           state.changeOn(Event.error, State.requiresRepair);
           break;
@@ -397,7 +416,15 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.updatingFirmware:
-          // TODO DFU process
+          state.onEntry(() async {
+            try {
+              _connectedDevice!.firmwareUpdateListener = firmwareUpdateStreamController;
+              await _connectedDevice!.updateFirmware();
+              triggerEvent(Event.done);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
           break;
 
         case State.requiresRepair:

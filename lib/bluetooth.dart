@@ -4,6 +4,10 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:logging/logging.dart';
+import 'dart:math';
+import 'dart:typed_data';
+import 'package:noa/util/dfu.dart';
+import 'package:archive/archive.dart';
 
 final _log = Logger("Bluetooth");
 
@@ -44,6 +48,12 @@ class BrilliantDevice {
 
   late BluetoothCharacteristic _txChannel;
   late BluetoothCharacteristic _rxChannel;
+  // for dfu
+  late BluetoothCharacteristic _dfuControlChannel;
+  late BluetoothCharacteristic _dfuPacketChannel;
+  late bool? dfuDevice;
+  late int _firmwareSize;
+  StreamController<double>? firmwareUpdateListener;
 
   BrilliantDevice({
     required this.name,
@@ -55,6 +65,8 @@ class BrilliantDevice {
     this.maxDataLength,
     this.stringRxListener,
     this.dataRxListener,
+    this.firmwareUpdateListener,
+    this.dfuDevice,
   });
 
   Future<void> connect(StreamController<BrilliantDevice> listener) async {
@@ -181,7 +193,138 @@ class BrilliantDevice {
 
     await _txChannel.write(finalData, withoutResponse: true);
   }
+Future<ByteData?> nordicSendControl(List<int> bytes) async {
+    _log.info("brilliantDevice._nordicSendControl()");
 
+    if (state != BrilliantConnectionState.connected) {
+      _log.warning("brilliantDevice._nordicSendControl() device not connected");
+      return Future.error("Device not connected");
+    }
+    var dfuCompleter = Completer<ByteData>();
+
+    late StreamSubscription nordicSubscription;
+    nordicSubscription = _dfuControlChannel.onValueReceived.listen((value) {
+      nordicSubscription.cancel();
+      _log.info("brilliantDevice._nordicSendControl() value: $value");
+      var byteValue = ByteData.view(Uint8List.fromList(value).buffer);
+      dfuCompleter.complete(byteValue);
+    });
+    await _dfuControlChannel.write(bytes, withoutResponse: false);
+    device.cancelWhenDisconnected(nordicSubscription);
+    return dfuCompleter.future;
+  }
+
+  Future<void> nordicSendData(List<int> bytes) async {
+    // _log.info("brilliantDevice._nordicSendData()");
+
+    if (state != BrilliantConnectionState.connected) {
+      _log.warning("brilliantDevice._nordicSendData() device not connected");
+      return Future.error("Device not connected");
+    }
+    await _dfuPacketChannel.write(bytes, withoutResponse: true);
+    // add small delay
+    await Future.delayed(const Duration(milliseconds: 10));
+  }
+
+  Future<void> updateFirmware({String filePath = ""}) async {
+    _log.info("brilliantDevice.updateFirmware()");
+
+    if (state != BrilliantConnectionState.connected) {
+      _log.warning("brilliantDevice.updateFirmware() device not connected");
+      return Future.error("Device not connected");
+    }
+    var firmware = await Firmware.getFirmware(zipPath: filePath);
+    if (firmware.binData.isEmpty || firmware.datData.isEmpty) {
+      return Future.error('Firmware file not found');
+    }
+    _firmwareSize = firmware.binData.length;
+    _log.info("brilliantDevice.updateFirmware() firmwareSize: $_firmwareSize");
+    // first transfer init packet
+    await transferFirmwareFile(firmware.datData, 'init');
+    // then transfer image packet
+    await transferFirmwareFile(firmware.binData, 'image');
+  }
+
+  Future<void> transferFirmwareFile(Uint8List data, String type) async {
+    ByteData? response;
+    switch (type) {
+      case 'init':
+        _log.info(
+            "brilliantDevice.transferFirmwareFile() Transferring init file");
+        response = await nordicSendControl([0x06, 0x01]);
+        break;
+      case 'image':
+        _log.info(
+            "brilliantDevice.transferFirmwareFile() Transferring image file");
+        response = await nordicSendControl([0x06, 0x02]);
+        break;
+      default:
+        return Future.error('Invalid file type');
+    }
+    final fileSize = data.length;
+    _log.info("brilliantDevice.transferFirmwareFile() fileSize: $fileSize");
+
+    final maxSize = response!.getUint32(3, Endian.little);
+    final offset = response.getUint32(7, Endian.little);
+    final crc = response.getUint32(11, Endian.little);
+    _log.info(
+        "brilliantDevice.transferFirmwareFile() maxSize: $maxSize, offset: $offset, crc: $crc");
+    final chunks = (fileSize / maxSize).ceil();
+    _log.info(
+        "brilliantDevice.transferFirmwareFile() Sending file as $chunks chunks");
+    var fileOffset = 0;
+    // in while loop, send chunks of data
+    while (fileOffset < fileSize) {
+      var chunkSize = min(maxSize, fileSize - fileOffset);
+      final chunkCrc = getCrc32(data.sublist(0, fileOffset + chunkSize));
+      _log.info(
+          "brilliantDevice.transferFirmwareFile() chunk $fileOffset, fileOffset: $fileOffset, chunkSize: $chunkSize, chunkCrc: $chunkCrc");
+      final chunkSizeAsBytes = [
+        chunkSize & 0xFF,
+        (chunkSize >> 8) & 0xFF,
+        (chunkSize >> 16) & 0xff,
+        (chunkSize >> 24) & 0xff
+      ];
+      if (type == 'init') {
+        await nordicSendControl([0x01, 0x01, ...chunkSizeAsBytes]);
+      }
+      if (type == 'image') {
+        await nordicSendControl([0x01, 0x02, ...chunkSizeAsBytes]);
+      }
+      var packetSize = maxDataLength ?? 150;
+      final packets = (chunkSize / packetSize).ceil();
+      for (var pkt = 0; pkt < packets; pkt++) {
+        var packetLength = packetSize;
+        if (pkt == packets - 1 && chunkSize % packetSize != 0) {
+          packetLength = chunkSize % packetSize;
+        }
+        final fileSlice = data.sublist(fileOffset, fileOffset + packetLength);
+        fileOffset += fileSlice.length;
+        await nordicSendData(fileSlice);
+        // _log.info(
+        //     "brilliantDevice.transferFirmwareFile() packet $pkt, packetLength: $packetLength");
+      }
+      response = await nordicSendControl([0x03]);
+      final returnedOffset = response!.getUint32(3, Endian.little);
+      final returnedCrc = response.getUint32(7, Endian.little);
+      _log.info(
+          "brilliantDevice.transferFirmwareFile() returnedOffset: $returnedOffset, returnedCrc: $returnedCrc, expectedCrc: $chunkCrc");
+      if (returnedCrc != chunkCrc) {
+        // repeat the chunk
+        fileOffset -= chunkSize;
+        _log.info('CRC mismatch after sending this chunk. Expected: $chunkCrc');
+        // return Future.error('CRC mismatch after sending this chunk');
+      } else {
+        if (type == 'image') {
+          firmwareUpdateListener
+              ?.add(((fileOffset / _firmwareSize) * 100).roundToDouble());
+        }
+        response = await nordicSendControl([0x04]);
+        // final status = response!.getUint32(3, Endian.little);
+        // _log.info("brilliantDevice.transferFirmwareFile() status: $status");
+      }
+    }
+  }
   Future<void> uploadScript(String fileName, String filePath) async {
     _log.info("Uploading $fileName");
 
@@ -273,7 +416,27 @@ class BrilliantDevice {
             }
           }
         }
-        // TODO If DFU
+         if (service.serviceUuid == Guid('fe59')) {
+          dfuDevice = true;
+          _log.fine("brilliantDevice.connect() found DFU service");
+          for (var characteristic in service.characteristics) {
+            if (characteristic.characteristicUuid ==
+                Guid('8ec90001-f315-4f60-9fb8-838830daea50')) {
+              _log.fine(
+                  "brilliantDevice.connect() found DFU Control characteristic");
+              _dfuControlChannel = characteristic;
+              await characteristic.setNotifyValue(true);
+              _log.fine(
+                  "brilliantDevice.connect() enabled nordic notification");
+            }
+            if (characteristic.characteristicUuid ==
+                Guid('8ec90002-f315-4f60-9fb8-838830daea50')) {
+              _log.fine(
+                  "brilliantDevice.connect() found DFU Packet characteristic");
+              _dfuPacketChannel = characteristic;
+            }
+          }
+        }
       }
     } catch (error) {
       _log.warning("$error");
