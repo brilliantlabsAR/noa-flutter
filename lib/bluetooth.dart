@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:logging/logging.dart';
@@ -56,7 +57,7 @@ class BrilliantDevice {
     this.dataRxListener,
   });
 
-  void connect(StreamController<BrilliantDevice> listener) async {
+  Future<void> connect(StreamController<BrilliantDevice> listener) async {
     _log.info("Connecting");
     try {
       await device.connect(
@@ -75,6 +76,9 @@ class BrilliantDevice {
         case BluetoothConnectionState.connected:
           try {
             _log.info("Connected");
+            if (Platform.isAndroid) {
+              await device.requestMtu(512);
+            }
             await _enableServices();
             _log.info("Services enabled");
             state = BrilliantConnectionState.connected;
@@ -279,12 +283,12 @@ class BrilliantDevice {
 }
 
 class BrilliantBluetooth {
-  static void requestPermission() async {
+  static Future<void> requestPermission() async {
     await FlutterBluePlus.startScan();
     await FlutterBluePlus.stopScan();
   }
 
-  static void scan(StreamController<BrilliantDevice> listener) async {
+  static Future<void> scan(StreamController<BrilliantDevice> listener) async {
     if (FlutterBluePlus.isScanningNow) {
       _log.info("Already scanning");
       return;
@@ -325,12 +329,12 @@ class BrilliantBluetooth {
     await _startScan();
   }
 
-  static void stopScan() async {
+  static Future<void> stopScan() async {
     _log.info("Stopping scan");
     await FlutterBluePlus.stopScan();
   }
 
-  static void reconnect(
+  static Future<void> reconnect(
     String deviceUuid,
     StreamController<BrilliantDevice> listener,
   ) async {

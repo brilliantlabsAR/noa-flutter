@@ -277,7 +277,7 @@ class AppLogicModel extends ChangeNotifier {
             state.changeOn(Event.done, State.scanning);
           } else {
             state.changeOn(Event.done, State.disconnected,
-                transitionTask: () => BrilliantBluetooth.reconnect(
+                transitionTask: () async => await BrilliantBluetooth.reconnect(
                       pairedDevice!,
                       _connectionStreamController,
                     ));
@@ -285,23 +285,24 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.scanning:
-          state.onEntry(() => BrilliantBluetooth.scan(_scanStreamController));
+          state.onEntry(
+              () async => await BrilliantBluetooth.scan(_scanStreamController));
           state.changeOn(Event.deviceFound, State.found);
           state.changeOn(Event.cancelPressed, State.disconnected,
-              transitionTask: () => BrilliantBluetooth.stopScan());
+              transitionTask: () async => await BrilliantBluetooth.stopScan());
           break;
 
         case State.found:
           state.changeOn(Event.deviceLost, State.scanning);
           state.changeOn(Event.buttonPressed, State.connect,
-              transitionTask: () => BrilliantBluetooth.stopScan());
+              transitionTask: () async => await BrilliantBluetooth.stopScan());
           state.changeOn(Event.cancelPressed, State.disconnected,
-              transitionTask: () => BrilliantBluetooth.stopScan());
+              transitionTask: () async => await BrilliantBluetooth.stopScan());
           break;
 
         case State.connect:
-          state.onEntry(
-              () => _nearbyDevice!.connect(_connectionStreamController));
+          state.onEntry(() async =>
+              await _nearbyDevice!.connect(_connectionStreamController));
           state.changeOn(Event.deviceInvalid, State.requiresRepair);
           state.changeOn(Event.deviceConnected, State.sendBreak);
           break;

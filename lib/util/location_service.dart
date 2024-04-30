@@ -4,6 +4,8 @@ import 'package:logging/logging.dart';
 
 final _log = Logger("Location");
 
+LocationData? _position;
+
 class LocationService {
   static Future<void> requestPermission() async {
     Location location = Location();
@@ -13,7 +15,18 @@ class LocationService {
       await location.requestPermission();
     }
 
-    location.enableBackgroundMode(enable: true);
+    await location.enableBackgroundMode(enable: true);
+
+    await location.changeSettings(
+      accuracy: LocationAccuracy.balanced,
+      interval: 30000,
+      distanceFilter: 1000,
+    );
+
+    location.onLocationChanged.listen((position) {
+      _log.info("Location updated. Accuracy: ${position.accuracy}");
+      _position = position;
+    });
   }
 
   static Future<String> getAddress() async {
@@ -25,27 +38,17 @@ class LocationService {
     }
 
     try {
-      Location location = Location();
-
-      if (await location.serviceEnabled() == false) {
-        _log.warning("Service is disabled in phone settings");
+      if (_position == null) {
         return "";
       }
-
-      PermissionStatus permission = await location.hasPermission();
-      if (permission == PermissionStatus.denied ||
-          permission == PermissionStatus.deniedForever) {
-        _log.warning("User has denied location");
-        return "";
-      }
-
-      LocationData position = await location.getLocation();
 
       _log.info(
-          "Got co-ordinates: Latitude: ${position.latitude}, longitude: ${position.longitude}, accuracy: ${position.accuracy}m");
+          "Using co-ordinates: Latitude: ${_position!.latitude}, longitude: ${_position!.longitude}");
 
       geocoding.Placemark placemark = (await geocoding.placemarkFromCoordinates(
-              position.latitude!, position.longitude!))
+        _position!.latitude!,
+        _position!.longitude!,
+      ))
           .first;
 
       String returnString = "";

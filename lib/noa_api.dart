@@ -267,6 +267,7 @@ class NoaApi {
             "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
       });
     } catch (error) {
+      _log.warning("Exception in getMessage(): $error");
       return Future.error(Exception(error));
     }
   }
