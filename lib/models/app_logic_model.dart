@@ -486,7 +486,7 @@ class AppLogicModel extends ChangeNotifier {
                   .timeout(const Duration(seconds: 1));
               await Future.delayed(const Duration(milliseconds: 300));
             } catch (error) {
-              _log.warning("Error responding to device: $error");
+              _log.warning("Could not respond to device: $error");
             }
             triggerEvent(Event.done);
           });

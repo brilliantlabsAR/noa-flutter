@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
@@ -19,13 +18,13 @@ class Location {
 
     if (Platform.isIOS) {
       locationSettings = AppleSettings(
-          accuracy: LocationAccuracy.medium,
+          accuracy: LocationAccuracy.low,
           pauseLocationUpdatesAutomatically: true);
     }
 
     Geolocator.getPositionStream(locationSettings: locationSettings)
         .listen((Position? position) {
-      _log.info("Location updated. Accuracy: ${position!.accuracy}");
+      _log.fine("Location updated. Accuracy: ${position!.accuracy}");
       _position = position;
     });
   }
@@ -85,6 +84,7 @@ class Location {
 
       return returnString;
     } catch (error) {
+      _log.warning("Could not get location: $error");
       return Future.error(error);
     }
   }

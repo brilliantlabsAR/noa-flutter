@@ -92,7 +92,7 @@ class NoaApi {
     String id,
     NoaApiAuthProvider provider,
   ) async {
-    _log.info("Signing in with ${provider.value}");
+    _log.info("Signing in to Noa");
     try {
       final response = await http.post(
         Uri.parse('https://api.brilliant.xyz/noa/user/signin'),
@@ -104,7 +104,7 @@ class NoaApi {
       );
 
       if (response.statusCode != 200) {
-        _log.severe("Error signing in: ${response.body}");
+        _log.warning("Noa server responded with error: ${response.body}");
         throw NoaApiServerError(response.statusCode);
       }
 
@@ -112,6 +112,7 @@ class NoaApi {
 
       return decoded['token'];
     } catch (error) {
+      _log.warning("Error signing in: $error");
       return Future.error(error);
     }
   }
@@ -127,9 +128,11 @@ class NoaApi {
       );
 
       if (response.statusCode != 200) {
+        _log.warning("Noa server responded with error: ${response.body}");
         throw NoaApiServerError(response.statusCode);
       }
     } catch (error) {
+      _log.warning("Error signing out: $error");
       return Future.error(error);
     }
   }
@@ -145,6 +148,7 @@ class NoaApi {
         headers: {"Authorization": userAuthToken},
       );
       if (response.statusCode != 200) {
+        _log.warning("Noa server responded with error: ${response.body}");
         throw NoaApiServerError(response.statusCode);
       }
 
@@ -164,6 +168,7 @@ class NoaApi {
       _log.info(
           "Updated user account info: Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
     } catch (error) {
+      _log.warning("Error getting user info: $error");
       return Future.error(Exception(error));
     }
   }
@@ -179,9 +184,11 @@ class NoaApi {
       );
 
       if (response.statusCode != 200) {
+        _log.warning("Noa server responded with error: ${response.body}");
         throw NoaApiServerError(response.statusCode);
       }
     } catch (error) {
+      _log.warning("Error deleting user: $error");
       return Future.error(error);
     }
   }
@@ -232,6 +239,12 @@ class NoaApi {
 
       var streamedResponse = await request.send();
 
+      if (streamedResponse.statusCode != 200) {
+        _log.warning(
+            "Noa server responded with error ${streamedResponse.statusCode}");
+        throw NoaApiServerError(streamedResponse.statusCode);
+      }
+
       streamedResponse.stream.listen((value) {
         var body = jsonDecode(String.fromCharCodes(value));
 
@@ -267,7 +280,7 @@ class NoaApi {
             "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
       });
     } catch (error) {
-      _log.warning("Exception in getMessage(): $error");
+      _log.warning("Could not complete Noa request: $error");
       return Future.error(Exception(error));
     }
   }
