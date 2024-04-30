@@ -1,30 +1,31 @@
+import 'dart:io';
+
 import 'package:geocoding/geocoding.dart' as geocoding;
-import 'package:location/location.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger("Location");
 
-LocationData? _position;
+Position? _position;
 
-class LocationService {
+class Location {
   static Future<void> requestPermission() async {
-    Location location = Location();
-
-    if (await location.hasPermission() == PermissionStatus.denied) {
+    if (await Geolocator.checkPermission() == LocationPermission.denied) {
       _log.info("Requesting location permission from user");
-      await location.requestPermission();
+      await Geolocator.requestPermission();
     }
 
-    await location.enableBackgroundMode(enable: true);
+    late LocationSettings locationSettings;
 
-    await location.changeSettings(
-      accuracy: LocationAccuracy.balanced,
-      interval: 30000,
-      distanceFilter: 1000,
-    );
+    if (Platform.isIOS) {
+      locationSettings = AppleSettings(
+          accuracy: LocationAccuracy.medium,
+          pauseLocationUpdatesAutomatically: true);
+    }
 
-    location.onLocationChanged.listen((position) {
-      _log.info("Location updated. Accuracy: ${position.accuracy}");
+    Geolocator.getPositionStream(locationSettings: locationSettings)
+        .listen((Position? position) {
+      _log.info("Location updated. Accuracy: ${position!.accuracy}");
       _position = position;
     });
   }
@@ -46,8 +47,8 @@ class LocationService {
           "Using co-ordinates: Latitude: ${_position!.latitude}, longitude: ${_position!.longitude}");
 
       geocoding.Placemark placemark = (await geocoding.placemarkFromCoordinates(
-        _position!.latitude!,
-        _position!.longitude!,
+        _position!.latitude,
+        _position!.longitude,
       ))
           .first;
 
