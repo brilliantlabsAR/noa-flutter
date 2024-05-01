@@ -420,7 +420,9 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             try {
-              _connectedDevice!.updateFirmware("").listen((progress) {
+              _connectedDevice!
+                  .updateFirmware("assets/frame-firmware-v24.122.0824.zip")
+                  .listen((progress) {
                 bluetoothUploadProgress = progress;
                 notifyListeners();
               }).onDone(() async {

@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/services.dart';
+import 'package:archive/archive_io.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger("Bluetooth");
@@ -250,15 +251,24 @@ class BrilliantDevice {
 
     yield 0.0;
 
+    if (state != BrilliantConnectionState.dfuConnected) {
+      _log.warning("DFU device is not connected");
+      yield* Stream.error("DFU device is not connected");
+    }
+
     if (_dfuControl == null || _dfuPacket == null) {
       _log.warning("Device is not in DFU mode");
       yield* Stream.error("Device is not in DFU mode");
     }
 
-    for (var i = 0; i <= 5; i++) {
-      await Future.delayed(const Duration(seconds: 1));
-      yield i * 20;
-    }
+    final updateZipFile = await rootBundle.load(filePath);
+    final zip = ZipDecoder().decodeBytes(updateZipFile.buffer.asUint8List());
+
+    final initFile = zip.firstWhere((file) => file.name.endsWith(".dat"));
+    final imageFile = zip.firstWhere((file) => file.name.endsWith(".bin"));
+
+    await _transferDfuFile(initFile, true);
+    await _transferDfuFile(imageFile, false);
   }
 
   Future<void> _enableServices() async {
@@ -324,6 +334,52 @@ class BrilliantDevice {
       return Future.error(error);
     }
     _log.info("Services enabled");
+  }
+
+  Future<void> _transferDfuFile(ArchiveFile file, bool isInitFile) async {
+    Uint8List response;
+    if (isInitFile) {
+      _log.info("Transferring DFU init file");
+      response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x01]));
+    } else {
+      response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
+      _log.info("Transferring DFU image file");
+    }
+    print(response);
+  }
+
+  Future<Uint8List> _dfuSendControlData(Uint8List data) async {
+    _log.fine("Sending ${data.length} bytes of DFU control data");
+    Completer<Uint8List> completer = Completer();
+
+    try {
+      await _dfuControl!.write(data, timeout: 3);
+    } catch (error) {
+      _log.warning("Error writing DFU control data: $error");
+      completer.completeError("Error writing DFU control data: $error");
+    }
+
+    late StreamSubscription stream;
+
+    stream = _dfuControl!.onValueReceived.timeout(const Duration(seconds: 3),
+        onTimeout: (_) {
+      _log.warning("Device didn't respond");
+      stream.cancel();
+      completer.completeError("Device didn't respond");
+    }).listen((value) {
+      stream.cancel();
+      completer.complete(Uint8List.fromList(value));
+    });
+
+    device.cancelWhenDisconnected(stream);
+
+    return completer.future;
+  }
+
+  Future<void> _dfuSendPacketData(Uint8List data) async {
+    _log.fine("Sending ${data.length} bytes of DFU packet data");
+    await _dfuControl!.write(data, withoutResponse: true);
+    // TODO do we need a delay here to prevent dropping packets?
   }
 }
 
