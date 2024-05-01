@@ -542,6 +542,7 @@ class AppLogicModel extends ChangeNotifier {
     _stringRxStreamController.close();
     _dataRxStreamController.close();
     _noaResponseStreamController.close();
+    _noaUserInfoStreamController.close();
     super.dispose();
   }
 }
