@@ -28,6 +28,7 @@ enum BrilliantConnectionState {
   scanned,
   disconnected,
   connected,
+  dfuConnected,
   invalid,
 }
 
@@ -41,9 +42,12 @@ class BrilliantDevice {
   int? maxDataLength;
   StreamController<String>? stringRxListener;
   StreamController<List<int>>? dataRxListener;
+  StreamController<double>? progressListener;
 
-  late BluetoothCharacteristic _txChannel;
-  late BluetoothCharacteristic _rxChannel;
+  BluetoothCharacteristic? _txChannel;
+  BluetoothCharacteristic? _rxChannel;
+  BluetoothCharacteristic? _dfuControl;
+  BluetoothCharacteristic? _dfuPacket;
 
   BrilliantDevice({
     required this.name,
@@ -55,6 +59,7 @@ class BrilliantDevice {
     this.maxDataLength,
     this.stringRxListener,
     this.dataRxListener,
+    this.progressListener,
   });
 
   Future<void> connect(StreamController<BrilliantDevice> listener) async {
@@ -81,13 +86,18 @@ class BrilliantDevice {
               await device.requestMtu(512);
             }
             await _enableServices();
-            _log.info("Services enabled");
-            state = BrilliantConnectionState.connected;
-            maxStringLength = device.mtuNow - 3;
-            maxDataLength = device.mtuNow - 4;
+            if (_dfuControl != null && _dfuPacket != null) {
+              state = BrilliantConnectionState.dfuConnected;
+            } else if (_txChannel != null && _rxChannel != null) {
+              state = BrilliantConnectionState.connected;
+              maxStringLength = device.mtuNow - 3;
+              maxDataLength = device.mtuNow - 4;
+            } else {
+              throw "Found an incomplete set of characteristics";
+            }
           } catch (error) {
             await device.disconnect();
-            _log.warning("Failed to enable services");
+            _log.warning("Failed to enable services. $error");
             state = BrilliantConnectionState.invalid;
           }
           break;
@@ -141,7 +151,7 @@ class BrilliantDevice {
       return Future.error("Payload exceeds allowed length of $maxStringLength");
     }
 
-    await _txChannel.write(utf8.encode(string), withoutResponse: true);
+    await _txChannel!.write(utf8.encode(string), withoutResponse: true);
 
     if (awaitResponse == false) {
       completer.complete();
@@ -150,7 +160,7 @@ class BrilliantDevice {
 
     late StreamSubscription stream;
 
-    stream = _rxChannel.onValueReceived.timeout(const Duration(seconds: 3),
+    stream = _rxChannel!.onValueReceived.timeout(const Duration(seconds: 3),
         onTimeout: (_) {
       _log.warning("Device didn't respond");
       stream.cancel();
@@ -182,7 +192,7 @@ class BrilliantDevice {
     var finalData = data.toList();
     finalData.insert(0, 0x01);
 
-    await _txChannel.write(finalData, withoutResponse: true);
+    await _txChannel!.write(finalData, withoutResponse: true);
   }
 
   Future<void> uploadScript(String fileName, String filePath) async {
@@ -242,7 +252,6 @@ class BrilliantDevice {
       List<BluetoothService> services = await device.discoverServices();
 
       for (var service in services) {
-        // TODO If Monocle
         // If Frame
         if (service.serviceUuid ==
             Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
@@ -259,7 +268,7 @@ class BrilliantDevice {
               _rxChannel = characteristic;
 
               StreamSubscription stream =
-                  _rxChannel.onValueReceived.listen((data) {
+                  _rxChannel!.onValueReceived.listen((data) {
                 if (data[0] == 0x01) {
                   _log.finer("Received data: ${data.sublist(1)}");
                   dataRxListener?.add(data.sublist(1));
@@ -272,16 +281,35 @@ class BrilliantDevice {
               device.cancelWhenDisconnected(stream);
 
               await characteristic.setNotifyValue(true);
-              _log.fine("Enabled RX notification");
+              _log.fine("Enabled RX notifications");
             }
           }
         }
-        // TODO If DFU
+
+        // If DFU
+        if (service.serviceUuid == Guid('fe59')) {
+          _log.fine("Found DFU service");
+          for (var characteristic in service.characteristics) {
+            if (characteristic.characteristicUuid ==
+                Guid('8ec90001-f315-4f60-9fb8-838830daea50')) {
+              _log.fine("Found DFU control characteristic");
+              _dfuControl = characteristic;
+              await characteristic.setNotifyValue(true);
+              _log.fine("Enabled DFU control notifications");
+            }
+            if (characteristic.characteristicUuid ==
+                Guid('8ec90002-f315-4f60-9fb8-838830daea50')) {
+              _log.fine("Found DFU packet characteristic");
+              _dfuPacket = characteristic;
+            }
+          }
+        }
       }
     } catch (error) {
       _log.warning("$error");
       return Future.error(error);
     }
+    _log.info("Services enabled");
   }
 }
 
@@ -369,6 +397,7 @@ class BrilliantBluetooth {
         Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
         Guid('fe59'),
       ],
+      withNames: ["Frame", "Frame Update"],
       continuousUpdates: true,
       removeIfGone: const Duration(seconds: 2),
     );

@@ -16,12 +16,13 @@ enum State {
   scanning,
   found,
   connect,
-  sendBreak,
+  stopLuaApp,
   checkVersion,
   uploadMainLua,
   uploadGraphicsLua,
   uploadStateLua,
-  updatingFirmware,
+  triggerUpdate,
+  updateFirmware,
   requiresRepair,
   connected,
   sendResponseToDevice,
@@ -38,6 +39,7 @@ enum Event {
   deviceFound,
   deviceLost,
   deviceConnected,
+  updatableDeviceConnected,
   deviceDisconnected,
   deviceInvalid,
   buttonPressed,
@@ -135,6 +137,7 @@ class AppLogicModel extends ChangeNotifier {
   final _connectionStreamController = StreamController<BrilliantDevice>();
   final _stringRxStreamController = StreamController<String>();
   final _dataRxStreamController = StreamController<List<int>>();
+  final _progressStreamController = StreamController<double>();
 
   // Noa steam listeners
   final _noaResponseStreamController = StreamController<NoaMessage>();
@@ -185,7 +188,12 @@ class AppLogicModel extends ChangeNotifier {
         case BrilliantConnectionState.connected:
           _connectedDevice!.stringRxListener = _stringRxStreamController;
           _connectedDevice!.dataRxListener = _dataRxStreamController;
+          _connectedDevice!.progressListener = _progressStreamController;
           triggerEvent(Event.deviceConnected);
+          break;
+        case BrilliantConnectionState.dfuConnected:
+          _connectedDevice!.progressListener = _progressStreamController;
+          triggerEvent(Event.updatableDeviceConnected);
           break;
         case BrilliantConnectionState.disconnected:
           triggerEvent(Event.deviceDisconnected);
@@ -304,10 +312,11 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async =>
               await _nearbyDevice!.connect(_connectionStreamController));
           state.changeOn(Event.deviceInvalid, State.requiresRepair);
-          state.changeOn(Event.deviceConnected, State.sendBreak);
+          state.changeOn(Event.deviceConnected, State.stopLuaApp);
+          state.changeOn(Event.updatableDeviceConnected, State.updateFirmware);
           break;
 
-        case State.sendBreak:
+        case State.stopLuaApp:
           state.onEntry(() async {
             try {
               await _connectedDevice!.sendBreakSignal();
@@ -332,11 +341,10 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          if (_luaResponse == "v24.065.1346") {
+          if (_luaResponse == "v24.122.0824") {
             state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
           } else {
-            // TODO go to State.updatingFirmware instead
-            state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
+            state.changeOn(Event.deviceStringResponse, State.triggerUpdate);
           }
           state.changeOn(Event.error, State.requiresRepair);
           break;
@@ -396,8 +404,22 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
-        case State.updatingFirmware:
-          // TODO DFU process
+        case State.triggerUpdate:
+          state.onEntry(() async {
+            try {
+              await _connectedDevice!
+                  .sendString("frame.update()", awaitResponse: false);
+              await BrilliantBluetooth.scan(_scanStreamController);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceFound, State.connect,
+              transitionTask: () async => await BrilliantBluetooth.stopScan());
+          state.changeOn(Event.error, State.requiresRepair);
+          break;
+
+        case State.updateFirmware:
           break;
 
         case State.requiresRepair:
@@ -541,6 +563,7 @@ class AppLogicModel extends ChangeNotifier {
     _connectionStreamController.close();
     _stringRxStreamController.close();
     _dataRxStreamController.close();
+    _progressStreamController.close();
     _noaResponseStreamController.close();
     _noaUserInfoStreamController.close();
     super.dispose();

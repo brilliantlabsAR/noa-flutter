@@ -35,13 +35,14 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = true;
         break;
       case app.State.connect:
-      case app.State.sendBreak:
+      case app.State.stopLuaApp:
       case app.State.checkVersion:
         pairingBoxText = "Frame found";
         pairingBoxButtonText = "Connecting";
         pairingBoxButtonEnabled = false;
         break;
-      case app.State.updatingFirmware:
+      case app.State.triggerUpdate:
+      case app.State.updateFirmware:
         pairingBoxText = "Updating software";
         pairingBoxButtonText = "Keep your device close";
         pairingBoxButtonEnabled = false;
