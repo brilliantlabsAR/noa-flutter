@@ -42,7 +42,6 @@ class BrilliantDevice {
   int? maxDataLength;
   StreamController<String>? stringRxListener;
   StreamController<List<int>>? dataRxListener;
-  StreamController<double>? progressListener;
 
   BluetoothCharacteristic? _txChannel;
   BluetoothCharacteristic? _rxChannel;
@@ -59,7 +58,6 @@ class BrilliantDevice {
     this.maxDataLength,
     this.stringRxListener,
     this.dataRxListener,
-    this.progressListener,
   });
 
   Future<void> connect(StreamController<BrilliantDevice> listener) async {
@@ -244,6 +242,22 @@ class BrilliantDevice {
 
     if (resp != "nil") {
       return Future.error("$resp");
+    }
+  }
+
+  Stream<double> updateFirmware(String filePath) async* {
+    _log.info("Starting firmware update");
+
+    yield 0.0;
+
+    if (_dfuControl == null || _dfuPacket == null) {
+      _log.warning("Device is not in DFU mode");
+      yield* Stream.error("Device is not in DFU mode");
+    }
+
+    for (var i = 0; i <= 5; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+      yield i * 20;
     }
   }
 

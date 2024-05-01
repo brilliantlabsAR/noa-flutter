@@ -67,6 +67,7 @@ class AppLogicModel extends ChangeNotifier {
   StateMachine state = StateMachine(State.waitForLogin);
   String? pairedDevice;
   NoaUser noaUser = NoaUser();
+  double bluetoothUploadProgress = 0;
   final List<NoaMessage> noaMessages = List.empty(growable: true);
 
   // User's tune preferences
@@ -137,7 +138,6 @@ class AppLogicModel extends ChangeNotifier {
   final _connectionStreamController = StreamController<BrilliantDevice>();
   final _stringRxStreamController = StreamController<String>();
   final _dataRxStreamController = StreamController<List<int>>();
-  final _progressStreamController = StreamController<double>();
 
   // Noa steam listeners
   final _noaResponseStreamController = StreamController<NoaMessage>();
@@ -188,11 +188,9 @@ class AppLogicModel extends ChangeNotifier {
         case BrilliantConnectionState.connected:
           _connectedDevice!.stringRxListener = _stringRxStreamController;
           _connectedDevice!.dataRxListener = _dataRxStreamController;
-          _connectedDevice!.progressListener = _progressStreamController;
           triggerEvent(Event.deviceConnected);
           break;
         case BrilliantConnectionState.dfuConnected:
-          _connectedDevice!.progressListener = _progressStreamController;
           triggerEvent(Event.updatableDeviceConnected);
           break;
         case BrilliantConnectionState.disconnected:
@@ -420,6 +418,21 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.updateFirmware:
+          state.onEntry(() async {
+            try {
+              _connectedDevice!.updateFirmware("").listen((progress) {
+                bluetoothUploadProgress = progress;
+                notifyListeners();
+              }).onDone(() async {
+                await BrilliantBluetooth.scan(_scanStreamController);
+              });
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceFound, State.connect,
+              transitionTask: () async => await BrilliantBluetooth.stopScan());
+          state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.requiresRepair:
@@ -563,7 +576,6 @@ class AppLogicModel extends ChangeNotifier {
     _connectionStreamController.close();
     _stringRxStreamController.close();
     _dataRxStreamController.close();
-    _progressStreamController.close();
     _noaResponseStreamController.close();
     _noaUserInfoStreamController.close();
     super.dispose();
