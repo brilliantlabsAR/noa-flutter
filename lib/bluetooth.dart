@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter/services.dart';
@@ -345,7 +346,10 @@ class BrilliantDevice {
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
       _log.info("Transferring DFU image file");
     }
-    print(response);
+
+    final maxSize = ByteData.view(response.buffer).getUint32(3, Endian.little);
+    final offset = ByteData.view(response.buffer).getUint32(7, Endian.little);
+    final crc = ByteData.view(response.buffer).getUint32(11, Endian.little);
   }
 
   Future<Uint8List> _dfuSendControlData(Uint8List data) async {
