@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:archive/archive_io.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -268,8 +269,8 @@ class BrilliantDevice {
     final initFile = zip.firstWhere((file) => file.name.endsWith(".dat"));
     final imageFile = zip.firstWhere((file) => file.name.endsWith(".bin"));
 
-    await _transferDfuFile(initFile, true);
-    await _transferDfuFile(imageFile, false);
+    await _transferDfuFile(initFile.content, true);
+    await _transferDfuFile(imageFile.content, false);
   }
 
   Future<void> _enableServices() async {
@@ -337,23 +338,99 @@ class BrilliantDevice {
     _log.info("Services enabled");
   }
 
-  Future<void> _transferDfuFile(ArchiveFile file, bool isInitFile) async {
+  Future<double> _transferDfuFile(Uint8List file, bool isInitFile) async {
+    double percentageComplete = 0;
     Uint8List response;
+// TODO wrap in try catch
     if (isInitFile) {
-      _log.info("Transferring DFU init file");
+      _log.info("Transferring DFU init file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x01]));
     } else {
+      _log.info("Transferring DFU image file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
-      _log.info("Transferring DFU image file");
     }
 
     final maxSize = ByteData.view(response.buffer).getUint32(3, Endian.little);
     final offset = ByteData.view(response.buffer).getUint32(7, Endian.little);
     final crc = ByteData.view(response.buffer).getUint32(11, Endian.little);
+    final chunks = (file.length / maxSize).ceil();
+
+    _log.fine(
+        "Sending $chunks chunks. Allowed size: $maxSize, offset: $offset, crc: $crc");
+
+    int fileOffset = 0;
+    for (var i = 0; i < chunks; i++) {
+      var chunkSize = min(file.length, maxSize);
+
+      // The last chunk could be smaller
+      if (i == chunks - 1 && (file.length % maxSize != 0)) {
+        chunkSize = file.length % maxSize;
+      }
+
+      final chunkCrc = getCrc32(file.sublist(0, fileOffset + chunkSize));
+
+      // Create command with size
+      final chunkSizeAsBytes = [
+        chunkSize & 0xFF,
+        chunkSize >> 8 & 0xFF,
+        chunkSize >> 16 & 0xff,
+        chunkSize >> 24 & 0xff
+      ];
+
+      _log.fine(
+          "Control header for chunk: $i, offset: $fileOffset, crc: $chunkCrc");
+
+      if (isInitFile) {
+        await _dfuSendControlData(
+            Uint8List.fromList([0x01, 0x01, ...chunkSizeAsBytes]));
+      } else {
+        await _dfuSendControlData(
+            Uint8List.fromList([0x01, 0x02, ...chunkSizeAsBytes]));
+      }
+
+      // Send packets in chunks of MTU size
+      final packets = (chunkSize / (device.mtuNow - 3)).ceil();
+      for (var i = 0; i < packets; i++) {
+        // The last packet could be smaller
+        var packetLength = device.mtuNow - 3;
+        if (i == packets - 1 && chunkSize % (device.mtuNow - 3) != 0) {
+          packetLength = chunkSize % (device.mtuNow - 3);
+        }
+
+        final fileSlice = file.sublist(fileOffset, fileOffset + packetLength);
+        fileOffset += fileSlice.length;
+        percentageComplete = ((100 / file.length) * fileOffset);
+
+        _log.fine(
+            "Sending ${fileSlice.length} bytes of packet data. $percentageComplete% Complete");
+
+        await _dfuSendPacketData(fileSlice);
+      }
+
+      // Calculate CRC
+      response = await _dfuSendControlData(Uint8List.fromList([0x03]));
+      final returnedOffset =
+          ByteData.view(response.buffer).getUint32(3, Endian.little);
+      final returnedCrc =
+          ByteData.view(response.buffer).getUint32(7, Endian.little);
+
+      if (returnedCrc != chunkCrc) {
+        _log.warning(
+            "CRC mismatch after sending this chunk at offset $returnedOffset. Expected: $chunkCrc, got: $returnedCrc");
+        return Future.error(
+            "CRC mismatch after sending this chunk at offset $returnedOffset. Expected: $chunkCrc, got: $returnedCrc");
+      }
+
+      // Execute command
+      await _dfuSendControlData(Uint8List.fromList([0x04]));
+    }
+    _log.info("DFU file sent");
+
+    return percentageComplete;
   }
 
   Future<Uint8List> _dfuSendControlData(Uint8List data) async {
-    _log.fine("Sending ${data.length} bytes of DFU control data");
+    _log.fine("Transmitting ${data.length} bytes of DFU control data: $data");
     Completer<Uint8List> completer = Completer();
 
     try {
@@ -381,8 +458,10 @@ class BrilliantDevice {
   }
 
   Future<void> _dfuSendPacketData(Uint8List data) async {
-    _log.fine("Sending ${data.length} bytes of DFU packet data");
-    await _dfuControl!.write(data, withoutResponse: true);
+    _log.fine(
+        "Transmitting ${data.length} bytes of DFU packet data: ${data.sublist(0, 10)}...");
+    await _dfuPacket!.write(data, withoutResponse: true);
+    // await Future.delayed(const Duration(milliseconds: 10));
     // TODO do we need a delay here to prevent dropping packets?
   }
 }
