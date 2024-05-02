@@ -36,6 +36,7 @@ enum Event {
   done,
   error,
   loggedIn,
+  deviceFoundNearby,
   deviceFound,
   deviceLost,
   deviceConnected,
@@ -124,7 +125,6 @@ class AppLogicModel extends ChangeNotifier {
   }
 
   // Private state variables
-  bool _eventBeingProcessed = false;
   BrilliantDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
   String? _luaResponse;
@@ -173,11 +173,17 @@ class AppLogicModel extends ChangeNotifier {
     // ));
 
     // Monitors Bluetooth scan events
-    _scanStreamController.stream
+    final scanBroadcast = _scanStreamController.stream.asBroadcastStream();
+
+    scanBroadcast
         .where((device) => device.rssi! > -60)
         .timeout(const Duration(seconds: 2), onTimeout: (_) {
       triggerEvent(Event.deviceLost);
     }).listen((device) {
+      triggerEvent(Event.deviceFoundNearby);
+    });
+
+    scanBroadcast.listen((device) {
       _nearbyDevice = device;
       triggerEvent(Event.deviceFound);
     });
@@ -252,12 +258,6 @@ class AppLogicModel extends ChangeNotifier {
   }
 
   void triggerEvent(Event event) {
-    if (_eventBeingProcessed) {
-      _log.severe("Too many events: $event");
-    }
-
-    _eventBeingProcessed = true;
-
     state.event(event);
 
     do {
@@ -292,26 +292,21 @@ class AppLogicModel extends ChangeNotifier {
           if (pairedDevice == null) {
             state.changeOn(Event.done, State.scanning);
           } else {
-            state.changeOn(Event.done, State.disconnected,
-                transitionTask: () async => await BrilliantBluetooth.reconnect(
-                      pairedDevice!,
-                      _connectionStreamController,
-                    ));
+            state.changeOn(Event.done, State.disconnected);
           }
           break;
 
         case State.scanning:
           state.onEntry(
               () async => await BrilliantBluetooth.scan(_scanStreamController));
-          state.changeOn(Event.deviceFound, State.found);
+          state.changeOn(Event.deviceFoundNearby, State.found);
           state.changeOn(Event.cancelPressed, State.disconnected,
               transitionTask: () async => await BrilliantBluetooth.stopScan());
           break;
 
         case State.found:
           state.changeOn(Event.deviceLost, State.scanning);
-          state.changeOn(Event.buttonPressed, State.connect,
-              transitionTask: () async => await BrilliantBluetooth.stopScan());
+          state.changeOn(Event.buttonPressed, State.connect);
           state.changeOn(Event.cancelPressed, State.disconnected,
               transitionTask: () async => await BrilliantBluetooth.stopScan());
           break;
@@ -422,8 +417,7 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          state.changeOn(Event.deviceFound, State.connect,
-              transitionTask: () async => await BrilliantBluetooth.stopScan());
+          state.changeOn(Event.deviceFound, State.connect);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
@@ -439,8 +433,7 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          state.changeOn(Event.deviceFound, State.connect,
-              transitionTask: () async => await BrilliantBluetooth.stopScan());
+          state.changeOn(Event.deviceFound, State.connect);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
@@ -542,6 +535,13 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.disconnected:
+          state.onEntry(() async {
+            print(pairedDevice);
+            if (pairedDevice != null) {
+              await BrilliantBluetooth.reconnect(
+                  pairedDevice!, _connectionStreamController);
+            }
+          });
           state.changeOn(Event.deviceConnected, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
@@ -574,8 +574,6 @@ class AppLogicModel extends ChangeNotifier {
     } while (state.changePending());
 
     notifyListeners();
-
-    _eventBeingProcessed = false;
   }
 
   @override

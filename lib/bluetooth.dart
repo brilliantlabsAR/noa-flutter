@@ -67,9 +67,11 @@ class BrilliantDevice {
 
   Future<void> connect(StreamController<BrilliantDevice> listener) async {
     _log.info("Connecting");
+    await FlutterBluePlus.stopScan();
+
     try {
       await device.connect(
-        autoConnect: true,
+        // autoConnect: true,
         timeout: const Duration(seconds: 2),
         mtu: null,
       );
@@ -309,31 +311,6 @@ class BrilliantDevice {
     // TODO report back to fileUploadProgressListener?.add(percentDone);
   }
 
-  // Stream<double> updateFirmware(String filePath) async* {
-  //   _log.info("Starting firmware update");
-
-  //   yield 0.0;
-
-  //   if (state != BrilliantConnectionState.dfuConnected) {
-  //     _log.warning("DFU device is not connected");
-  //     yield* Stream.error("DFU device is not connected");
-  //   }
-
-  //   if (_dfuControl == null || _dfuPacket == null) {
-  //     _log.warning("Device is not in DFU mode");
-  //     yield* Stream.error("Device is not in DFU mode");
-  //   }
-
-  //   final updateZipFile = await rootBundle.load(filePath);
-  //   final zip = ZipDecoder().decodeBytes(updateZipFile.buffer.asUint8List());
-
-  //   final initFile = zip.firstWhere((file) => file.name.endsWith(".dat"));
-  //   final imageFile = zip.firstWhere((file) => file.name.endsWith(".bin"));
-
-  //   await _transferDfuFile(initFile.content, true);
-  //   await _transferDfuFile(imageFile.content, false);
-  // }
-
   Future<void> updateFirmware(String filePath) async {
     _log.info("Starting firmware update");
 
@@ -354,6 +331,7 @@ class BrilliantDevice {
     final imageFile = zip.firstWhere((file) => file.name.endsWith(".bin"));
 
     await _transferDfuFile(initFile.content, true);
+    await Future.delayed(const Duration(milliseconds: 500));
     await _transferDfuFile(imageFile.content, false);
   }
 
@@ -368,22 +346,14 @@ class BrilliantDevice {
     }
 
     final maxSize = ByteData.view(response.buffer).getUint32(3, Endian.little);
-    final offset = ByteData.view(response.buffer).getUint32(7, Endian.little);
+    var offset = ByteData.view(response.buffer).getUint32(7, Endian.little);
     final crc = ByteData.view(response.buffer).getUint32(11, Endian.little);
-    final chunks = (file.length / maxSize).ceil();
 
     _log.fine("Received allowed size: $maxSize, offset: $offset, CRC: $crc");
 
-    int fileOffset = 0;
-    for (var i = 0; i < chunks; i++) {
-      var chunkSize = min(file.length, maxSize);
-
-      // The last chunk could be smaller
-      if (i == chunks - 1 && (file.length % maxSize != 0)) {
-        chunkSize = file.length % maxSize;
-      }
-
-      final chunkCrc = getCrc32(file.sublist(0, fileOffset + chunkSize));
+    while (offset < file.length) {
+      final chunkSize = min(maxSize, file.length - offset);
+      final chunkCrc = getCrc32(file.sublist(0, offset + chunkSize));
 
       // Create command with size
       final chunkSizeAsBytes = [
@@ -401,18 +371,27 @@ class BrilliantDevice {
             Uint8List.fromList([0x01, 0x02, ...chunkSizeAsBytes]));
       }
 
-      // Send packets in chunks of MTU size
-      final packets = (chunkSize / (device.mtuNow - 3)).ceil();
-      for (var i = 0; i < packets; i++) {
+      // Split chunk into packets of MTU size
+      final packetSize = device.mtuNow - 3;
+      final packets = (chunkSize / packetSize).ceil();
+
+      for (var p = 0; p < packets; p++) {
+        final fileStart = offset + p * packetSize;
+        var fileEnd = fileStart + packetSize;
+
         // The last packet could be smaller
-        var packetLength = device.mtuNow - 3;
-        if (i == packets - 1 && chunkSize % (device.mtuNow - 3) != 0) {
-          packetLength = chunkSize % (device.mtuNow - 3);
+        if (fileEnd - offset > maxSize) {
+          fileEnd -= fileEnd - offset - maxSize;
         }
 
-        final fileSlice = file.sublist(fileOffset, fileOffset + packetLength);
-        fileOffset += fileSlice.length;
-        final percentDone = (100 / file.length) * fileOffset;
+        // The last part of the file could also be smaller
+        if (fileEnd > file.length) {
+          fileEnd = file.length;
+        }
+
+        final fileSlice = file.sublist(fileStart, fileEnd);
+
+        final percentDone = (100 / file.length) * offset;
         fileUploadProgressListener?.add(percentDone);
 
         _log.fine(
@@ -423,6 +402,7 @@ class BrilliantDevice {
 
       // Calculate CRC
       response = await _dfuSendControlData(Uint8List.fromList([0x03]));
+      offset = ByteData.view(response.buffer).getUint32(3, Endian.little);
       final returnedCrc =
           ByteData.view(response.buffer).getUint32(7, Endian.little);
 
@@ -433,7 +413,7 @@ class BrilliantDevice {
 
       // Execute command (The last command may disconnect which is normal)
       try {
-        await _dfuSendControlData(Uint8List.fromList([0x04]));
+        response = await _dfuSendControlData(Uint8List.fromList([0x04]));
       } catch (_) {}
     }
 
@@ -441,7 +421,7 @@ class BrilliantDevice {
   }
 
   Future<Uint8List> _dfuSendControlData(Uint8List data) async {
-    _log.fine("Sending ${data.length} bytes of DFU control data: $data");
+    _log.finer("Sending ${data.length} bytes of DFU control data: $data");
     Completer<Uint8List> completer = Completer();
 
     try {
@@ -453,9 +433,8 @@ class BrilliantDevice {
 
     late StreamSubscription stream;
 
-    stream = _dfuControl!.onValueReceived.timeout(const Duration(seconds: 3),
+    stream = _dfuControl!.onValueReceived.timeout(const Duration(seconds: 1),
         onTimeout: (_) {
-      _log.warning("Device didn't respond");
       stream.cancel();
       completer.completeError("Device didn't respond");
     }).listen((value) {
@@ -488,6 +467,7 @@ class BrilliantBluetooth {
     late ScanResult nearestDevice;
 
     StreamSubscription stream = FlutterBluePlus.onScanResults.listen((results) {
+      // TODO Filter results to only include devices named "Frame" or "Frame Update"
       if (results.isEmpty) {
         return;
       }
@@ -514,9 +494,8 @@ class BrilliantBluetooth {
       );
     });
 
+    await _startScan(continuousUpdates: true);
     FlutterBluePlus.cancelWhenScanComplete(stream);
-
-    await _startScan();
   }
 
   static Future<void> stopScan() async {
@@ -530,10 +509,10 @@ class BrilliantBluetooth {
   ) async {
     _log.info("Will automatically connect to device $deviceUuid once found");
 
-    StreamSubscription stream = FlutterBluePlus.scanResults.listen((results) {
+    StreamSubscription stream = FlutterBluePlus.onScanResults.listen((results) {
       for (int i = 0; i < results.length; i++) {
         if (results[i].device.remoteId.toString() == deviceUuid) {
-          _log.info("Found expected device. Connecting to: $deviceUuid");
+          _log.info("Found expected device. Connecting to: $deviceUuid}");
           BrilliantDevice(
             name: _deviceNameFromAdvName(results[i].device.advName),
             state: BrilliantConnectionState.scanned,
@@ -545,21 +524,20 @@ class BrilliantBluetooth {
       }
     });
 
-    FlutterBluePlus.cancelWhenScanComplete(stream);
-
     await _startScan();
+    FlutterBluePlus.cancelWhenScanComplete(stream);
   }
 
-  static Future<void> _startScan() async {
+  static Future<void> _startScan({bool continuousUpdates = false}) async {
     _log.info("Starting to scan for devices");
+    await FlutterBluePlus.stopScan();
     await FlutterBluePlus.startScan(
       withServices: [
         Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
         Guid('fe59'),
       ],
-      withNames: ["Frame", "Frame Update"],
-      continuousUpdates: true,
-      removeIfGone: const Duration(seconds: 2),
+      continuousUpdates: continuousUpdates,
+      removeIfGone: continuousUpdates ? const Duration(seconds: 2) : null,
     );
   }
 }
