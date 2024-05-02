@@ -15,11 +15,16 @@ class SplashPage extends ConsumerWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(app.model).triggerEvent(app.Event.init);
       Timer(const Duration(milliseconds: 1500), () {
-        if (ref.watch(app.model).pairedDevice == null) {
-          switchPage(context, const LoginPage());
-        } else {
-          switchPage(context, const NoaPage());
+        switch (ref.watch(app.model).state.current) {
+          case app.State.connected:
+          case app.State.disconnected:
+            switchPage(context, const NoaPage());
+            break;
+          default:
+            switchPage(context, const LoginPage());
         }
+        if (ref.watch(app.model).state.current == app.State.waitForLogin) {
+        } else {}
       });
     });
 

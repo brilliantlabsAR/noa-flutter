@@ -36,6 +36,8 @@ enum Event {
   done,
   error,
   loggedIn,
+  pairedDeviceFound,
+  pairedDeviceNotFound,
   deviceFoundNearby,
   deviceFound,
   deviceLost,
@@ -66,7 +68,6 @@ enum TuneLength {
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
   StateMachine state = StateMachine(State.waitForLogin);
-  String? pairedDevice;
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
   final List<NoaMessage> noaMessages = List.empty(growable: true);
@@ -285,15 +286,14 @@ class AppLogicModel extends ChangeNotifier {
         case State.getPairedDevice:
           state.onEntry(() async {
             final savedData = await SharedPreferences.getInstance();
-            pairedDevice = savedData.getString('pairedDevice');
-            triggerEvent(Event.done);
+            if (savedData.getString('pairedDevice') != null) {
+              triggerEvent(Event.pairedDeviceFound);
+            } else {
+              triggerEvent(Event.pairedDeviceNotFound);
+            }
           });
-
-          if (pairedDevice == null) {
-            state.changeOn(Event.done, State.scanning);
-          } else {
-            state.changeOn(Event.done, State.disconnected);
-          }
+          state.changeOn(Event.pairedDeviceNotFound, State.scanning);
+          state.changeOn(Event.pairedDeviceFound, State.disconnected);
           break;
 
         case State.scanning:
@@ -536,10 +536,11 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.disconnected:
           state.onEntry(() async {
-            print(pairedDevice);
+            final savedData = await SharedPreferences.getInstance();
+            String? pairedDevice = savedData.getString('pairedDevice');
             if (pairedDevice != null) {
               await BrilliantBluetooth.reconnect(
-                  pairedDevice!, _connectionStreamController);
+                  pairedDevice, _connectionStreamController);
             }
           });
           state.changeOn(Event.deviceConnected, State.connected);
@@ -553,7 +554,6 @@ class AppLogicModel extends ChangeNotifier {
             await NoaApi.signOut(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
-            pairedDevice = null;
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);
@@ -565,7 +565,6 @@ class AppLogicModel extends ChangeNotifier {
             await NoaApi.deleteUser(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
-            pairedDevice = null;
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);
