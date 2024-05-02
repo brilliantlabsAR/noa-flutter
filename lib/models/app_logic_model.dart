@@ -138,6 +138,7 @@ class AppLogicModel extends ChangeNotifier {
   final _connectionStreamController = StreamController<BrilliantDevice>();
   final _stringRxStreamController = StreamController<String>();
   final _dataRxStreamController = StreamController<List<int>>();
+  final _fileUploadProcessStreamController = StreamController<double>();
 
   // Noa steam listeners
   final _noaResponseStreamController = StreamController<NoaMessage>();
@@ -173,7 +174,7 @@ class AppLogicModel extends ChangeNotifier {
 
     // Monitors Bluetooth scan events
     _scanStreamController.stream
-        .where((device) => device.rssi! > -55)
+        .where((device) => device.rssi! > -60)
         .timeout(const Duration(seconds: 2), onTimeout: (_) {
       triggerEvent(Event.deviceLost);
     }).listen((device) {
@@ -188,9 +189,13 @@ class AppLogicModel extends ChangeNotifier {
         case BrilliantConnectionState.connected:
           _connectedDevice!.stringRxListener = _stringRxStreamController;
           _connectedDevice!.dataRxListener = _dataRxStreamController;
+          _connectedDevice!.fileUploadProgressListener =
+              _fileUploadProcessStreamController;
           triggerEvent(Event.deviceConnected);
           break;
         case BrilliantConnectionState.dfuConnected:
+          _connectedDevice!.fileUploadProgressListener =
+              _fileUploadProcessStreamController;
           triggerEvent(Event.updatableDeviceConnected);
           break;
         case BrilliantConnectionState.disconnected:
@@ -213,6 +218,11 @@ class AppLogicModel extends ChangeNotifier {
     _dataRxStreamController.stream.listen((data) {
       _dataResponse = data;
       triggerEvent(Event.deviceDataResponse);
+    });
+
+    _fileUploadProcessStreamController.stream.listen((percentage) {
+      bluetoothUploadProgress = percentage;
+      notifyListeners();
     });
 
     // Monitor noa responses
@@ -420,15 +430,12 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             try {
-              _connectedDevice!
-                  .updateFirmware("assets/frame-firmware-v24.122.0824.zip")
-                  .listen((progress) {
-                bluetoothUploadProgress = progress;
-                notifyListeners();
-              }).onDone(() async {
-                await BrilliantBluetooth.scan(_scanStreamController);
-              });
-            } catch (_) {
+              await _connectedDevice!
+                  .updateFirmware("assets/frame-firmware-v24.122.0824.zip");
+              await BrilliantBluetooth.scan(_scanStreamController);
+            } catch (error) {
+              await _connectedDevice?.disconnect();
+              _log.warning("DFU error: $error");
               triggerEvent(Event.error);
             }
           });

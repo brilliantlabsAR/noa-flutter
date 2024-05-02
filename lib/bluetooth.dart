@@ -45,6 +45,7 @@ class BrilliantDevice {
   int? maxDataLength;
   StreamController<String>? stringRxListener;
   StreamController<List<int>>? dataRxListener;
+  StreamController<double>? fileUploadProgressListener;
 
   BluetoothCharacteristic? _txChannel;
   BluetoothCharacteristic? _rxChannel;
@@ -61,6 +62,7 @@ class BrilliantDevice {
     this.maxDataLength,
     this.stringRxListener,
     this.dataRxListener,
+    this.fileUploadProgressListener,
   });
 
   Future<void> connect(StreamController<BrilliantDevice> listener) async {
@@ -115,6 +117,66 @@ class BrilliantDevice {
     });
 
     device.cancelWhenDisconnected(stream, next: true, delayed: true);
+  }
+
+  Future<void> _enableServices() async {
+    List<BluetoothService> services = await device.discoverServices();
+
+    for (var service in services) {
+      // If Frame
+      if (service.serviceUuid == Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
+        _log.fine("Found Frame service");
+        for (var characteristic in service.characteristics) {
+          if (characteristic.characteristicUuid ==
+              Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
+            _log.fine("Found Frame TX characteristic");
+            _txChannel = characteristic;
+          }
+          if (characteristic.characteristicUuid ==
+              Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
+            _log.fine("Found Frame RX characteristic");
+            _rxChannel = characteristic;
+
+            StreamSubscription stream =
+                _rxChannel!.onValueReceived.listen((data) {
+              if (data[0] == 0x01) {
+                _log.finer("Received data: ${data.sublist(1)}");
+                dataRxListener?.add(data.sublist(1));
+              } else {
+                _log.finer("Received string: ${utf8.decode(data)}");
+                stringRxListener?.add(utf8.decode(data));
+              }
+            });
+
+            device.cancelWhenDisconnected(stream);
+
+            await characteristic.setNotifyValue(true);
+            _log.fine("Enabled RX notifications");
+          }
+        }
+      }
+
+      // If DFU
+      if (service.serviceUuid == Guid('fe59')) {
+        _log.fine("Found DFU service");
+        for (var characteristic in service.characteristics) {
+          if (characteristic.characteristicUuid ==
+              Guid('8ec90001-f315-4f60-9fb8-838830daea50')) {
+            _log.fine("Found DFU control characteristic");
+            _dfuControl = characteristic;
+            await characteristic.setNotifyValue(true);
+            _log.fine("Enabled DFU control notifications");
+          }
+          if (characteristic.characteristicUuid ==
+              Guid('8ec90002-f315-4f60-9fb8-838830daea50')) {
+            _log.fine("Found DFU packet characteristic");
+            _dfuPacket = characteristic;
+          }
+        }
+      }
+    }
+
+    _log.info("Services enabled");
   }
 
   Future<void> disconnect() async {
@@ -207,8 +269,7 @@ class BrilliantDevice {
     file = file.replaceAll('"', '\\"');
 
     var resp =
-        await sendString("f=frame.file.open('$fileName', 'w');print(nil)")
-            .onError((error, _) => Future.error("$error"));
+        await sendString("f=frame.file.open('$fileName', 'w');print(nil)");
 
     if (resp != "nil") {
       return Future.error("$resp");
@@ -230,8 +291,7 @@ class BrilliantDevice {
 
       String chunk = file.substring(index, index + chunkSize);
 
-      resp = await sendString("f:write('$chunk');print(nil)")
-          .onError((error, _) => Future.error("$error"));
+      resp = await sendString("f:write('$chunk');print(nil)");
 
       if (resp != "nil") {
         return Future.error("$resp");
@@ -240,27 +300,51 @@ class BrilliantDevice {
       index += chunkSize;
     }
 
-    resp = await sendString("f:close();print('nil')")
-        .onError((error, _) => Future.error("$error"));
+    resp = await sendString("f:close();print('nil')");
 
     if (resp != "nil") {
       return Future.error("$resp");
     }
+
+    // TODO report back to fileUploadProgressListener?.add(percentDone);
   }
 
-  Stream<double> updateFirmware(String filePath) async* {
-    _log.info("Starting firmware update");
+  // Stream<double> updateFirmware(String filePath) async* {
+  //   _log.info("Starting firmware update");
 
-    yield 0.0;
+  //   yield 0.0;
+
+  //   if (state != BrilliantConnectionState.dfuConnected) {
+  //     _log.warning("DFU device is not connected");
+  //     yield* Stream.error("DFU device is not connected");
+  //   }
+
+  //   if (_dfuControl == null || _dfuPacket == null) {
+  //     _log.warning("Device is not in DFU mode");
+  //     yield* Stream.error("Device is not in DFU mode");
+  //   }
+
+  //   final updateZipFile = await rootBundle.load(filePath);
+  //   final zip = ZipDecoder().decodeBytes(updateZipFile.buffer.asUint8List());
+
+  //   final initFile = zip.firstWhere((file) => file.name.endsWith(".dat"));
+  //   final imageFile = zip.firstWhere((file) => file.name.endsWith(".bin"));
+
+  //   await _transferDfuFile(initFile.content, true);
+  //   await _transferDfuFile(imageFile.content, false);
+  // }
+
+  Future<void> updateFirmware(String filePath) async {
+    _log.info("Starting firmware update");
 
     if (state != BrilliantConnectionState.dfuConnected) {
       _log.warning("DFU device is not connected");
-      yield* Stream.error("DFU device is not connected");
+      Future.error("DFU device is not connected");
     }
 
     if (_dfuControl == null || _dfuPacket == null) {
       _log.warning("Device is not in DFU mode");
-      yield* Stream.error("Device is not in DFU mode");
+      Future.error("Device is not in DFU mode");
     }
 
     final updateZipFile = await rootBundle.load(filePath);
@@ -273,80 +357,13 @@ class BrilliantDevice {
     await _transferDfuFile(imageFile.content, false);
   }
 
-  Future<void> _enableServices() async {
-    try {
-      List<BluetoothService> services = await device.discoverServices();
-
-      for (var service in services) {
-        // If Frame
-        if (service.serviceUuid ==
-            Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
-          _log.fine("Found Frame service");
-          for (var characteristic in service.characteristics) {
-            if (characteristic.characteristicUuid ==
-                Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
-              _log.fine("Found Frame TX characteristic");
-              _txChannel = characteristic;
-            }
-            if (characteristic.characteristicUuid ==
-                Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
-              _log.fine("Found Frame RX characteristic");
-              _rxChannel = characteristic;
-
-              StreamSubscription stream =
-                  _rxChannel!.onValueReceived.listen((data) {
-                if (data[0] == 0x01) {
-                  _log.finer("Received data: ${data.sublist(1)}");
-                  dataRxListener?.add(data.sublist(1));
-                } else {
-                  _log.finer("Received string: ${utf8.decode(data)}");
-                  stringRxListener?.add(utf8.decode(data));
-                }
-              });
-
-              device.cancelWhenDisconnected(stream);
-
-              await characteristic.setNotifyValue(true);
-              _log.fine("Enabled RX notifications");
-            }
-          }
-        }
-
-        // If DFU
-        if (service.serviceUuid == Guid('fe59')) {
-          _log.fine("Found DFU service");
-          for (var characteristic in service.characteristics) {
-            if (characteristic.characteristicUuid ==
-                Guid('8ec90001-f315-4f60-9fb8-838830daea50')) {
-              _log.fine("Found DFU control characteristic");
-              _dfuControl = characteristic;
-              await characteristic.setNotifyValue(true);
-              _log.fine("Enabled DFU control notifications");
-            }
-            if (characteristic.characteristicUuid ==
-                Guid('8ec90002-f315-4f60-9fb8-838830daea50')) {
-              _log.fine("Found DFU packet characteristic");
-              _dfuPacket = characteristic;
-            }
-          }
-        }
-      }
-    } catch (error) {
-      _log.warning("$error");
-      return Future.error(error);
-    }
-    _log.info("Services enabled");
-  }
-
-  Future<double> _transferDfuFile(Uint8List file, bool isInitFile) async {
-    double percentageComplete = 0;
+  Future<void> _transferDfuFile(Uint8List file, bool isInitFile) async {
     Uint8List response;
-// TODO wrap in try catch
     if (isInitFile) {
-      _log.info("Transferring DFU init file. Size: ${file.length}");
+      _log.info("Uploading DFU init file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x01]));
     } else {
-      _log.info("Transferring DFU image file. Size: ${file.length}");
+      _log.info("Uploading DFU image file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
     }
 
@@ -355,8 +372,7 @@ class BrilliantDevice {
     final crc = ByteData.view(response.buffer).getUint32(11, Endian.little);
     final chunks = (file.length / maxSize).ceil();
 
-    _log.fine(
-        "Sending $chunks chunks. Allowed size: $maxSize, offset: $offset, crc: $crc");
+    _log.fine("Received allowed size: $maxSize, offset: $offset, CRC: $crc");
 
     int fileOffset = 0;
     for (var i = 0; i < chunks; i++) {
@@ -377,9 +393,6 @@ class BrilliantDevice {
         chunkSize >> 24 & 0xff
       ];
 
-      _log.fine(
-          "Control header for chunk: $i, offset: $fileOffset, crc: $chunkCrc");
-
       if (isInitFile) {
         await _dfuSendControlData(
             Uint8List.fromList([0x01, 0x01, ...chunkSizeAsBytes]));
@@ -399,38 +412,36 @@ class BrilliantDevice {
 
         final fileSlice = file.sublist(fileOffset, fileOffset + packetLength);
         fileOffset += fileSlice.length;
-        percentageComplete = ((100 / file.length) * fileOffset);
+        final percentDone = (100 / file.length) * fileOffset;
+        fileUploadProgressListener?.add(percentDone);
 
         _log.fine(
-            "Sending ${fileSlice.length} bytes of packet data. $percentageComplete% Complete");
+            "Sending ${fileSlice.length} bytes of packet data. ${percentDone.toInt()}% Complete");
 
         await _dfuSendPacketData(fileSlice);
       }
 
       // Calculate CRC
       response = await _dfuSendControlData(Uint8List.fromList([0x03]));
-      final returnedOffset =
-          ByteData.view(response.buffer).getUint32(3, Endian.little);
       final returnedCrc =
           ByteData.view(response.buffer).getUint32(7, Endian.little);
 
       if (returnedCrc != chunkCrc) {
-        _log.warning(
-            "CRC mismatch after sending this chunk at offset $returnedOffset. Expected: $chunkCrc, got: $returnedCrc");
-        return Future.error(
-            "CRC mismatch after sending this chunk at offset $returnedOffset. Expected: $chunkCrc, got: $returnedCrc");
+        _log.warning("CRC mismatch after sending this chunk");
+        return Future.error("CRC mismatch after sending this chunk");
       }
 
-      // Execute command
-      await _dfuSendControlData(Uint8List.fromList([0x04]));
+      // Execute command (The last command may disconnect which is normal)
+      try {
+        await _dfuSendControlData(Uint8List.fromList([0x04]));
+      } catch (_) {}
     }
-    _log.info("DFU file sent");
 
-    return percentageComplete;
+    _log.info("DFU file sent");
   }
 
   Future<Uint8List> _dfuSendControlData(Uint8List data) async {
-    _log.fine("Transmitting ${data.length} bytes of DFU control data: $data");
+    _log.fine("Sending ${data.length} bytes of DFU control data: $data");
     Completer<Uint8List> completer = Completer();
 
     try {
@@ -458,11 +469,7 @@ class BrilliantDevice {
   }
 
   Future<void> _dfuSendPacketData(Uint8List data) async {
-    _log.fine(
-        "Transmitting ${data.length} bytes of DFU packet data: ${data.sublist(0, 10)}...");
     await _dfuPacket!.write(data, withoutResponse: true);
-    // await Future.delayed(const Duration(milliseconds: 10));
-    // TODO do we need a delay here to prevent dropping packets?
   }
 }
 
