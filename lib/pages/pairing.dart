@@ -22,6 +22,7 @@ class PairingPage extends ConsumerWidget {
     String pairingBoxText = "";
     String pairingBoxButtonText = "";
     bool pairingBoxButtonEnabled = false;
+    int updateProgress = ref.watch(app.model).bluetoothUploadProgress.toInt();
 
     switch (ref.watch(app.model).state.current) {
       case app.State.scanning:
@@ -35,14 +36,15 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = true;
         break;
       case app.State.connect:
-      case app.State.sendBreak:
+      case app.State.stopLuaApp:
       case app.State.checkVersion:
+      case app.State.triggerUpdate:
         pairingBoxText = "Frame found";
         pairingBoxButtonText = "Connecting";
         pairingBoxButtonEnabled = false;
         break;
-      case app.State.updatingFirmware:
-        pairingBoxText = "Updating software";
+      case app.State.updateFirmware:
+        pairingBoxText = "Updating software $updateProgress%";
         pairingBoxButtonText = "Keep your device close";
         pairingBoxButtonEnabled = false;
         break;

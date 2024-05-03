@@ -16,12 +16,13 @@ enum State {
   scanning,
   found,
   connect,
-  sendBreak,
+  stopLuaApp,
   checkVersion,
   uploadMainLua,
   uploadGraphicsLua,
   uploadStateLua,
-  updatingFirmware,
+  triggerUpdate,
+  updateFirmware,
   requiresRepair,
   connected,
   sendResponseToDevice,
@@ -35,9 +36,13 @@ enum Event {
   done,
   error,
   loggedIn,
+  pairedDeviceFound,
+  pairedDeviceNotFound,
+  deviceFoundNearby,
   deviceFound,
   deviceLost,
   deviceConnected,
+  updatableDeviceConnected,
   deviceDisconnected,
   deviceInvalid,
   buttonPressed,
@@ -63,8 +68,8 @@ enum TuneLength {
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
   StateMachine state = StateMachine(State.waitForLogin);
-  String? pairedDevice;
   NoaUser noaUser = NoaUser();
+  double bluetoothUploadProgress = 0;
   final List<NoaMessage> noaMessages = List.empty(growable: true);
 
   // User's tune preferences
@@ -121,7 +126,6 @@ class AppLogicModel extends ChangeNotifier {
   }
 
   // Private state variables
-  bool _eventBeingProcessed = false;
   BrilliantDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
   String? _luaResponse;
@@ -135,6 +139,7 @@ class AppLogicModel extends ChangeNotifier {
   final _connectionStreamController = StreamController<BrilliantDevice>();
   final _stringRxStreamController = StreamController<String>();
   final _dataRxStreamController = StreamController<List<int>>();
+  final _fileUploadProcessStreamController = StreamController<double>();
 
   // Noa steam listeners
   final _noaResponseStreamController = StreamController<NoaMessage>();
@@ -169,11 +174,17 @@ class AppLogicModel extends ChangeNotifier {
     // ));
 
     // Monitors Bluetooth scan events
-    _scanStreamController.stream
-        .where((device) => device.rssi! > -55)
+    final scanBroadcast = _scanStreamController.stream.asBroadcastStream();
+
+    scanBroadcast
+        .where((device) => device.rssi! > -60)
         .timeout(const Duration(seconds: 2), onTimeout: (_) {
       triggerEvent(Event.deviceLost);
     }).listen((device) {
+      triggerEvent(Event.deviceFoundNearby);
+    });
+
+    scanBroadcast.listen((device) {
       _nearbyDevice = device;
       triggerEvent(Event.deviceFound);
     });
@@ -185,7 +196,14 @@ class AppLogicModel extends ChangeNotifier {
         case BrilliantConnectionState.connected:
           _connectedDevice!.stringRxListener = _stringRxStreamController;
           _connectedDevice!.dataRxListener = _dataRxStreamController;
+          _connectedDevice!.fileUploadProgressListener =
+              _fileUploadProcessStreamController;
           triggerEvent(Event.deviceConnected);
+          break;
+        case BrilliantConnectionState.dfuConnected:
+          _connectedDevice!.fileUploadProgressListener =
+              _fileUploadProcessStreamController;
+          triggerEvent(Event.updatableDeviceConnected);
           break;
         case BrilliantConnectionState.disconnected:
           triggerEvent(Event.deviceDisconnected);
@@ -207,6 +225,11 @@ class AppLogicModel extends ChangeNotifier {
     _dataRxStreamController.stream.listen((data) {
       _dataResponse = data;
       triggerEvent(Event.deviceDataResponse);
+    });
+
+    _fileUploadProcessStreamController.stream.listen((percentage) {
+      bluetoothUploadProgress = percentage;
+      notifyListeners();
     });
 
     // Monitor noa responses
@@ -236,12 +259,6 @@ class AppLogicModel extends ChangeNotifier {
   }
 
   void triggerEvent(Event event) {
-    if (_eventBeingProcessed) {
-      _log.severe("Too many events: $event");
-    }
-
-    _eventBeingProcessed = true;
-
     state.event(event);
 
     do {
@@ -269,33 +286,27 @@ class AppLogicModel extends ChangeNotifier {
         case State.getPairedDevice:
           state.onEntry(() async {
             final savedData = await SharedPreferences.getInstance();
-            pairedDevice = savedData.getString('pairedDevice');
-            triggerEvent(Event.done);
+            if (savedData.getString('pairedDevice') != null) {
+              triggerEvent(Event.pairedDeviceFound);
+            } else {
+              triggerEvent(Event.pairedDeviceNotFound);
+            }
           });
-
-          if (pairedDevice == null) {
-            state.changeOn(Event.done, State.scanning);
-          } else {
-            state.changeOn(Event.done, State.disconnected,
-                transitionTask: () async => await BrilliantBluetooth.reconnect(
-                      pairedDevice!,
-                      _connectionStreamController,
-                    ));
-          }
+          state.changeOn(Event.pairedDeviceNotFound, State.scanning);
+          state.changeOn(Event.pairedDeviceFound, State.disconnected);
           break;
 
         case State.scanning:
           state.onEntry(
               () async => await BrilliantBluetooth.scan(_scanStreamController));
-          state.changeOn(Event.deviceFound, State.found);
+          state.changeOn(Event.deviceFoundNearby, State.found);
           state.changeOn(Event.cancelPressed, State.disconnected,
               transitionTask: () async => await BrilliantBluetooth.stopScan());
           break;
 
         case State.found:
           state.changeOn(Event.deviceLost, State.scanning);
-          state.changeOn(Event.buttonPressed, State.connect,
-              transitionTask: () async => await BrilliantBluetooth.stopScan());
+          state.changeOn(Event.buttonPressed, State.connect);
           state.changeOn(Event.cancelPressed, State.disconnected,
               transitionTask: () async => await BrilliantBluetooth.stopScan());
           break;
@@ -304,10 +315,11 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async =>
               await _nearbyDevice!.connect(_connectionStreamController));
           state.changeOn(Event.deviceInvalid, State.requiresRepair);
-          state.changeOn(Event.deviceConnected, State.sendBreak);
+          state.changeOn(Event.deviceConnected, State.stopLuaApp);
+          state.changeOn(Event.updatableDeviceConnected, State.updateFirmware);
           break;
 
-        case State.sendBreak:
+        case State.stopLuaApp:
           state.onEntry(() async {
             try {
               await _connectedDevice!.sendBreakSignal();
@@ -332,11 +344,10 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          if (_luaResponse == "v24.065.1346") {
+          if (_luaResponse == "v24.124.0650") {
             state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
           } else {
-            // TODO go to State.updatingFirmware instead
-            state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
+            state.changeOn(Event.deviceStringResponse, State.triggerUpdate);
           }
           state.changeOn(Event.error, State.requiresRepair);
           break;
@@ -396,8 +407,34 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
-        case State.updatingFirmware:
-          // TODO DFU process
+        case State.triggerUpdate:
+          state.onEntry(() async {
+            try {
+              await _connectedDevice!
+                  .sendString("frame.update()", awaitResponse: false);
+              await BrilliantBluetooth.scan(_scanStreamController);
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceFound, State.connect);
+          state.changeOn(Event.error, State.requiresRepair);
+          break;
+
+        case State.updateFirmware:
+          state.onEntry(() async {
+            try {
+              await _connectedDevice!
+                  .updateFirmware("assets/frame-firmware-v24.124.0650.zip");
+              await BrilliantBluetooth.scan(_scanStreamController);
+            } catch (error) {
+              await _connectedDevice?.disconnect();
+              _log.warning("DFU error: $error");
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceFound, State.connect);
+          state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.requiresRepair:
@@ -498,6 +535,14 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.disconnected:
+          state.onEntry(() async {
+            final savedData = await SharedPreferences.getInstance();
+            String? pairedDevice = savedData.getString('pairedDevice');
+            if (pairedDevice != null) {
+              await BrilliantBluetooth.reconnect(
+                  pairedDevice, _connectionStreamController);
+            }
+          });
           state.changeOn(Event.deviceConnected, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
@@ -509,7 +554,6 @@ class AppLogicModel extends ChangeNotifier {
             await NoaApi.signOut(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
-            pairedDevice = null;
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);
@@ -521,7 +565,6 @@ class AppLogicModel extends ChangeNotifier {
             await NoaApi.deleteUser(_userAuthToken!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
-            pairedDevice = null;
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);
@@ -530,8 +573,6 @@ class AppLogicModel extends ChangeNotifier {
     } while (state.changePending());
 
     notifyListeners();
-
-    _eventBeingProcessed = false;
   }
 
   @override
