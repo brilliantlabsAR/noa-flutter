@@ -7,7 +7,7 @@ class AppLog extends ChangeNotifier {
   String bluetooth = "";
 
   AppLog() {
-    Logger.root.level = Level.FINE;
+    Logger.root.level = Level.INFO;
     Logger.root.onRecord.listen((log) {
       if (kDebugMode) {
         print('${log.level.name} - ${log.loggerName}: ${log.message}');
