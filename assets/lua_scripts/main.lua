@@ -137,7 +137,7 @@ while true do
     graphics:print_text()
 
     if frame.time.utc() - last_autoexp_time > 0.1 then
-        frame.camera.auto { metering = 'CENTER_WEIGHTED' }
+        frame.camera.auto { metering = 'CENTER_WEIGHTED', exposure = -0.5 }
         last_autoexp_time = frame.time.utc()
     end
 
