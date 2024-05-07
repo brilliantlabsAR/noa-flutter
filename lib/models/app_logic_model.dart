@@ -344,7 +344,7 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          if (_luaResponse == "v24.127.1920") {
+          if (_luaResponse == "v24.128.1319") {
             state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
           } else {
             state.changeOn(Event.deviceStringResponse, State.triggerUpdate);
@@ -425,7 +425,7 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             try {
               await _connectedDevice!
-                  .updateFirmware("assets/frame-firmware-v24.127.1920.zip");
+                  .updateFirmware("assets/frame-firmware-v24.128.1319.zip");
               await BrilliantBluetooth.scan(_scanStreamController);
             } catch (error) {
               await _connectedDevice?.disconnect();
