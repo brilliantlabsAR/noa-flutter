@@ -1,6 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/util/app_log.dart';
@@ -17,6 +18,7 @@ void main() async {
   container.read(appLog);
 
   // Request user permissions
+  //Geolocator.requestPermission();
   await Location.requestPermission();
   BrilliantBluetooth.requestPermission();
 

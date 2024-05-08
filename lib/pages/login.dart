@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +11,10 @@ import 'package:noa/util/alert_dialog.dart';
 import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/sign_in.dart';
 import 'package:noa/util/switch_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../util/location.dart';
 
 TextSpan _clickableLink({required String text, required String url}) {
   return TextSpan(
@@ -62,8 +67,31 @@ Widget _loginButton(
 class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
 
+  Future<void> _requestPermissions() async {
+
+    try {
+      // Permissions to request
+      List<Permission> permissions = [
+        Permission.location,
+        Permission.bluetooth,
+        Permission.bluetoothConnect,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+        Permission.storage,
+        Permission.mediaLibrary,
+      ];
+
+      // Request permissions
+      await permissions.request();
+    }
+    catch(ex){
+      print(ex.toString());
+    }
+  }
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    _requestPermissions();
+    // Location.requestPermission();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.watch(app.model).state.current != app.State.waitForLogin) {
         switchPage(context, const PairingPage());
@@ -100,6 +128,53 @@ class LoginPage extends ConsumerWidget {
               //   'assets/images/sign_in_with_email_button.png',
               //   SignIn().withEmail,
               // ),
+
+              if(Platform.isAndroid)
+              StreamBuilder<bool>(
+                stream: ref.watch(app.model).bluetoothController.stream,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+
+                    bool status = snapshot.data ?? false;
+                    if(!status)
+                    {
+
+
+
+                      WidgetsBinding.instance?.addPostFrameCallback((_) {
+                        alertDialog(
+                          context,
+                          "Bluetooth is disabled",
+                          "Please turn on Bluetooth",
+                        );});
+                    }
+                    return SizedBox() ;
+                  } else {
+                    return SizedBox(); // Return an empty SizedBox while waiting for the GPS or Bluetooth status to be enabled
+                  }
+                },),
+
+              if(Platform.isAndroid)
+              StreamBuilder<bool>(
+                stream: ref.watch(app.model).gpsStatusController.stream,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+
+                    bool status = snapshot.data ?? false;
+                    if(!status)
+                    {
+                      WidgetsBinding.instance?.addPostFrameCallback((_) {
+                        alertDialog(
+                          context,
+                          "Gps is disabled",
+                          "Please turn on Gps",
+                        );});
+                    }
+                    return SizedBox() ;
+                  } else {
+                    return SizedBox(); // Return an empty SizedBox while waiting for the GPS or Bluetooth status to be enabled
+                  }
+                },),
             ],
           )
         ],

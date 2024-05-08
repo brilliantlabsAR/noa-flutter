@@ -21,6 +21,11 @@ class Location {
           accuracy: LocationAccuracy.low,
           pauseLocationUpdatesAutomatically: true);
     }
+    else
+      {
+        locationSettings =  const LocationSettings( accuracy: LocationAccuracy.low,
+            );
+      }
 
     Geolocator.getPositionStream(locationSettings: locationSettings)
         .listen((Position? position) {

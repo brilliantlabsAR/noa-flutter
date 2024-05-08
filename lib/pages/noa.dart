@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/main.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/noa_api.dart';
 import 'package:noa/style.dart';
+import 'package:noa/util/alert_dialog.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 
@@ -93,6 +96,56 @@ class NoaPage extends ConsumerWidget {
                       ),
                     ),
                   ),
+
+
+                if(Platform.isAndroid)
+                StreamBuilder<bool>(
+                  stream: ref.watch(app.model).bluetoothController.stream,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+
+                      bool status = snapshot.data ?? false;
+                      if(!status)
+                      {
+
+
+
+                        WidgetsBinding.instance?.addPostFrameCallback((_) {
+                          alertDialog(
+                            context,
+                            "Bluetooth is disabled",
+                            "Please turn on Bluetooth",
+                          );});
+                      }
+                      return SizedBox() ;
+                    } else {
+                      return SizedBox(); // Return an empty SizedBox while waiting for the GPS or Bluetooth status to be enabled
+                    }
+                  },),
+
+                if(Platform.isAndroid)
+                StreamBuilder<bool>(
+                  stream: ref.watch(app.model).gpsStatusController.stream,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+
+                      bool status = snapshot.data ?? false;
+                      if(!status)
+                      {
+                        WidgetsBinding.instance?.addPostFrameCallback((_) {
+                          alertDialog(
+                            context,
+                            "Gps is disabled",
+                            "Please turn on Gps",
+                          );});
+                      }
+                      return SizedBox() ;
+                    } else {
+                      return SizedBox(); // Return an empty SizedBox while waiting for the GPS or Bluetooth status to be enabled
+                    }
+                  },),
+
+
               ],
             );
           },

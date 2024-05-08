@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/noa_api.dart';
 import 'package:noa/bluetooth.dart';
@@ -145,7 +147,36 @@ class AppLogicModel extends ChangeNotifier {
   final _noaResponseStreamController = StreamController<NoaMessage>();
   final _noaUserInfoStreamController = StreamController<NoaUser>();
 
+  StreamController<bool> gpsStatusController = StreamController<bool>();
+  StreamController<bool> bluetoothController = StreamController<bool>();
+  bool ispopUpShowing = false;
+  void _listenToGPSStatusChanges() async {
+    gpsStatusController.add(await Geolocator.isLocationServiceEnabled());
+
+
+    var subscription = FlutterBluePlus.adapterState.listen((BluetoothAdapterState state) {
+      print(state);
+      bluetoothController.add(state == BluetoothAdapterState.on);
+    });
+
+    try {
+      Geolocator.getPositionStream().listen((position) {
+        // Do something when the position changes
+      });
+
+      StreamSubscription<ServiceStatus> serviceStatusStream = Geolocator
+          .getServiceStatusStream().listen(
+              (ServiceStatus status) {
+            gpsStatusController.add(status == ServiceStatus.enabled);
+          });
+    }
+    catch(ex){
+      print(ex);
+    }
+  }
+
   AppLogicModel() {
+    _listenToGPSStatusChanges();
     // Uncomment to create AppStore images
     // noaMessages.add(NoaMessage(
     //   message: "Recommend me some pizza places I near Union Square",
