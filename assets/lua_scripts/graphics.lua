@@ -9,6 +9,7 @@ end
 
 function Graphics:clear()
     self.__text = ""
+    self.__emoji = ""
     self.__characters_printed = 0
     self.__image = ""
     self.__image_bytes_received = 0
@@ -17,8 +18,9 @@ function Graphics:clear()
     frame.display.assign_color(2, 0xFF, 0xFF, 0xFF)
 end
 
-function Graphics:append_text(data)
+function Graphics:append_text(data, emoji)
     self.__text = self.__text .. string.gsub(data, "\n+", " ")
+    self.__emoji = emoji
 end
 
 function Graphics:append_image(data)
@@ -40,9 +42,11 @@ end
 
 function Graphics:print_text()
     -- Otherwise print text
-    local MAX_LINES = 4
-    local Y_OFFSET = 90
-    local SCREEN_WIDTH = 640
+    local TOP_MARGIN = 118
+    local MAX_LINES = 3
+    local LINE_SPACING = 58
+    local EMOJI_MAX_WIDTH = 91
+    local TEXT_MAX_WIDTH = 640 - EMOJI_MAX_WIDTH - 5
     local CHARACTER_WIDTH = 24
     local WORD_DELAY = 0.075
 
@@ -54,7 +58,7 @@ function Graphics:print_text()
 
     for word in string.gmatch(trunkated_text, "%S+") do
         for character in string.gmatch(word, "%S+") do
-            if accumulated_width + (CHARACTER_WIDTH * #character) > SCREEN_WIDTH then
+            if accumulated_width + (CHARACTER_WIDTH * #character) > TEXT_MAX_WIDTH then
                 accumulated_width = 0
                 line_count = line_count + 1
                 if line_count > MAX_LINES then
@@ -72,9 +76,11 @@ function Graphics:print_text()
 
     -- Print to the display
     for i, line in pairs(lines) do
-        local y = 1 + ((i - 1) * 58) + Y_OFFSET
+        local y = 1 + ((i - 1) * LINE_SPACING) + TOP_MARGIN
         frame.display.text(line, 1, y)
     end
+
+    frame.display.text(self.__emoji, 640 - EMOJI_MAX_WIDTH, TOP_MARGIN)
 
     frame.display.show()
 
