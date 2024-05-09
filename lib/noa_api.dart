@@ -307,7 +307,7 @@ class NoaApi {
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = temperature.toString();
 
-      _log.info("Sending wildcard request");
+      _log.info("Sending wildcard request: ${request.fields.toString()}");
 
       var streamedResponse = await request.send();
 
