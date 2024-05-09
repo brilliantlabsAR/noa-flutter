@@ -549,14 +549,6 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.disconnected:
-          state.onEntry(() async {
-            final savedData = await SharedPreferences.getInstance();
-            String? pairedDevice = savedData.getString('pairedDevice');
-            if (pairedDevice != null) {
-              await BrilliantBluetooth.reconnect(
-                  pairedDevice, _connectionStreamController);
-            }
-          });
           state.changeOn(Event.deviceConnected, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);

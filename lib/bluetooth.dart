@@ -47,6 +47,7 @@ class BrilliantDevice {
   StreamController<List<int>>? dataRxListener;
   StreamController<double>? fileUploadProgressListener;
 
+  StreamSubscription? connectionStream;
   BluetoothCharacteristic? _txChannel;
   BluetoothCharacteristic? _rxChannel;
   BluetoothCharacteristic? _dfuControl;
@@ -68,7 +69,7 @@ class BrilliantDevice {
   Future<void> connect(StreamController<BrilliantDevice> listener) async {
     _log.info("Connecting");
     await FlutterBluePlus.stopScan();
-
+    connectionStream?.cancel();
     try {
       await device.connect(
         autoConnect: true,
@@ -81,8 +82,7 @@ class BrilliantDevice {
       listener.sink.add(this);
     }
 
-    StreamSubscription stream =
-        device.connectionState.listen((connectionState) async {
+    connectionStream ??= device.connectionState.listen((connectionState) async {
       switch (connectionState) {
         case BluetoothConnectionState.connected:
           try {
@@ -102,6 +102,7 @@ class BrilliantDevice {
             }
           } catch (error) {
             await device.disconnect();
+            connectionStream!.cancel();
             _log.warning("Failed to enable services. $error");
             state = BrilliantConnectionState.invalid;
           }
@@ -114,6 +115,7 @@ class BrilliantDevice {
             case 15:
               state = BrilliantConnectionState.invalid;
               device.disconnect(); // Prevent auto-connection to unpaired device
+              connectionStream!.cancel();
               break;
             case 23789258:
               return;
@@ -128,8 +130,6 @@ class BrilliantDevice {
 
       listener.sink.add(this);
     });
-
-    device.cancelWhenDisconnected(stream, next: true, delayed: true);
   }
 
   Future<void> _enableServices() async {
@@ -198,6 +198,7 @@ class BrilliantDevice {
   Future<void> disconnect() async {
     _log.info("Disconnecting");
     await device.disconnect();
+    connectionStream!.cancel();
   }
 
   Future<void> sendBreakSignal() async {
