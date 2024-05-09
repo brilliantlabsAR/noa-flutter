@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
@@ -298,8 +297,9 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.scanning:
-          state.onEntry(
-              () async => await BrilliantBluetooth.scan(_scanStreamController));
+          state.onEntry(() async {
+            await BrilliantBluetooth.scan(_scanStreamController);
+          });
           state.changeOn(Event.deviceFoundNearby, State.found);
           state.changeOn(Event.cancelPressed, State.disconnected,
               transitionTask: () async => await BrilliantBluetooth.stopScan());
@@ -435,6 +435,8 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           state.changeOn(Event.deviceFound, State.connect);
+          state.changeOn(Event.deviceConnected, State.stopLuaApp);
+          state.changeOn(Event.deviceInvalid, State.requiresRepair);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 

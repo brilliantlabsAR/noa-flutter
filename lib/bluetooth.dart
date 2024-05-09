@@ -71,7 +71,7 @@ class BrilliantDevice {
 
     try {
       await device.connect(
-        // autoConnect: true,
+        autoConnect: true,
         timeout: const Duration(seconds: 2),
         mtu: null,
       );
@@ -107,9 +107,20 @@ class BrilliantDevice {
           }
           break;
         case BluetoothConnectionState.disconnected:
-          _log.info("Disconnected");
-          // TODO differentiate as invalid when "Device has disconnected from us" error occurs
-          state = BrilliantConnectionState.disconnected;
+          if (device.disconnectReason == null) {
+            return;
+          }
+          switch (device.disconnectReason!.code) {
+            case 15:
+              state = BrilliantConnectionState.invalid;
+              device.disconnect(); // Prevent auto-connection to unpaired device
+              break;
+            case 23789258:
+              return;
+            default:
+              state = BrilliantConnectionState.disconnected;
+          }
+          _log.info("Disconnected. ${device.disconnectReason!.description}");
           break;
         default:
           break;
@@ -470,10 +481,7 @@ class BrilliantBluetooth {
   }
 
   static Future<void> scan(StreamController<BrilliantDevice> listener) async {
-    if (FlutterBluePlus.isScanningNow) {
-      _log.info("Already scanning for devices");
-      return;
-    }
+    await FlutterBluePlus.stopScan();
 
     late ScanResult nearestDevice;
 
