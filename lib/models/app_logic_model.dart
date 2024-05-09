@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
@@ -444,6 +445,40 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.connected:
           if (event == Event.deviceDataResponse) {
+            String getTunePrompt() {
+              String prompt = "";
+              if (_tuneStyle != "") {
+                prompt += " in the style of $_tuneStyle";
+              }
+
+              if (_tuneTone != "") {
+                prompt += " with a $_tuneTone tone";
+              }
+
+              if (_tuneFormat != "") {
+                prompt += " formatted as $_tuneFormat";
+              }
+
+              switch (_tuneLength) {
+                case TuneLength.shortest:
+                  prompt += ". Limit responses to 1 to 3 words";
+                  break;
+                case TuneLength.short:
+                  prompt += ". Limit responses to 1 sentence";
+                  break;
+                case TuneLength.standard:
+                  prompt += ". Limit responses to 1 to 2 sentences";
+                  break;
+                case TuneLength.long:
+                  prompt += ". Limit responses to 1 short paragraph";
+                  break;
+                case TuneLength.longest:
+                  prompt += ". Limit responses to 2 paragraphs";
+                  break;
+              }
+              return prompt;
+            }
+
             switch (_dataResponse?[0]) {
               case 0x10:
                 _log.info("Received start flag from device");
@@ -459,45 +494,23 @@ class AppLogicModel extends ChangeNotifier {
               case 0x16:
                 _log.info(
                     "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
-                String tunePrompt = "";
-
-                if (_tuneStyle != "") {
-                  tunePrompt += " in the style of $_tuneStyle";
-                }
-
-                if (_tuneTone != "") {
-                  tunePrompt += " with a $_tuneTone tone";
-                }
-
-                if (_tuneFormat != "") {
-                  tunePrompt += " formatted as $_tuneFormat";
-                }
-
-                switch (_tuneLength) {
-                  case TuneLength.shortest:
-                    tunePrompt += ". Limit responses to 1 to 3 words";
-                    break;
-                  case TuneLength.short:
-                    tunePrompt += ". Limit responses to 1 sentence";
-                    break;
-                  case TuneLength.standard:
-                    tunePrompt += ". Limit responses to 1 to 2 sentences";
-                    break;
-                  case TuneLength.long:
-                    tunePrompt += ". Limit responses to 1 short paragraph";
-                    break;
-                  case TuneLength.longest:
-                    tunePrompt += ". Limit responses to 2 paragraphs";
-                    break;
-                }
-
                 NoaApi.getMessage(
                   _userAuthToken!,
                   Uint8List.fromList(_audioData),
                   Uint8List.fromList(_imageData),
-                  tunePrompt,
+                  getTunePrompt(),
                   _tuneTemperature / 50,
                   noaMessages,
+                  _noaResponseStreamController,
+                  _noaUserInfoStreamController,
+                );
+                break;
+              case 0x17:
+                _log.info("Wildcard request");
+                NoaApi.getWildcardMessage(
+                  _userAuthToken!,
+                  getTunePrompt(),
+                  _tuneTemperature / 50,
                   _noaResponseStreamController,
                   _noaUserInfoStreamController,
                 );

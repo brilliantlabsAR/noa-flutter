@@ -14,11 +14,11 @@ MESSAGE_TEXT_FLAG = "\x11"
 MESSAGE_AUDIO_FLAG = "\x12"
 MESSAGE_IMAGE_FLAG = "\x13"
 MESSAGE_END_FLAG = "\x16"
-MESSAGE_SCRIPT_VERSION_RESPONSE_FLAG = "\x18"
+MESSAGE_WILDCARD_FLAG = "\x17"
 
 local function bluetooth_callback(message)
     if string.sub(message, 1, 1) == MESSAGE_TEXT_FLAG then
-        if state:is("ON_IT") then
+        if state:is("ON_IT") or state:is("WILDCARD") then
             graphics:clear()
             state:switch("PRINT_REPLY")
         end
@@ -45,8 +45,14 @@ while true do
         state:on_entry(function()
             graphics:append_text("", "\u{1F618}")
         end)
+        state:switch_after(10, "WILDCARD")
+        state:switch_on_tap("LISTEN")
+    elseif state:is("WILDCARD") then
+        state:on_entry(function()
+            graphics:append_text("", "\u{1F603}")
+            send_data(MESSAGE_WILDCARD_FLAG)
+        end)
         state:switch_after(10, "PRE_SLEEP")
-        state:switch_on_tap("READY_A")
     elseif state:is("READY_A") then
         state:on_entry(function()
             graphics:clear()
@@ -151,7 +157,7 @@ while true do
             graphics:append_text("", "\u{1F4F5}")
         end)
         if frame.bluetooth.is_connected() == true then
-            state:switch("READY_A")
+            state:switch("START")
         end
         state:switch_after(10, "PRE_SLEEP")
     end
