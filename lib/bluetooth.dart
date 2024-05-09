@@ -142,10 +142,13 @@ class BrilliantDevice {
             StreamSubscription stream =
                 _rxChannel!.onValueReceived.listen((data) {
               if (data[0] == 0x01) {
-                _log.finer("Received data: ${data.sublist(1)}");
+                _log.fine("Received data: ${data.sublist(1)}");
                 dataRxListener?.add(data.sublist(1));
               } else {
-                _log.finer("Received string: ${utf8.decode(data)}");
+                // Don't log internal echo flags
+                if (data[0] != 0x02) {
+                  _log.info("Received string: ${utf8.decode(data)}");
+                }
                 stringRxListener?.add(utf8.decode(data));
               }
             });
@@ -178,7 +181,7 @@ class BrilliantDevice {
       }
     }
 
-    _log.info("Services enabled");
+    _log.fine("Services enabled");
   }
 
   Future<void> disconnect() async {
@@ -188,7 +191,7 @@ class BrilliantDevice {
 
   Future<void> sendBreakSignal() async {
     _log.info("Sending break signal");
-    await sendString("\x03", awaitResponse: false);
+    await sendString("\x03", awaitResponse: false, log: false);
     Completer completer = Completer();
     Timer(const Duration(milliseconds: 100), () => completer.complete());
     return completer.future;
@@ -196,14 +199,20 @@ class BrilliantDevice {
 
   Future<void> sendResetSignal() async {
     _log.info("Sending reset signal");
-    await sendString("\x04", awaitResponse: false);
+    await sendString("\x04", awaitResponse: false, log: false);
     Completer completer = Completer();
     Timer(const Duration(milliseconds: 100), () => completer.complete());
     return completer.future;
   }
 
-  Future<String?> sendString(String string, {bool awaitResponse = true}) async {
-    _log.info("Sending ${string.length} bytes of string data");
+  Future<String?> sendString(
+    String string, {
+    bool awaitResponse = true,
+    bool log = true,
+  }) async {
+    if (log) {
+      _log.info("Sending string: $string");
+    }
     Completer<String?> completer = Completer();
 
     if (state != BrilliantConnectionState.connected) {
@@ -231,7 +240,6 @@ class BrilliantDevice {
       stream.cancel();
       completer.completeError("Device didn't respond");
     }).listen((value) {
-      _log.info("Got response");
       stream.cancel();
       completer.complete(utf8.decode(value));
     });
@@ -270,10 +278,11 @@ class BrilliantDevice {
     file = file.replaceAll("'", "\\'");
     file = file.replaceAll('"', '\\"');
 
-    var resp =
-        await sendString("f=frame.file.open('$fileName', 'w');print(nil)");
+    var resp = await sendString(
+        "f=frame.file.open('$fileName', 'w');print('\x02')",
+        log: false);
 
-    if (resp != "nil") {
+    if (resp != "\x02") {
       return Future.error("$resp");
     }
 
@@ -293,18 +302,18 @@ class BrilliantDevice {
 
       String chunk = file.substring(index, index + chunkSize);
 
-      resp = await sendString("f:write('$chunk');print(nil)");
+      resp = await sendString("f:write('$chunk');print('\x02')", log: false);
 
-      if (resp != "nil") {
+      if (resp != "\x02") {
         return Future.error("$resp");
       }
 
       index += chunkSize;
     }
 
-    resp = await sendString("f:close();print('nil')");
+    resp = await sendString("f:close();print('\x02')", log: false);
 
-    if (resp != "nil") {
+    if (resp != "\x02") {
       return Future.error("$resp");
     }
 
@@ -333,15 +342,17 @@ class BrilliantDevice {
     await _transferDfuFile(initFile.content, true);
     await Future.delayed(const Duration(milliseconds: 500));
     await _transferDfuFile(imageFile.content, false);
+
+    _log.info("Firmware update completed");
   }
 
   Future<void> _transferDfuFile(Uint8List file, bool isInitFile) async {
     Uint8List response;
     if (isInitFile) {
-      _log.info("Uploading DFU init file. Size: ${file.length}");
+      _log.fine("Uploading DFU init file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x01]));
     } else {
-      _log.info("Uploading DFU image file. Size: ${file.length}");
+      _log.fine("Uploading DFU image file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
     }
 
@@ -417,11 +428,11 @@ class BrilliantDevice {
       } catch (_) {}
     }
 
-    _log.info("DFU file sent");
+    _log.fine("DFU file sent");
   }
 
   Future<Uint8List> _dfuSendControlData(Uint8List data) async {
-    _log.finer("Sending ${data.length} bytes of DFU control data: $data");
+    _log.fine("Sending ${data.length} bytes of DFU control data: $data");
     Completer<Uint8List> completer = Completer();
 
     try {
