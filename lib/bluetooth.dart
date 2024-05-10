@@ -166,6 +166,7 @@ class BrilliantDevice {
 
   Future<void> sendData(List<int> data) async {
     _log.info("Sending ${data.length} bytes of plain data");
+    _log.fine(data);
 
     if (state != BrilliantConnectionState.connected) {
       _log.warning("Device is not connected");
