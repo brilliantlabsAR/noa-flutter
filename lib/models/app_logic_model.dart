@@ -38,10 +38,10 @@ enum Event {
   loggedIn,
   pairedDeviceFound,
   pairedDeviceNotFound,
-  deviceFoundNearby,
   deviceFound,
   deviceLost,
   deviceConnected,
+  deviceReconnected,
   updatableDeviceConnected,
   deviceDisconnected,
   deviceInvalid,
@@ -49,7 +49,8 @@ enum Event {
   cancelPressed,
   logoutPressed,
   deletePressed,
-  deviceStringResponse,
+  deviceUpToDate,
+  deviceNeedsUpdate,
   deviceDataResponse,
   noaResponse,
 }
@@ -126,20 +127,15 @@ class AppLogicModel extends ChangeNotifier {
   }
 
   // Private state variables
-  BrilliantDevice? _nearbyDevice;
+  StreamSubscription? _scanStream;
+  StreamSubscription? _connectionStream;
+  StreamSubscription? _luaResponseStream;
+  StreamSubscription? _dataResponseStream;
+  BrilliantScannedDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
-  String? _luaResponse;
-  List<int>? _dataResponse;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
   String? _userAuthToken;
-
-  // Bluetooth stream listeners
-  final _scanStreamController = StreamController<BrilliantDevice>();
-  final _connectionStreamController = StreamController<BrilliantDevice>();
-  final _stringRxStreamController = StreamController<String>();
-  final _dataRxStreamController = StreamController<List<int>>();
-  final _fileUploadProcessStreamController = StreamController<double>();
 
   // Noa steam listeners
   final _noaResponseStreamController = StreamController<NoaMessage>();
@@ -172,65 +168,6 @@ class AppLogicModel extends ChangeNotifier {
     //   from: NoaRole.noa,
     //   time: DateTime.now().add(const Duration(seconds: 5)),
     // ));
-
-    // Monitors Bluetooth scan events
-    final scanBroadcast = _scanStreamController.stream.asBroadcastStream();
-
-    scanBroadcast
-        .where((device) => device.rssi! > -60)
-        .timeout(const Duration(seconds: 2), onTimeout: (_) {
-      triggerEvent(Event.deviceLost);
-    }).listen((device) {
-      triggerEvent(Event.deviceFoundNearby);
-    });
-
-    scanBroadcast.listen((device) {
-      _nearbyDevice = device;
-      triggerEvent(Event.deviceFound);
-    });
-
-    // Monitors Bluetooth connection events
-    _connectionStreamController.stream.listen((device) async {
-      _connectedDevice = device;
-      switch (device.state) {
-        case BrilliantConnectionState.connected:
-          _connectedDevice!.stringRxListener = _stringRxStreamController;
-          _connectedDevice!.dataRxListener = _dataRxStreamController;
-          _connectedDevice!.fileUploadProgressListener =
-              _fileUploadProcessStreamController;
-          triggerEvent(Event.deviceConnected);
-          break;
-        case BrilliantConnectionState.dfuConnected:
-          _connectedDevice!.fileUploadProgressListener =
-              _fileUploadProcessStreamController;
-          triggerEvent(Event.updatableDeviceConnected);
-          break;
-        case BrilliantConnectionState.disconnected:
-          triggerEvent(Event.deviceDisconnected);
-          break;
-        case BrilliantConnectionState.invalid:
-          triggerEvent(Event.deviceInvalid);
-          break;
-        default:
-      }
-    });
-
-    // Monitors received strings from Bluetooth
-    _stringRxStreamController.stream.listen((string) {
-      _luaResponse = string;
-      triggerEvent(Event.deviceStringResponse);
-    });
-
-    // Monitors received data from Bluetooth
-    _dataRxStreamController.stream.listen((data) {
-      _dataResponse = data;
-      triggerEvent(Event.deviceDataResponse);
-    });
-
-    _fileUploadProcessStreamController.stream.listen((percentage) {
-      bluetoothUploadProgress = percentage;
-      notifyListeners();
-    });
 
     // Monitor noa responses
     _noaResponseStreamController.stream.listen((message) {
@@ -297,9 +234,18 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.scanning:
-          state.onEntry(
-              () async => await BrilliantBluetooth.scan(_scanStreamController));
-          state.changeOn(Event.deviceFoundNearby, State.found);
+          state.onEntry(() async {
+            await _scanStream?.cancel();
+            _scanStream = BrilliantBluetooth.scan()
+                .timeout(const Duration(seconds: 2), onTimeout: (sink) {
+              _nearbyDevice = null;
+              triggerEvent(Event.deviceLost);
+            }).listen((device) {
+              _nearbyDevice = device;
+              triggerEvent(Event.deviceFound);
+            });
+          });
+          state.changeOn(Event.deviceFound, State.found);
           state.changeOn(Event.cancelPressed, State.disconnected,
               transitionTask: () async => await BrilliantBluetooth.stopScan());
           break;
@@ -312,11 +258,22 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.connect:
-          state.onEntry(() async =>
-              await _nearbyDevice!.connect(_connectionStreamController));
-          state.changeOn(Event.deviceInvalid, State.requiresRepair);
+          state.onEntry(() async {
+            _connectedDevice = await BrilliantBluetooth.connect(_nearbyDevice!);
+            switch (_connectedDevice!.state) {
+              case BrilliantConnectionState.connected:
+                triggerEvent(Event.deviceConnected);
+                break;
+              case BrilliantConnectionState.dfuConnected:
+                triggerEvent(Event.updatableDeviceConnected);
+                break;
+              default:
+                triggerEvent(Event.deviceInvalid);
+            }
+          });
           state.changeOn(Event.deviceConnected, State.stopLuaApp);
           state.changeOn(Event.updatableDeviceConnected, State.updateFirmware);
+          state.changeOn(Event.deviceInvalid, State.requiresRepair);
           break;
 
         case State.stopLuaApp:
@@ -334,21 +291,21 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.checkVersion:
           state.onEntry(() async {
-            _connectedDevice!.stringRxListener = _stringRxStreamController;
-            _connectedDevice!.dataRxListener = _dataRxStreamController;
             try {
-              await _connectedDevice!
+              final response = await _connectedDevice!
                   .sendString("print(frame.FIRMWARE_VERSION)")
                   .timeout(const Duration(seconds: 1));
+              if (response == "v24.129.1316") {
+                triggerEvent(Event.deviceUpToDate);
+              } else {
+                triggerEvent(Event.deviceNeedsUpdate);
+              }
             } catch (_) {
               triggerEvent(Event.error);
             }
           });
-          if (_luaResponse == "v24.129.1316") {
-            state.changeOn(Event.deviceStringResponse, State.uploadMainLua);
-          } else {
-            state.changeOn(Event.deviceStringResponse, State.triggerUpdate);
-          }
+          state.changeOn(Event.deviceUpToDate, State.uploadMainLua);
+          state.changeOn(Event.deviceNeedsUpdate, State.triggerUpdate);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
@@ -402,7 +359,7 @@ class AppLogicModel extends ChangeNotifier {
 
           state.changeOn(Event.done, State.connected, transitionTask: () async {
             SharedPreferences savedData = await SharedPreferences.getInstance();
-            await savedData.setString('pairedDevice', _connectedDevice!.uuid);
+            // await savedData.setString('pairedDevice', _connectedDevice!.uuid); // TODO save device
           });
           state.changeOn(Event.error, State.requiresRepair);
           break;
@@ -410,23 +367,39 @@ class AppLogicModel extends ChangeNotifier {
         case State.triggerUpdate:
           state.onEntry(() async {
             try {
-              await _connectedDevice!
-                  .sendString("frame.update()", awaitResponse: false);
-              await BrilliantBluetooth.scan(_scanStreamController);
+              await _connectedDevice!.sendString(
+                "frame.update()",
+                awaitResponse: false,
+              );
             } catch (_) {
               triggerEvent(Event.error);
             }
+            await _scanStream?.cancel();
+            _scanStream = BrilliantBluetooth.scan().listen((device) {
+              _nearbyDevice = device;
+              triggerEvent(Event.deviceFound);
+            });
           });
-          state.changeOn(Event.deviceFound, State.connect);
+          state.changeOn(Event.deviceFound, State.connect,
+              transitionTask: () async => await BrilliantBluetooth.stopScan());
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
         case State.updateFirmware:
           state.onEntry(() async {
             try {
-              await _connectedDevice!
-                  .updateFirmware("assets/frame-firmware-v24.129.1316.zip");
-              await BrilliantBluetooth.scan(_scanStreamController);
+              _connectedDevice!
+                  .updateFirmware("assets/frame-firmware-v24.129.1316.zip")
+                  .listen((value) {
+                bluetoothUploadProgress = value;
+                notifyListeners();
+              }).onDone(() async {
+                await _scanStream?.cancel();
+                _scanStream = BrilliantBluetooth.scan().listen((device) {
+                  _nearbyDevice = device;
+                  triggerEvent(Event.deviceFound);
+                });
+              });
             } catch (error) {
               await _connectedDevice?.disconnect();
               _log.warning("DFU error: $error");
@@ -434,6 +407,8 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           state.changeOn(Event.deviceFound, State.connect);
+          // state.changeOn(Event.deviceConnected, State.stopLuaApp);
+          // state.changeOn(Event.deviceInvalid, State.requiresRepair);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
@@ -443,67 +418,93 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.connected:
-          if (event == Event.deviceDataResponse) {
-            switch (_dataResponse?[0]) {
-              case 0x10:
-                _log.info("Received start flag from device");
-                _audioData.clear();
-                _imageData.clear();
-                break;
-              case 0x12:
-                _audioData += _dataResponse!.sublist(1);
-                break;
-              case 0x13:
-                _imageData += _dataResponse!.sublist(1);
-                break;
-              case 0x16:
-                _log.info(
-                    "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
-                String tunePrompt = "";
+          state.onEntry(() async {
+            _connectionStream?.cancel();
+            _connectionStream =
+                _connectedDevice!.connectionState.listen((event) {
+              _connectedDevice = event;
+            });
 
+            _luaResponseStream?.cancel();
+            _luaResponseStream =
+                _connectedDevice!.stringResponse.listen((event) {});
+
+            _dataResponseStream?.cancel();
+            _dataResponseStream =
+                _connectedDevice!.dataResponse.listen((event) {
+              String getTunePrompt() {
+                String prompt = "";
                 if (_tuneStyle != "") {
-                  tunePrompt += " in the style of $_tuneStyle";
+                  prompt += " in the style of $_tuneStyle";
                 }
 
                 if (_tuneTone != "") {
-                  tunePrompt += " with a $_tuneTone tone";
+                  prompt += " with a $_tuneTone tone";
                 }
 
                 if (_tuneFormat != "") {
-                  tunePrompt += " formatted as $_tuneFormat";
+                  prompt += " formatted as $_tuneFormat";
                 }
 
                 switch (_tuneLength) {
                   case TuneLength.shortest:
-                    tunePrompt += ". Limit responses to 1 to 3 words";
+                    prompt += ". Limit responses to 1 to 3 words";
                     break;
                   case TuneLength.short:
-                    tunePrompt += ". Limit responses to 1 sentence";
+                    prompt += ". Limit responses to 1 sentence";
                     break;
                   case TuneLength.standard:
-                    tunePrompt += ". Limit responses to 1 to 2 sentences";
+                    prompt += ". Limit responses to 1 to 2 sentences";
                     break;
                   case TuneLength.long:
-                    tunePrompt += ". Limit responses to 1 short paragraph";
+                    prompt += ". Limit responses to 1 short paragraph";
                     break;
                   case TuneLength.longest:
-                    tunePrompt += ". Limit responses to 2 paragraphs";
+                    prompt += ". Limit responses to 2 paragraphs";
                     break;
                 }
+                return prompt;
+              }
 
-                NoaApi.getMessage(
-                  _userAuthToken!,
-                  Uint8List.fromList(_audioData),
-                  Uint8List.fromList(_imageData),
-                  tunePrompt,
-                  _tuneTemperature / 50,
-                  noaMessages,
-                  _noaResponseStreamController,
-                  _noaUserInfoStreamController,
-                );
-                break;
-            }
-          }
+              switch (event[0]) {
+                case 0x10:
+                  _log.info("Received start flag from device");
+                  _audioData.clear();
+                  _imageData.clear();
+                  break;
+                case 0x12:
+                  _audioData += event.sublist(1);
+                  break;
+                case 0x13:
+                  _imageData += event.sublist(1);
+                  break;
+                case 0x16:
+                  _log.info(
+                      "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
+                  NoaApi.getMessage(
+                    _userAuthToken!,
+                    Uint8List.fromList(_audioData),
+                    Uint8List.fromList(_imageData),
+                    getTunePrompt(),
+                    _tuneTemperature / 50,
+                    noaMessages,
+                    _noaResponseStreamController,
+                    _noaUserInfoStreamController,
+                  );
+                  break;
+                case 0x17:
+                  _log.info("Wildcard request");
+                  NoaApi.getWildcardMessage(
+                    _userAuthToken!,
+                    getTunePrompt(),
+                    _tuneTemperature / 50,
+                    _noaResponseStreamController,
+                    _noaUserInfoStreamController,
+                  );
+                  break;
+              }
+            });
+          });
 
           state.changeOn(Event.noaResponse, State.sendResponseToDevice);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
@@ -534,15 +535,7 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.disconnected:
-          state.onEntry(() async {
-            final savedData = await SharedPreferences.getInstance();
-            String? pairedDevice = savedData.getString('pairedDevice');
-            if (pairedDevice != null) {
-              await BrilliantBluetooth.reconnect(
-                  pairedDevice, _connectionStreamController);
-            }
-          });
-          state.changeOn(Event.deviceConnected, State.connected);
+          state.changeOn(Event.deviceReconnected, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
@@ -577,10 +570,6 @@ class AppLogicModel extends ChangeNotifier {
   @override
   void dispose() {
     BrilliantBluetooth.stopScan();
-    _scanStreamController.close();
-    _connectionStreamController.close();
-    _stringRxStreamController.close();
-    _dataRxStreamController.close();
     _noaResponseStreamController.close();
     _noaUserInfoStreamController.close();
     super.dispose();

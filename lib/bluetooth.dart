@@ -28,24 +28,30 @@ BrilliantDeviceName _deviceNameFromAdvName(String advName) {
 }
 
 enum BrilliantConnectionState {
-  scanned,
   disconnected,
   connected,
   dfuConnected,
   invalid,
 }
 
+class BrilliantScannedDevice {
+  BrilliantDeviceName name;
+  BluetoothDevice device;
+  int? rssi;
+
+  BrilliantScannedDevice({
+    required this.name,
+    required this.device,
+    required this.rssi,
+  });
+}
+
 class BrilliantDevice {
   BrilliantDeviceName name;
-  BrilliantConnectionState state;
   BluetoothDevice device;
-  String uuid;
-  int? rssi;
+  BrilliantConnectionState state;
   int? maxStringLength;
   int? maxDataLength;
-  StreamController<String>? stringRxListener;
-  StreamController<List<int>>? dataRxListener;
-  StreamController<double>? fileUploadProgressListener;
 
   BluetoothCharacteristic? _txChannel;
   BluetoothCharacteristic? _rxChannel;
@@ -56,129 +62,49 @@ class BrilliantDevice {
     required this.name,
     required this.state,
     required this.device,
-    required this.uuid,
-    this.rssi,
     this.maxStringLength,
     this.maxDataLength,
-    this.stringRxListener,
-    this.dataRxListener,
-    this.fileUploadProgressListener,
   });
 
-  Future<void> connect(StreamController<BrilliantDevice> listener) async {
-    _log.info("Connecting");
-    await FlutterBluePlus.stopScan();
-
-    try {
-      await device.connect(
-        // autoConnect: true,
-        timeout: const Duration(seconds: 2),
-        mtu: null,
-      );
-    } catch (error) {
-      _log.warning("Failed to connect");
-      state = BrilliantConnectionState.invalid;
-      listener.sink.add(this);
-    }
-
-    StreamSubscription stream =
-        device.connectionState.listen((connectionState) async {
-      switch (connectionState) {
-        case BluetoothConnectionState.connected:
-          try {
-            _log.info("Connected");
-            if (Platform.isAndroid) {
-              await device.requestMtu(512);
-            }
-            await _enableServices();
-            if (_dfuControl != null && _dfuPacket != null) {
-              state = BrilliantConnectionState.dfuConnected;
-            } else if (_txChannel != null && _rxChannel != null) {
-              state = BrilliantConnectionState.connected;
-              maxStringLength = device.mtuNow - 3;
-              maxDataLength = device.mtuNow - 4;
-            } else {
-              throw "Found an incomplete set of characteristics";
-            }
-          } catch (error) {
-            await device.disconnect();
-            _log.warning("Failed to enable services. $error");
-            state = BrilliantConnectionState.invalid;
-          }
-          break;
-        case BluetoothConnectionState.disconnected:
-          _log.info("Disconnected");
-          // TODO differentiate as invalid when "Device has disconnected from us" error occurs
-          state = BrilliantConnectionState.disconnected;
-          break;
-        default:
-          break;
+  Stream<BrilliantDevice> get connectionState {
+    return FlutterBluePlus.events.onConnectionStateChanged
+        .where((event) =>
+            event.connectionState == BluetoothConnectionState.connected ||
+            (event.connectionState == BluetoothConnectionState.disconnected &&
+                event.device.disconnectReason != null &&
+                event.device.disconnectReason!.code != 23789258))
+        .asyncMap((event) async {
+      if (event.connectionState == BluetoothConnectionState.connected) {
+        _log.info("Connected");
+        return await BrilliantBluetooth._enableServices(event.device);
       }
-
-      listener.sink.add(this);
+      _log.info("Disconnected. ${event.device.disconnectReason!.description}");
+      return BrilliantDevice(
+        name: _deviceNameFromAdvName(device.advName),
+        state: BrilliantConnectionState.disconnected,
+        device: event.device,
+      );
     });
-
-    device.cancelWhenDisconnected(stream, next: true, delayed: true);
   }
 
-  Future<void> _enableServices() async {
-    List<BluetoothService> services = await device.discoverServices();
-
-    for (var service in services) {
-      // If Frame
-      if (service.serviceUuid == Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
-        _log.fine("Found Frame service");
-        for (var characteristic in service.characteristics) {
-          if (characteristic.characteristicUuid ==
-              Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
-            _log.fine("Found Frame TX characteristic");
-            _txChannel = characteristic;
-          }
-          if (characteristic.characteristicUuid ==
-              Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
-            _log.fine("Found Frame RX characteristic");
-            _rxChannel = characteristic;
-
-            StreamSubscription stream =
-                _rxChannel!.onValueReceived.listen((data) {
-              if (data[0] == 0x01) {
-                _log.finer("Received data: ${data.sublist(1)}");
-                dataRxListener?.add(data.sublist(1));
-              } else {
-                _log.finer("Received string: ${utf8.decode(data)}");
-                stringRxListener?.add(utf8.decode(data));
-              }
-            });
-
-            device.cancelWhenDisconnected(stream);
-
-            await characteristic.setNotifyValue(true);
-            _log.fine("Enabled RX notifications");
-          }
-        }
+  Stream<String> get stringResponse {
+    return FlutterBluePlus.events.onCharacteristicReceived
+        .where((event) => event.value[0] != 0x01)
+        .map((event) {
+      if (event.value[0] != 0x02) {
+        _log.info("Received string: ${utf8.decode(event.value)}");
       }
+      return utf8.decode(event.value);
+    });
+  }
 
-      // If DFU
-      if (service.serviceUuid == Guid('fe59')) {
-        _log.fine("Found DFU service");
-        for (var characteristic in service.characteristics) {
-          if (characteristic.characteristicUuid ==
-              Guid('8ec90001-f315-4f60-9fb8-838830daea50')) {
-            _log.fine("Found DFU control characteristic");
-            _dfuControl = characteristic;
-            await characteristic.setNotifyValue(true);
-            _log.fine("Enabled DFU control notifications");
-          }
-          if (characteristic.characteristicUuid ==
-              Guid('8ec90002-f315-4f60-9fb8-838830daea50')) {
-            _log.fine("Found DFU packet characteristic");
-            _dfuPacket = characteristic;
-          }
-        }
-      }
-    }
-
-    _log.info("Services enabled");
+  Stream<List<int>> get dataResponse {
+    return FlutterBluePlus.events.onCharacteristicReceived
+        .where((event) => event.value[0] == 0x01)
+        .map((event) {
+      _log.fine("Received data: ${event.value.sublist(1)}");
+      return event.value.sublist(1);
+    });
   }
 
   Future<void> disconnect() async {
@@ -188,7 +114,7 @@ class BrilliantDevice {
 
   Future<void> sendBreakSignal() async {
     _log.info("Sending break signal");
-    await sendString("\x03", awaitResponse: false);
+    await sendString("\x03", awaitResponse: false, log: false);
     Completer completer = Completer();
     Timer(const Duration(milliseconds: 100), () => completer.complete());
     return completer.future;
@@ -196,15 +122,20 @@ class BrilliantDevice {
 
   Future<void> sendResetSignal() async {
     _log.info("Sending reset signal");
-    await sendString("\x04", awaitResponse: false);
+    await sendString("\x04", awaitResponse: false, log: false);
     Completer completer = Completer();
     Timer(const Duration(milliseconds: 100), () => completer.complete());
     return completer.future;
   }
 
-  Future<String?> sendString(String string, {bool awaitResponse = true}) async {
-    _log.info("Sending ${string.length} bytes of string data");
-    Completer<String?> completer = Completer();
+  Future<String?> sendString(
+    String string, {
+    bool awaitResponse = true,
+    bool log = true,
+  }) async {
+    if (log) {
+      _log.info("Sending string: $string");
+    }
 
     if (state != BrilliantConnectionState.connected) {
       _log.warning("Device is not connected");
@@ -219,26 +150,18 @@ class BrilliantDevice {
     await _txChannel!.write(utf8.encode(string), withoutResponse: true);
 
     if (awaitResponse == false) {
-      completer.complete();
-      return completer.future;
+      return null;
     }
 
-    late StreamSubscription stream;
-
-    stream = _rxChannel!.onValueReceived.timeout(const Duration(seconds: 3),
-        onTimeout: (_) {
-      _log.warning("Device didn't respond");
-      stream.cancel();
-      completer.completeError("Device didn't respond");
-    }).listen((value) {
-      _log.info("Got response");
-      stream.cancel();
-      completer.complete(utf8.decode(value));
-    });
-
-    device.cancelWhenDisconnected(stream);
-
-    return completer.future;
+    try {
+      final response = await _rxChannel!.onValueReceived
+          .timeout(const Duration(seconds: 3))
+          .first;
+      return utf8.decode(response);
+    } catch (error) {
+      _log.warning(error);
+      return Future.error(error);
+    }
   }
 
   Future<void> sendData(List<int> data) async {
@@ -270,10 +193,11 @@ class BrilliantDevice {
     file = file.replaceAll("'", "\\'");
     file = file.replaceAll('"', '\\"');
 
-    var resp =
-        await sendString("f=frame.file.open('$fileName', 'w');print(nil)");
+    var resp = await sendString(
+        "f=frame.file.open('$fileName', 'w');print('\x02')",
+        log: false);
 
-    if (resp != "nil") {
+    if (resp != "\x02") {
       return Future.error("$resp");
     }
 
@@ -293,25 +217,25 @@ class BrilliantDevice {
 
       String chunk = file.substring(index, index + chunkSize);
 
-      resp = await sendString("f:write('$chunk');print(nil)");
+      resp = await sendString("f:write('$chunk');print('\x02')", log: false);
 
-      if (resp != "nil") {
+      if (resp != "\x02") {
         return Future.error("$resp");
       }
 
       index += chunkSize;
     }
 
-    resp = await sendString("f:close();print('nil')");
+    resp = await sendString("f:close();print('\x02')", log: false);
 
-    if (resp != "nil") {
+    if (resp != "\x02") {
       return Future.error("$resp");
     }
 
     // TODO report back to fileUploadProgressListener?.add(percentDone);
   }
 
-  Future<void> updateFirmware(String filePath) async {
+  Stream<double> updateFirmware(String filePath) async* {
     _log.info("Starting firmware update");
 
     if (state != BrilliantConnectionState.dfuConnected) {
@@ -330,18 +254,20 @@ class BrilliantDevice {
     final initFile = zip.firstWhere((file) => file.name.endsWith(".dat"));
     final imageFile = zip.firstWhere((file) => file.name.endsWith(".bin"));
 
-    await _transferDfuFile(initFile.content, true);
+    await for (var _ in _transferDfuFile(initFile.content, true)) {}
     await Future.delayed(const Duration(milliseconds: 500));
-    await _transferDfuFile(imageFile.content, false);
+    yield* _transferDfuFile(imageFile.content, false);
+
+    _log.info("Firmware update completed");
   }
 
-  Future<void> _transferDfuFile(Uint8List file, bool isInitFile) async {
+  Stream<double> _transferDfuFile(Uint8List file, bool isInitFile) async* {
     Uint8List response;
     if (isInitFile) {
-      _log.info("Uploading DFU init file. Size: ${file.length}");
+      _log.fine("Uploading DFU init file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x01]));
     } else {
-      _log.info("Uploading DFU image file. Size: ${file.length}");
+      _log.fine("Uploading DFU image file. Size: ${file.length}");
       response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
     }
 
@@ -392,7 +318,7 @@ class BrilliantDevice {
         final fileSlice = file.sublist(fileStart, fileEnd);
 
         final percentDone = (100 / file.length) * offset;
-        fileUploadProgressListener?.add(percentDone);
+        yield percentDone;
 
         _log.fine(
             "Sending ${fileSlice.length} bytes of packet data. ${percentDone.toInt()}% Complete");
@@ -408,7 +334,7 @@ class BrilliantDevice {
 
       if (returnedCrc != chunkCrc) {
         _log.warning("CRC mismatch after sending this chunk");
-        return Future.error("CRC mismatch after sending this chunk");
+        yield* Stream.error("CRC mismatch after sending this chunk");
       }
 
       // Execute command (The last command may disconnect which is normal)
@@ -417,11 +343,11 @@ class BrilliantDevice {
       } catch (_) {}
     }
 
-    _log.info("DFU file sent");
+    _log.fine("DFU file sent");
   }
 
   Future<Uint8List> _dfuSendControlData(Uint8List data) async {
-    _log.finer("Sending ${data.length} bytes of DFU control data: $data");
+    _log.fine("Sending ${data.length} bytes of DFU control data: $data");
     Completer<Uint8List> completer = Completer();
 
     try {
@@ -458,22 +384,23 @@ class BrilliantBluetooth {
     await FlutterBluePlus.stopScan();
   }
 
-  static Future<void> scan(StreamController<BrilliantDevice> listener) async {
-    if (FlutterBluePlus.isScanningNow) {
-      _log.info("Already scanning for devices");
-      return;
-    }
+  static Stream<BrilliantScannedDevice> scan() async* {
+    _log.info("Starting to scan for devices");
 
-    late ScanResult nearestDevice;
+    await FlutterBluePlus.startScan(
+      withServices: [
+        Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
+        Guid('fe59'),
+      ],
+      continuousUpdates: true,
+      removeIfGone: const Duration(seconds: 2),
+    );
 
-    StreamSubscription stream = FlutterBluePlus.onScanResults.listen((results) {
-      // TODO Filter results to only include devices named "Frame" or "Frame Update"
-      if (results.isEmpty) {
-        return;
-      }
-
-      nearestDevice = results[0];
-
+    yield* FlutterBluePlus.scanResults
+        .where((results) => results.isNotEmpty)
+        // TODO filter by name: "Frame", "Frame Update", "Monocle" & "DFUTarg"
+        .map((results) {
+      ScanResult nearestDevice = results[0];
       for (int i = 0; i < results.length; i++) {
         if (results[i].rssi > nearestDevice.rssi) {
           nearestDevice = results[i];
@@ -481,21 +408,14 @@ class BrilliantBluetooth {
       }
 
       _log.fine(
-          "Found ${nearestDevice.device.advName} - uuid: ${nearestDevice.device.remoteId.toString()} rssi: ${nearestDevice.rssi}");
+          "Found ${nearestDevice.device.advName} rssi: ${nearestDevice.rssi}");
 
-      listener.sink.add(
-        BrilliantDevice(
-          name: _deviceNameFromAdvName(nearestDevice.device.advName),
-          state: BrilliantConnectionState.scanned,
-          device: nearestDevice.device,
-          uuid: nearestDevice.device.remoteId.toString(),
-          rssi: nearestDevice.rssi,
-        ),
+      return BrilliantScannedDevice(
+        name: _deviceNameFromAdvName(nearestDevice.device.advName),
+        device: nearestDevice.device,
+        rssi: nearestDevice.rssi,
       );
     });
-
-    await _startScan(continuousUpdates: true);
-    FlutterBluePlus.cancelWhenScanComplete(stream);
   }
 
   static Future<void> stopScan() async {
@@ -503,41 +423,126 @@ class BrilliantBluetooth {
     await FlutterBluePlus.stopScan();
   }
 
-  static Future<void> reconnect(
-    String deviceUuid,
-    StreamController<BrilliantDevice> listener,
-  ) async {
-    _log.info("Will automatically connect to device $deviceUuid once found");
+  static Future<BrilliantDevice> connect(BrilliantScannedDevice scanned) async {
+    try {
+      _log.info("Connecting");
 
-    StreamSubscription stream = FlutterBluePlus.onScanResults.listen((results) {
-      for (int i = 0; i < results.length; i++) {
-        if (results[i].device.remoteId.toString() == deviceUuid) {
-          _log.info("Found expected device. Connecting to: $deviceUuid}");
-          BrilliantDevice(
-            name: _deviceNameFromAdvName(results[i].device.advName),
-            state: BrilliantConnectionState.scanned,
-            device: results[i].device,
-            uuid: results[i].device.remoteId.toString(),
-            rssi: results[i].rssi,
-          ).connect(listener);
-        }
+      await FlutterBluePlus.stopScan();
+
+      await scanned.device.connect(
+        autoConnect: true,
+        timeout: const Duration(seconds: 2),
+        mtu: null,
+      );
+
+      final connectionState = await scanned.device.connectionState
+          .firstWhere((event) => event == BluetoothConnectionState.connected)
+          .timeout(const Duration(seconds: 5));
+
+      if (connectionState == BluetoothConnectionState.connected) {
+        return await _enableServices(scanned.device);
       }
-    });
 
-    await _startScan();
-    FlutterBluePlus.cancelWhenScanComplete(stream);
+      throw ("${scanned.device.disconnectReason?.description}");
+    } catch (error) {
+      await scanned.device.disconnect();
+      _log.warning("Failed to connect. $error");
+      return BrilliantDevice(
+          name: scanned.name,
+          device: scanned.device,
+          state: BrilliantConnectionState.invalid);
+    }
   }
 
-  static Future<void> _startScan({bool continuousUpdates = false}) async {
-    _log.info("Starting to scan for devices");
-    await FlutterBluePlus.stopScan();
-    await FlutterBluePlus.startScan(
-      withServices: [
-        Guid('7a230001-5475-a6a4-654c-8431f6ad49c4'),
-        Guid('fe59'),
-      ],
-      continuousUpdates: continuousUpdates,
-      removeIfGone: continuousUpdates ? const Duration(seconds: 2) : null,
-    );
+  // static Future<void> reconnect(
+  //   String deviceUuid,
+  //   StreamController<BrilliantDevice> listener,
+  // ) async {
+  //   _log.info("Will automatically connect to device $deviceUuid once found");
+
+  //   StreamSubscription stream = FlutterBluePlus.onScanResults.listen((results) {
+  //     for (int i = 0; i < results.length; i++) {
+  //       if (results[i].device.remoteId.toString() == deviceUuid) {
+  //         _log.info("Found expected device. Connecting to: $deviceUuid}");
+  //         BrilliantDevice(
+  //           name: _deviceNameFromAdvName(results[i].device.advName),
+  //           state: BrilliantConnectionState.scanned,
+  //           device: results[i].device,
+  //           uuid: results[i].device.remoteId.toString(),
+  //           rssi: results[i].rssi,
+  //         ).connect(/*listener*/); // TODO fix this
+  //       }
+  //     }
+  //   });
+
+  //   await _startScan();
+  //   FlutterBluePlus.cancelWhenScanComplete(stream);
+  // }
+
+  static Future<BrilliantDevice> _enableServices(BluetoothDevice device) async {
+    if (Platform.isAndroid) {
+      await device.requestMtu(512);
+    }
+
+    BrilliantDevice finalDevice = BrilliantDevice(
+        name: _deviceNameFromAdvName(device.advName),
+        device: device,
+        state: BrilliantConnectionState.invalid);
+
+    List<BluetoothService> services = await device.discoverServices();
+
+    for (var service in services) {
+      // If Frame
+      if (service.serviceUuid == Guid('7a230001-5475-a6a4-654c-8431f6ad49c4')) {
+        _log.fine("Found Frame service");
+        for (var characteristic in service.characteristics) {
+          if (characteristic.characteristicUuid ==
+              Guid('7a230002-5475-a6a4-654c-8431f6ad49c4')) {
+            _log.fine("Found Frame TX characteristic");
+            finalDevice._txChannel = characteristic;
+          }
+          if (characteristic.characteristicUuid ==
+              Guid('7a230003-5475-a6a4-654c-8431f6ad49c4')) {
+            _log.fine("Found Frame RX characteristic");
+            finalDevice._rxChannel = characteristic;
+
+            await characteristic.setNotifyValue(true);
+            _log.fine("Enabled RX notifications");
+
+            finalDevice.maxStringLength = device.mtuNow - 3;
+            finalDevice.maxDataLength = device.mtuNow - 4;
+            _log.fine("Max string length: ${finalDevice.maxStringLength}");
+            _log.fine("Max data length: ${finalDevice.maxDataLength}");
+
+            finalDevice.state = BrilliantConnectionState.connected;
+          }
+        }
+      }
+
+      // If DFU
+      if (service.serviceUuid == Guid('fe59')) {
+        _log.fine("Found DFU service");
+        for (var characteristic in service.characteristics) {
+          if (characteristic.characteristicUuid ==
+              Guid('8ec90001-f315-4f60-9fb8-838830daea50')) {
+            _log.fine("Found DFU control characteristic");
+            finalDevice._dfuControl = characteristic;
+            await characteristic.setNotifyValue(true);
+            _log.fine("Enabled DFU control notifications");
+          }
+          if (characteristic.characteristicUuid ==
+              Guid('8ec90002-f315-4f60-9fb8-838830daea50')) {
+            _log.fine("Found DFU packet characteristic");
+            finalDevice._dfuPacket = characteristic;
+          }
+        }
+
+        finalDevice.state = BrilliantConnectionState.dfuConnected;
+      }
+    }
+
+    _log.fine("Services enabled");
+
+    return finalDevice;
   }
 }

@@ -284,4 +284,74 @@ class NoaApi {
       return Future.error(Exception(error));
     }
   }
+
+  static Future<void> getWildcardMessage(
+    String userAuthToken,
+    String systemRole,
+    double temperature,
+    StreamController<NoaMessage> responseListener,
+    StreamController<NoaUser> userInfoListener,
+  ) async {
+    try {
+      await checkInternetConnection(); // TODO do we need this?
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://api.brilliant.xyz/noa/wildcard'),
+      );
+
+      request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
+
+      request.fields['noa_system_prompt'] = systemRole;
+      request.fields['location'] = await Location.getAddress();
+      request.fields['time'] = DateTime.now().toString();
+      request.fields['temperature'] = temperature.toString();
+
+      _log.info("Sending wildcard request: ${request.fields.toString()}");
+
+      var streamedResponse = await request.send();
+
+      if (streamedResponse.statusCode != 200) {
+        _log.warning(
+            "Noa server responded with error ${streamedResponse.statusCode}");
+        throw NoaApiServerError(streamedResponse.statusCode);
+      }
+
+      streamedResponse.stream.listen((value) {
+        var body = jsonDecode(String.fromCharCodes(value));
+
+        responseListener.add(NoaMessage(
+          message: body['user_prompt'],
+          from: NoaRole.user,
+          time: DateTime.now(),
+        ));
+
+        responseListener.add(NoaMessage(
+          message: body['message'],
+          from: NoaRole.noa,
+          time: DateTime.now(),
+        ));
+
+        final email = body['user']['email'];
+        final plan = body['user']['plan'];
+        final creditsUsed = body['user']['credit_used'];
+        final maxCredits = body['user']['credit_total'];
+
+        userInfoListener.add(NoaUser(
+          email: email,
+          plan: plan,
+          creditsUsed: creditsUsed,
+          maxCredits: maxCredits,
+        ));
+
+        _log.info(
+            "Received wildcard response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
+        _log.info(
+            "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
+      });
+    } catch (error) {
+      _log.warning("Could not complete Noa request: $error");
+      return Future.error(Exception(error));
+    }
+  }
 }
