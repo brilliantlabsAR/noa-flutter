@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -81,12 +82,13 @@ class LoginPage extends ConsumerWidget {
           Expanded(child: Image.asset('assets/images/noa_logo.png')),
           Column(
             children: [
-              _loginButton(
-                context,
-                ref,
-                'assets/images/sign_in_with_apple_button.png',
-                SignIn().withApple,
-              ),
+              if (Platform.isIOS)
+                _loginButton(
+                  context,
+                  ref,
+                  'assets/images/sign_in_with_apple_button.png',
+                  SignIn().withApple,
+                ),
               _loginButton(
                 context,
                 ref,

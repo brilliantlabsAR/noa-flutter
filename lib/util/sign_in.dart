@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:logging/logging.dart';
@@ -44,7 +45,9 @@ class SignIn {
       await checkInternetConnection();
 
       final GoogleSignInAccount? account = await GoogleSignIn(
-        clientId: dotenv.env['GOOGLE_IOS_CLIENT_ID'],
+        clientId: Platform.isIOS
+            ? dotenv.env['GOOGLE_IOS_CLIENT_ID']
+            : dotenv.env['ANDROID_ANDROID_CLIENT_ID'],
         scopes: ['email'],
       ).signIn();
 
