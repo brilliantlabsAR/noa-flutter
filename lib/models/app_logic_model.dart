@@ -136,6 +136,7 @@ class AppLogicModel extends ChangeNotifier {
   BrilliantDevice? _connectedDevice;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
+  String _requestType = "";
   String? _userAuthToken;
 
   // Noa steam listeners
@@ -469,32 +470,19 @@ class AppLogicModel extends ChangeNotifier {
 
               switch (event[0]) {
                 case 0x10:
-                  _log.info("Received start flag from device");
+                  _log.info("Received message generation request from device");
                   _audioData.clear();
                   _imageData.clear();
+                  _requestType = "message";
+                  break;
+                case 0x11:
+                  _log.info("Received image generation request from device");
+                  _audioData.clear();
+                  _imageData.clear();
+                  _requestType = "image";
                   break;
                 case 0x12:
-                  _audioData += event.sublist(1);
-                  break;
-                case 0x13:
-                  _imageData += event.sublist(1);
-                  break;
-                case 0x16:
-                  _log.info(
-                      "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
-                  NoaApi.getMessage(
-                    _userAuthToken!,
-                    Uint8List.fromList(_audioData),
-                    Uint8List.fromList(_imageData),
-                    getTunePrompt(),
-                    _tuneTemperature / 50,
-                    noaMessages,
-                    _noaResponseStreamController,
-                    _noaUserInfoStreamController,
-                  );
-                  break;
-                case 0x17:
-                  _log.info("Wildcard request");
+                  _log.info("Received wildcard request from device");
                   NoaApi.getWildcardMessage(
                     _userAuthToken!,
                     getTunePrompt(),
@@ -502,6 +490,36 @@ class AppLogicModel extends ChangeNotifier {
                     _noaResponseStreamController,
                     _noaUserInfoStreamController,
                   );
+                  break;
+                case 0x13:
+                  _audioData += event.sublist(1);
+                  break;
+                case 0x14:
+                  _imageData += event.sublist(1);
+                  break;
+                case 0x15:
+                  _log.info(
+                      "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
+                  if (_requestType == "message") {
+                    NoaApi.getMessage(
+                      _userAuthToken!,
+                      Uint8List.fromList(_audioData),
+                      Uint8List.fromList(_imageData),
+                      getTunePrompt(),
+                      _tuneTemperature / 50,
+                      noaMessages,
+                      _noaResponseStreamController,
+                      _noaUserInfoStreamController,
+                    );
+                  } else {
+                    NoaApi.getImage(
+                      _userAuthToken!,
+                      Uint8List.fromList(_audioData),
+                      Uint8List.fromList(_imageData),
+                      _noaResponseStreamController,
+                      _noaUserInfoStreamController,
+                    );
+                  }
                   break;
               }
             });
@@ -520,7 +538,7 @@ class AppLogicModel extends ChangeNotifier {
                   .encode(noaMessages.last.message)
                   .slices(_connectedDevice!.maxDataLength! - 1);
               for (var slice in splitString) {
-                List<int> data = slice.toList()..insert(0, 0x11);
+                List<int> data = slice.toList()..insert(0, 0x20);
                 await _connectedDevice!
                     .sendData(data)
                     .timeout(const Duration(seconds: 1));

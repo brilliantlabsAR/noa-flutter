@@ -100,7 +100,7 @@ class NoaApi {
         body: {
           'id_token': id,
           'provider': provider.value,
-          'app': 'flutter',
+          'app': 'flutter', // TODO remove this
         },
       );
 
@@ -233,16 +233,17 @@ class NoaApi {
       request.fields['location'] = await Location.getAddress();
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = temperature.toString();
-      request.fields['experimental'] = '{"vision":"claude-3-haiku-20240307"}';
+      request.fields['experimental'] =
+          '{"vision":"claude-3-haiku-20240307"}'; // TODO can we remove this?
 
       _log.info(
-          "Sending request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
+          "Sending message request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
 
       var streamedResponse = await request.send();
 
       if (streamedResponse.statusCode != 200) {
         _log.warning(
-            "Noa server responded with error ${streamedResponse.statusCode}");
+            "Noa server responded with error: ${streamedResponse.reasonPhrase}");
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
@@ -260,7 +261,6 @@ class NoaApi {
           message: body['message'],
           from: NoaRole.noa,
           time: DateTime.now(),
-          // TODO append response image
         ));
 
         final email = body['user']['email'];
@@ -314,7 +314,7 @@ class NoaApi {
 
       if (streamedResponse.statusCode != 200) {
         _log.warning(
-            "Noa server responded with error ${streamedResponse.statusCode}");
+            "Noa server responded with error: ${streamedResponse.reasonPhrase}");
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
@@ -347,6 +347,88 @@ class NoaApi {
 
         _log.info(
             "Received wildcard response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
+        _log.info(
+            "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
+      });
+    } catch (error) {
+      _log.warning("Could not complete Noa request: $error");
+      return Future.error(Exception(error));
+    }
+  }
+
+  static Future<void> getImage(
+    String userAuthToken,
+    Uint8List audio,
+    Uint8List image,
+    StreamController<NoaMessage> responseListener,
+    StreamController<NoaUser> userInfoListener,
+  ) async {
+    try {
+      await checkInternetConnection(); // TODO do we need this?
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://api.brilliant.xyz/noa/imagegen'),
+      );
+
+      request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'audio',
+        bytesToWav(audio, 8, 8000),
+        filename: 'audio.wav',
+      ));
+
+      image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'image',
+        image,
+        filename: 'image.jpg',
+      ));
+
+      _log.info(
+          "Sending image request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
+
+      var streamedResponse = await request.send();
+
+      if (streamedResponse.statusCode != 200) {
+        _log.warning(
+            "Noa server responded with error: ${streamedResponse.reasonPhrase}");
+        throw NoaApiServerError(streamedResponse.statusCode);
+      }
+
+      streamedResponse.stream.listen((value) {
+        var body = jsonDecode(String.fromCharCodes(value));
+
+        responseListener.add(NoaMessage(
+          message: body['user_prompt'],
+          from: NoaRole.user,
+          time: DateTime.now(),
+          image: image,
+        ));
+
+        responseListener.add(NoaMessage(
+          message: "Here's what I generated",
+          from: NoaRole.noa,
+          time: DateTime.now(),
+          image: body['image'] != "" ? base64.decode(body['image']) : null,
+        ));
+
+        final email = body['user']['email'];
+        final plan = body['user']['plan'];
+        final creditsUsed = body['user']['credit_used'];
+        final maxCredits = body['user']['credit_total'];
+
+        userInfoListener.add(NoaUser(
+          email: email,
+          plan: plan,
+          creditsUsed: creditsUsed,
+          maxCredits: maxCredits,
+        ));
+
+        _log.info(
+            "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
         _log.info(
             "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
       });

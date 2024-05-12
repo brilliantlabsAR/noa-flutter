@@ -9,15 +9,20 @@ local image_data_sent = false
 local audio_data_sent = false
 local last_autoexp_time = 0
 
-MESSAGE_START_FLAG = "\x10"
-MESSAGE_TEXT_FLAG = "\x11"
-MESSAGE_AUDIO_FLAG = "\x12"
-MESSAGE_IMAGE_FLAG = "\x13"
-MESSAGE_END_FLAG = "\x16"
-MESSAGE_WILDCARD_FLAG = "\x17"
+-- Frame to phone flags
+MESSAGE_GEN_FLAG = "\x10"
+IMAGE_GEN_FLAG = "\x11"
+WILDCARD_GEN_FLAG = "\x12"
+AUDIO_DATA_FLAG = "\x13"
+IMAGE_DATA_FLAG = "\x14"
+TRANSFER_DONE_FLAG = "\x15"
+
+-- Phone to Frame flags
+MESSAGE_RESPONSE_FLAG = "\x20"
+IMAGE_RESPONSE_FLAG = "\x21"
 
 local function bluetooth_callback(message)
-    if string.sub(message, 1, 1) == MESSAGE_TEXT_FLAG then
+    if string.sub(message, 1, 1) == MESSAGE_RESPONSE_FLAG then
         if state:is("ON_IT") or state:is("WILDCARD") then
             graphics:clear()
             state:switch("PRINT_REPLY")
@@ -25,6 +30,8 @@ local function bluetooth_callback(message)
         if state:is("PRINT_REPLY") then
             graphics:append_text(string.sub(message, 2), "\u{1F60E}")
         end
+    elseif string.sub(message, 1, 1) == IMAGE_RESPONSE_FLAG then
+        -- TODO
     end
 end
 
@@ -45,33 +52,35 @@ while true do
         state:on_entry(function()
             graphics:append_text("", "\u{1F618}")
         end)
-        state:switch_after(10, "WILDCARD")
-        state:switch_on_tap("LISTEN")
-    elseif state:is("WILDCARD") then
-        state:on_entry(function()
-            graphics:append_text("", "\u{1F603}")
-            send_data(MESSAGE_WILDCARD_FLAG)
-        end)
         state:switch_after(10, "PRE_SLEEP")
+        state:switch_on_tap("MESSAGE_GEN")
+        state:switch_on_double_tap("IMAGE_GEN")
     elseif state:is("READY_A") then
         state:on_entry(function()
             graphics:clear()
             graphics:append_text("", "\u{1F600}")
         end)
         state:switch_after(3, "READY_B")
-        state:switch_on_tap("LISTEN")
+        state:switch_on_tap("MESSAGE_GEN")
+        state:switch_on_double_tap("IMAGE_GEN")
     elseif state:is("READY_B") then
         state:on_entry(function()
             graphics:append_text("", "\u{1F60F}")
         end)
         state:switch_after(3, "READY_C")
-        state:switch_on_tap("LISTEN")
+        state:switch_on_tap("MESSAGE_GEN")
+        state:switch_on_double_tap("IMAGE_GEN")
     elseif state:is("READY_C") then
         state:on_entry(function()
             graphics:append_text("", "\u{1F600}")
         end)
-        state:switch_after(3, "PRE_SLEEP")
-        state:switch_on_tap("LISTEN")
+        if math.random(1, 3) == 3 then -- TODO make this 1 in 10 chance
+            state:switch_after(3, "WILDCARD")
+        else
+            state:switch_after(3, "PRE_SLEEP")
+        end
+        state:switch_on_tap("MESSAGE_GEN")
+        state:switch_on_double_tap("IMAGE_GEN")
     elseif state:is("PRE_SLEEP") then
         state:on_entry(function()
             graphics:append_text("", "\u{1F634}")
@@ -80,14 +89,31 @@ while true do
         state:switch_on_tap("READY_A")
     elseif state:is("SLEEP") then
         state:on_entry(function()
+            frame.display.show()
+            frame.sleep(0.05)
             frame.sleep()
         end)
+    elseif state:is("MESSAGE_GEN") then
+        state:on_entry(function()
+            send_data(MESSAGE_GEN_FLAG)
+            state:switch("LISTEN")
+        end)
+    elseif state:is("IMAGE_GEN") then
+        state:on_entry(function()
+            send_data(IMAGE_GEN_FLAG)
+            state:switch("LISTEN")
+        end)
+    elseif state:is("WILDCARD") then
+        state:on_entry(function()
+            graphics:append_text("", "\u{1F603}")
+            send_data(WILDCARD_GEN_FLAG)
+        end)
+        state:switch_after(10, "PRE_SLEEP")
     elseif state:is("LISTEN") then
         state:on_entry(function()
             graphics:clear()
             graphics:append_text("", "\u{1F3A7}")
             frame.microphone.record {}
-            send_data(MESSAGE_START_FLAG)
             image_taken = false
             image_data_sent = false
             audio_data_sent = false
@@ -104,7 +130,7 @@ while true do
                 if (image_data == nil) then
                     break
                 end
-                send_data(MESSAGE_IMAGE_FLAG .. image_data)
+                send_data(IMAGE_DATA_FLAG .. image_data)
             end
             image_data_sent = true
         end
@@ -113,7 +139,7 @@ while true do
             math.floor((frame.bluetooth.max_length() - 1) / 4) * 4
         )
         if audio_data ~= nil then
-            send_data(MESSAGE_AUDIO_FLAG .. audio_data)
+            send_data(AUDIO_DATA_FLAG .. audio_data)
         end
 
         if state:has_been() > 2 then
@@ -133,10 +159,10 @@ while true do
                 if (audio_data == nil) then
                     break
                 end
-                send_data(MESSAGE_AUDIO_FLAG .. audio_data)
+                send_data(AUDIO_DATA_FLAG .. audio_data)
             end
             audio_data_sent = true
-            send_data(MESSAGE_END_FLAG)
+            send_data(TRANSFER_DONE_FLAG)
         end
         state:switch_on_tap("CANCEL")
     elseif state:is("CANCEL") then
