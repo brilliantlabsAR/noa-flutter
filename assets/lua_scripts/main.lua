@@ -198,7 +198,9 @@ while true do
     end
 
     if frame.bluetooth.is_connected() == false then
-        state:switch("NO_CONNECTION")
+        if (not state:is("PRE_SLEEP") and not state:is("SLEEP")) then
+            state:switch("NO_CONNECTION")
+        end
     end
 
     collectgarbage("collect")

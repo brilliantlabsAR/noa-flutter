@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart';
@@ -254,7 +255,7 @@ class NoaApi {
           message: body['user_prompt'],
           from: NoaRole.user,
           time: DateTime.now(),
-          image: image,
+          image: kReleaseMode ? null : image,
         ));
 
         responseListener.add(NoaMessage(
@@ -405,7 +406,7 @@ class NoaApi {
           message: body['user_prompt'],
           from: NoaRole.user,
           time: DateTime.now(),
-          image: image,
+          image: kReleaseMode ? null : image,
         ));
 
         responseListener.add(NoaMessage(
