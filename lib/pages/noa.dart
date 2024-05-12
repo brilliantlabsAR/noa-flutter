@@ -4,8 +4,11 @@ import 'package:noa/main.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/noa_api.dart';
 import 'package:noa/style.dart';
+import 'package:noa/util/show_toast.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
+import 'package:saver_gallery/saver_gallery.dart';
+import 'package:uuid/uuid.dart';
 
 final ScrollController _scrollController = ScrollController();
 
@@ -88,8 +91,19 @@ class NoaPage extends ConsumerWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: SizedBox.fromSize(
-                        child: Image.memory(
-                            ref.watch(app.model).noaMessages[index].image!),
+                        child: GestureDetector(
+                          onLongPress: () async {
+                            await SaverGallery.saveImage(
+                                ref.watch(app.model).noaMessages[index].image!,
+                                name: const Uuid().v1(),
+                                androidExistNotSave: false);
+                            if (context.mounted) {
+                              showToast("Saved to photos", context);
+                            }
+                          },
+                          child: Image.memory(
+                              ref.watch(app.model).noaMessages[index].image!),
+                        ),
                       ),
                     ),
                   ),
