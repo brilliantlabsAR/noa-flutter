@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import 'package:noa/noa_api.dart';
 import 'package:noa/bluetooth.dart';
+import 'package:noa/noa_api.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -515,12 +516,16 @@ class AppLogicModel extends ChangeNotifier {
         case State.sendResponseToDevice:
           state.onEntry(() async {
             try {
-              // TODO split string before sending
-              List<int> data = utf8.encode(noaMessages.last.message).toList();
-              data.insert(0, 0x11);
-              await _connectedDevice!
-                  .sendData(data)
-                  .timeout(const Duration(seconds: 1));
+              final splitString = utf8
+                  .encode(noaMessages.last.message)
+                  .slices(_connectedDevice!.maxDataLength! - 1);
+              for (var slice in splitString) {
+                List<int> data = slice.toList()..insert(0, 0x11);
+                await _connectedDevice!
+                    .sendData(data)
+                    .timeout(const Duration(seconds: 1));
+                await Future.delayed(const Duration(milliseconds: 50));
+              }
               await Future.delayed(const Duration(milliseconds: 300));
             } catch (error) {
               _log.warning("Could not respond to device: $error");
