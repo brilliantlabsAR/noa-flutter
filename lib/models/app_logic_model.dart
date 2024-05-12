@@ -105,6 +105,16 @@ class AppLogicModel extends ChangeNotifier {
     }();
   }
 
+  String _referToMe = "";
+  String get referToMe => _referToMe;
+  set referToMe(String value) {
+    _referToMe = value;
+    () async {
+      final savedData = await SharedPreferences.getInstance();
+      savedData.setString("referToMe", _referToMe);
+    }();
+  }
+
   int _tuneTemperature = 50;
   int get tuneTemperature => _tuneTemperature;
   set tuneTemperature(int value) {
@@ -208,6 +218,7 @@ class AppLogicModel extends ChangeNotifier {
             _tuneStyle = savedData.getString('tuneStyle') ?? "";
             _tuneTone = savedData.getString('tuneTone') ?? "";
             _tuneFormat = savedData.getString('tuneFormat') ?? "";
+            _referToMe = savedData.getString('referToMe') ?? "";
             _tuneTemperature = savedData.getInt('tuneTemperature') ?? 50;
             var len = savedData.getString('tuneLength') ?? 'standard';
             _tuneLength = TuneLength.values
@@ -446,6 +457,10 @@ class AppLogicModel extends ChangeNotifier {
 
                 if (_tuneFormat != "") {
                   prompt += " formatted as $_tuneFormat";
+                }
+
+                if (_referToMe != "") {
+                  prompt += ". Refer to me as $_referToMe";
                 }
 
                 switch (_tuneLength) {

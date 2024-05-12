@@ -95,11 +95,15 @@ while true do
         end)
     elseif state:is("MESSAGE_GEN") then
         state:on_entry(function()
+            graphics:clear()
+            graphics:append_text("", "\u{1F3A7}")
             send_data(MESSAGE_GEN_FLAG)
             state:switch("LISTEN")
         end)
     elseif state:is("IMAGE_GEN") then
         state:on_entry(function()
+            graphics:clear()
+            graphics:append_text("", "\u{1F4F7}")
             send_data(IMAGE_GEN_FLAG)
             state:switch("LISTEN")
         end)
@@ -111,8 +115,6 @@ while true do
         state:switch_after(10, "PRE_SLEEP")
     elseif state:is("LISTEN") then
         state:on_entry(function()
-            graphics:clear()
-            graphics:append_text("", "\u{1F3A7}")
             frame.microphone.record {}
             image_taken = false
             image_data_sent = false

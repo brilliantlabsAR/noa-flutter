@@ -22,6 +22,10 @@ Widget _textBox(WidgetRef ref, int index) {
       title = "Formatted as";
       value = ref.watch(app.model.select((v) => v.tuneFormat));
       break;
+    case 3:
+      title = "Refer to me as";
+      value = ref.watch(app.model.select((v) => v.referToMe));
+      break;
   }
   return Padding(
     padding: const EdgeInsets.only(bottom: 21),
@@ -55,6 +59,9 @@ Widget _textBox(WidgetRef ref, int index) {
                   break;
                 case 2:
                   ref.read(app.model.select((v) => v.tuneFormat = value));
+                  break;
+                case 3:
+                  ref.read(app.model.select((v) => v.referToMe = value));
                   break;
               }
             },
@@ -163,14 +170,17 @@ class TunePage extends ConsumerWidget {
       appBar: topTitleBar(context, 'TUNE', false, false),
       body: Padding(
         padding: const EdgeInsets.only(left: 42, right: 42),
-        child: Column(
-          children: [
-            _textBox(ref, 0),
-            _textBox(ref, 1),
-            _textBox(ref, 2),
-            _slider(ref, 0),
-            _slider(ref, 1),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _textBox(ref, 0),
+              _textBox(ref, 1),
+              _textBox(ref, 2),
+              _textBox(ref, 3),
+              _slider(ref, 0),
+              _slider(ref, 1),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: bottomNavBar(context, 1, false),
