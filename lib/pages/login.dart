@@ -11,6 +11,7 @@ import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/sign_in.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 TextSpan _clickableLink({required String text, required String url}) {
   return TextSpan(
@@ -60,11 +61,24 @@ Widget _loginButton(
   );
 }
 
-class LoginPage extends ConsumerWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  late bool showWebview;
+
+  @override
+  void initState() {
+    showWebview = false;
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.watch(app.model).state.current != app.State.waitForLogin) {
         switchPage(context, const PairingPage());
@@ -77,33 +91,54 @@ class LoginPage extends ConsumerWidget {
         backgroundColor: colorDark,
         title: Image.asset('assets/images/brilliant_logo.png'),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(child: Image.asset('assets/images/noa_logo.png')),
           Column(
             children: [
-              if (Platform.isIOS)
-                _loginButton(
-                  context,
-                  ref,
-                  'assets/images/sign_in_with_apple_button.png',
-                  SignIn().withApple,
-                ),
-              _loginButton(
-                context,
-                ref,
-                'assets/images/sign_in_with_google_button.png',
-                SignIn().withGoogle,
-              ),
-              // TODO enable email login button
-              // _loginButton(
-              //   context,
-              //   ref,
-              //   'assets/images/sign_in_with_email_button.png',
-              //   SignIn().withEmail,
-              // ),
+              Expanded(child: Image.asset('assets/images/noa_logo.png')),
+              Column(
+                children: [
+                  if (Platform.isIOS)
+                    _loginButton(
+                      context,
+                      ref,
+                      'assets/images/sign_in_with_apple_button.png',
+                      SignIn().withApple,
+                    ),
+                  _loginButton(
+                    context,
+                    ref,
+                    'assets/images/sign_in_with_google_button.png',
+                    SignIn().withGoogle,
+                  ),
+                  GestureDetector(
+                    onTap: () async => setState(() => showWebview = true),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Image.asset(
+                          'assets/images/sign_in_with_email_button.png'),
+                    ),
+                  )
+                ],
+              )
             ],
-          )
+          ),
+          if (showWebview)
+            WebViewWidget(
+              controller: WebViewController()
+                ..loadRequest(Uri.parse("https://brilliant.xyz"))
+                ..addJavaScriptChannel("userAuthToken",
+                    onMessageReceived: (message) {
+                  if (message.message == "cancelled") {
+                    setState(() {
+                      showWebview = false;
+                    });
+                    if (message.message != "") {
+                      ref.read(app.model).loggedIn(message.message);
+                    }
+                  }
+                }),
+            )
         ],
       ),
       bottomNavigationBar: Padding(
