@@ -22,6 +22,12 @@ class Location {
           pauseLocationUpdatesAutomatically: true);
     }
 
+    if (Platform.isAndroid) {
+      locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.low,
+          intervalDuration: const Duration(minutes: 5));
+    }
+
     Geolocator.getPositionStream(locationSettings: locationSettings)
         .listen((Position? position) {
       _log.fine("Location updated. Accuracy: ${position!.accuracy}");

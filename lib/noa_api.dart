@@ -93,6 +93,7 @@ class NoaApi {
     NoaApiAuthProvider provider,
   ) async {
     _log.info("Signing in to Noa");
+    _log.fine("Provider: $provider, ID token: $id");
     try {
       final response = await http.post(
         Uri.parse('https://api.brilliant.xyz/noa/user/signin'),
