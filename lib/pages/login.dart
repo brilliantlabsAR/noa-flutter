@@ -90,6 +90,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       appBar: AppBar(
         backgroundColor: colorDark,
         title: Image.asset('assets/images/brilliant_logo.png'),
+        centerTitle: true,
       ),
       body: Stack(
         children: [
@@ -126,7 +127,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           if (showWebview)
             WebViewWidget(
               controller: WebViewController()
-                ..loadRequest(Uri.parse("https://brilliant.xyz"))
+                ..loadRequest(Uri.parse("https://www.google.com"))
                 ..addJavaScriptChannel("userAuthToken",
                     onMessageReceived: (message) {
                   if (message.message == "cancelled") {
