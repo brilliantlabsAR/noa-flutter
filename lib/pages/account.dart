@@ -68,18 +68,12 @@ class AccountPage extends ConsumerWidget {
                     }
                   }),
                   _linkedFooterText("Privacy Policy", false, () async {
-                    if (await canLaunchUrl(Uri.parse(
-                        "https://brilliant.xyz/pages/privacy-policy"))) {
-                      await launchUrl(Uri.parse(
-                          "https://brilliant.xyz/pages/privacy-policy"));
-                    }
+                    await launchUrl(Uri.parse(
+                        "https://brilliant.xyz/pages/privacy-policy"));
                   }),
                   _linkedFooterText("Terms & Conditions", false, () async {
-                    if (await canLaunchUrl(Uri.parse(
-                        "https://brilliant.xyz/pages/terms-conditions"))) {
-                      await launchUrl(Uri.parse(
-                          "https://brilliant.xyz/pages/terms-conditions"));
-                    }
+                    await launchUrl(Uri.parse(
+                        "https://brilliant.xyz/pages/terms-conditions"));
                   }),
                   _linkedFooterText("Delete Account", true, () {
                     // TODO ask user to confirm

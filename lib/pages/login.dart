@@ -23,9 +23,7 @@ TextSpan _clickableLink({required String text, required String url}) {
     style: textStylePink,
     recognizer: TapGestureRecognizer()
       ..onTap = () async {
-        if (await canLaunchUrl(Uri.parse(url))) {
-          await launchUrl(Uri.parse(url));
-        }
+        await launchUrl(Uri.parse(url));
       },
   );
 }
