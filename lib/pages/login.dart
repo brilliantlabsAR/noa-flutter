@@ -7,7 +7,6 @@ import 'package:noa/noa_api.dart';
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
-import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/sign_in.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -33,16 +32,9 @@ Widget _loginButton(
   return GestureDetector(
     onTap: () async {
       try {
+        await InternetAddress.lookup('www.google.com');
         ref.read(app.model).setUserAuthToken(await action());
-      } on CheckInternetConnectionError catch (_) {
-        if (context.mounted) {
-          alertDialog(
-            context,
-            "Couldn't Sign In",
-            "Noa requires an internet connection",
-          );
-        }
-      } on NoaApiServerError catch (error) {
+      } on NoaApiServerException catch (error) {
         if (context.mounted) {
           alertDialog(
             context,
@@ -50,7 +42,16 @@ Widget _loginButton(
             "Server responded with an error: $error",
           );
         }
-      } catch (_) {}
+      } catch (error) {
+        print(error); // TODO filter the internet connection error properly
+        if (context.mounted) {
+          alertDialog(
+            context,
+            "Couldn't Sign In",
+            "Noa requires an internet connection",
+          );
+        }
+      }
     },
     child: Padding(
       padding: const EdgeInsets.only(bottom: 20),

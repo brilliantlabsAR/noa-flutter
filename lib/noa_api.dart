@@ -6,18 +6,22 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/util/bytes_to_wav.dart';
-import 'package:noa/util/check_internet_connection.dart';
 import 'package:noa/util/location.dart';
 
 final _log = Logger("Noa API");
 
-class NoaApiServerError implements Exception {
-  int serverErrorCode;
-  NoaApiServerError(this.serverErrorCode);
+class NoaApiServerException implements Exception {
+  String reason;
+  int statusCode;
+
+  NoaApiServerException({
+    required this.reason,
+    required this.statusCode,
+  });
 
   @override
   String toString() {
-    return "$serverErrorCode";
+    return "NoaApiServerException: $statusCode: $reason";
   }
 }
 
@@ -103,15 +107,17 @@ class NoaApi {
       );
 
       if (response.statusCode != 200) {
-        _log.warning("Noa server responded with error: ${response.body}");
-        throw NoaApiServerError(response.statusCode);
+        throw NoaApiServerException(
+          reason: response.body,
+          statusCode: response.statusCode,
+        );
       }
 
       final decoded = jsonDecode(response.body);
 
       return decoded['token'];
     } catch (error) {
-      _log.warning("Error signing in: $error");
+      _log.warning(error);
       return Future.error(error);
     }
   }
@@ -127,11 +133,13 @@ class NoaApi {
       );
 
       if (response.statusCode != 200) {
-        _log.warning("Noa server responded with error: ${response.body}");
-        throw NoaApiServerError(response.statusCode);
+        throw NoaApiServerException(
+          reason: response.body,
+          statusCode: response.statusCode,
+        );
       }
     } catch (error) {
-      _log.warning("Error signing out: $error");
+      _log.warning(error);
       return Future.error(error);
     }
   }
@@ -143,9 +151,12 @@ class NoaApi {
         Uri.parse('https://api.brilliant.xyz/noa/user'),
         headers: {"Authorization": userAuthToken},
       );
+
       if (response.statusCode != 200) {
-        _log.warning("Noa server responded with error: ${response.body}");
-        throw NoaApiServerError(response.statusCode);
+        throw NoaApiServerException(
+          reason: response.body,
+          statusCode: response.statusCode,
+        );
       }
 
       final body = jsonDecode(response.body);
@@ -164,8 +175,8 @@ class NoaApi {
         maxCredits: maxCredits,
       );
     } catch (error) {
-      _log.warning("Error getting user info: $error");
-      return Future.error(Exception(error));
+      _log.warning(error);
+      return Future.error(error);
     }
   }
 
@@ -180,11 +191,13 @@ class NoaApi {
       );
 
       if (response.statusCode != 200) {
-        _log.warning("Noa server responded with error: ${response.body}");
-        throw NoaApiServerError(response.statusCode);
+        throw NoaApiServerException(
+          reason: response.body,
+          statusCode: response.statusCode,
+        );
       }
     } catch (error) {
-      _log.warning("Error deleting user: $error");
+      _log.warning(error);
       return Future.error(error);
     }
   }
@@ -198,8 +211,6 @@ class NoaApi {
     List<NoaMessage> noaHistory,
   ) async {
     try {
-      await checkInternetConnection(); // TODO do we need this?
-
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.brilliant.xyz/noa'),
@@ -233,9 +244,10 @@ class NoaApi {
       var streamedResponse = await request.send();
 
       if (streamedResponse.statusCode != 200) {
-        _log.warning(
-            "Noa server responded with error: ${streamedResponse.reasonPhrase}");
-        throw NoaApiServerError(streamedResponse.statusCode);
+        throw NoaApiServerException(
+          reason: streamedResponse.reasonPhrase ?? "",
+          statusCode: streamedResponse.statusCode,
+        );
       }
 
       List<int> serverResponse = List.empty(growable: true);
@@ -263,8 +275,8 @@ class NoaApi {
 
       return response;
     } catch (error) {
-      _log.warning("Could not complete Noa request: $error");
-      return Future.error(Exception(error));
+      _log.warning(error);
+      return Future.error(error);
     }
   }
 
@@ -274,8 +286,6 @@ class NoaApi {
     double temperature,
   ) async {
     try {
-      await checkInternetConnection(); // TODO do we need this?
-
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.brilliant.xyz/noa/wildcard'),
@@ -293,9 +303,10 @@ class NoaApi {
       var streamedResponse = await request.send();
 
       if (streamedResponse.statusCode != 200) {
-        _log.warning(
-            "Noa server responded with error: ${streamedResponse.reasonPhrase}");
-        throw NoaApiServerError(streamedResponse.statusCode);
+        throw NoaApiServerException(
+          reason: streamedResponse.reasonPhrase ?? "",
+          statusCode: streamedResponse.statusCode,
+        );
       }
 
       List<int> serverResponse = List.empty(growable: true);
@@ -322,7 +333,7 @@ class NoaApi {
 
       return response;
     } catch (error) {
-      _log.warning("Could not complete Noa request: $error");
+      _log.warning(error);
       return Future.error(error);
     }
   }
@@ -333,8 +344,6 @@ class NoaApi {
     Uint8List image,
   ) async {
     try {
-      await checkInternetConnection(); // TODO do we need this?
-
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.brilliant.xyz/noa/imagegen'),
@@ -362,9 +371,10 @@ class NoaApi {
       var streamedResponse = await request.send();
 
       if (streamedResponse.statusCode != 200) {
-        _log.warning(
-            "Noa server responded with error: ${streamedResponse.reasonPhrase}");
-        throw NoaApiServerError(streamedResponse.statusCode);
+        throw NoaApiServerException(
+          reason: streamedResponse.reasonPhrase ?? "",
+          statusCode: streamedResponse.statusCode,
+        );
       }
 
       List<int> serverResponse = List.empty(growable: true);
@@ -393,8 +403,8 @@ class NoaApi {
 
       return response;
     } catch (error) {
-      _log.warning("Could not complete Noa request: $error");
-      return Future.error(Exception(error));
+      _log.warning(error);
+      return Future.error(error);
     }
   }
 }
