@@ -154,22 +154,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             Container(
               padding: const EdgeInsets.all(50),
               color: const Color(0xA0292929),
-              child: WebViewWidget(
-                controller: WebViewController()
-                  ..loadRequest(
-                      Uri.parse("https://api.brilliant.xyz/noa/login?app=1"))
-                  ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                  ..addJavaScriptChannel("userAuthToken",
-                      onMessageReceived: (message) {
-                    print(message.message);
-                    if (message.message == "cancelled") {
-                      setState(() {
-                        showWebview = false;
-                      });
-                    } else if (message.message != "") {
-                      ref.read(app.model).loggedIn(message.message);
-                    }
-                  }),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: colorWhite, width: 2),
+                ),
+                child: WebViewWidget(
+                  controller: WebViewController()
+                    ..loadRequest(
+                        Uri.parse("https://api.brilliant.xyz/noa/login?app=1"))
+                    ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                    ..addJavaScriptChannel("userAuthToken",
+                        onMessageReceived: (message) {
+                      print(message.message);
+                      if (message.message == "cancelled") {
+                        setState(() {
+                          showWebview = false;
+                        });
+                      } else if (message.message != "") {
+                        ref.read(app.model).loggedIn(message.message);
+                      }
+                    }),
+                ),
               ),
             )
         ],
