@@ -39,7 +39,7 @@ Widget _loginButton(
   return GestureDetector(
     onTap: () async {
       try {
-        ref.read(app.model).userAuthToken = await action();
+        ref.read(app.model).setUserAuthToken(await action());
       } on CheckInternetConnectionError catch (_) {
         if (context.mounted) {
           alertDialog(
@@ -163,8 +163,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           showWebview = false;
                         });
                       } else if (message.message != "") {
-                        ref.read(app.model).userAuthToken =
-                            Future(() => message.message);
+                        ref.read(app.model).setUserAuthToken(message.message);
                       }
                     }),
                 ),

@@ -23,8 +23,6 @@ class SplashPage extends ConsumerWidget {
           default:
             switchPage(context, const LoginPage());
         }
-        if (ref.watch(app.model).state.current == app.State.waitForLogin) {
-        } else {}
       });
     });
 

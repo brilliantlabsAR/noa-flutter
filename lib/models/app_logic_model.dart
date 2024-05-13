@@ -74,16 +74,16 @@ class AppLogicModel extends ChangeNotifier {
   double bluetoothUploadProgress = 0;
   List<NoaMessage> noaMessages = List.empty(growable: true);
 
-  Future<String?> get userAuthToken async {
-    return await SharedPreferences.getInstance()
-        .then((value) => value.getString('userAuthToken'));
-  }
-
-  set userAuthToken(Future<String?> token) {
+  void setUserAuthToken(String token) {
     SharedPreferences.getInstance().then((value) async {
-      await value.setString("userAuthToken", (await token)!);
+      await value.setString("userAuthToken", token);
       triggerEvent(Event.loggedIn);
     });
+  }
+
+  Future<String?> _getUserAuthToken() async {
+    return await SharedPreferences.getInstance()
+        .then((value) => value.getString('userAuthToken'));
   }
 
   // User's tune preferences
@@ -216,8 +216,8 @@ class AppLogicModel extends ChangeNotifier {
               // Check if the auto token is loaded and if Frame is paired
               _pairedDevice = savedData
                   .getString('pairedDevice'); // TODO move to getter/setter
-              if (await userAuthToken != null && _pairedDevice != null) {
-                noaUser = await NoaApi.getUser((await userAuthToken)!);
+              if (await _getUserAuthToken() != null && _pairedDevice != null) {
+                noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
                 triggerEvent(Event.done);
                 return;
               }
@@ -234,12 +234,9 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.waitForLogin:
-          state.onEntry(() async {
-            // listen to login changes
-          });
           state.changeOn(Event.loggedIn, State.scanning,
               transitionTask: () async =>
-                  noaUser = await NoaApi.getUser((await userAuthToken)!));
+                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!));
           break;
 
         case State.scanning:
@@ -443,38 +440,44 @@ class AppLogicModel extends ChangeNotifier {
             _dataResponseStream =
                 _connectedDevice!.dataResponse.listen((event) async {
               String getTunePrompt() {
-                String prompt = ""; // TODO do we need to add "Respond"
-                if (_tuneStyle != "") {
-                  prompt += " in the style of $_tuneStyle";
-                }
+                String prompt = "";
+                if (_tuneStyle != "" || _tuneTone != "" || _tuneFormat != "") {
+                  prompt += "Respond ";
 
-                if (_tuneTone != "") {
-                  prompt += " with a $_tuneTone tone";
-                }
+                  if (_tuneStyle != "") {
+                    prompt += " in the style of $_tuneStyle";
+                  }
 
-                if (_tuneFormat != "") {
-                  prompt += " formatted as $_tuneFormat";
+                  if (_tuneTone != "") {
+                    prompt += " with a $_tuneTone tone";
+                  }
+
+                  if (_tuneFormat != "") {
+                    prompt += " formatted as $_tuneFormat";
+                  }
+
+                  prompt += ". ";
                 }
 
                 if (_referToMe != "") {
-                  prompt += ". Refer to me as $_referToMe";
+                  prompt += "Refer to me as $_referToMe. ";
                 }
 
                 switch (_tuneLength) {
                   case TuneLength.shortest:
-                    prompt += ". Limit responses to 1 to 3 words";
+                    prompt += "Limit responses to 1 to 3 words. ";
                     break;
                   case TuneLength.short:
-                    prompt += ". Limit responses to 1 sentence";
+                    prompt += "Limit responses to 1 sentence. ";
                     break;
                   case TuneLength.standard:
-                    prompt += ". Limit responses to 1 to 2 sentences";
+                    prompt += "Limit responses to 1 to 2 sentences. ";
                     break;
                   case TuneLength.long:
-                    prompt += ". Limit responses to 1 short paragraph";
+                    prompt += "Limit responses to 1 short paragraph. ";
                     break;
                   case TuneLength.longest:
-                    prompt += ". Limit responses to 2 paragraphs";
+                    prompt += "Limit responses to 2 paragraphs. ";
                     break;
                 }
                 return prompt;
@@ -496,11 +499,11 @@ class AppLogicModel extends ChangeNotifier {
                 case 0x12:
                   _log.info("Received wildcard request from device");
                   noaMessages += await NoaApi.getWildcardMessage(
-                    (await userAuthToken)!,
+                    (await _getUserAuthToken())!,
                     getTunePrompt(),
                     _tuneTemperature / 50,
                   );
-                  noaUser = await NoaApi.getUser((await userAuthToken)!);
+                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
                   triggerEvent(Event.noaResponse);
                   break;
                 case 0x13:
@@ -514,7 +517,7 @@ class AppLogicModel extends ChangeNotifier {
                       "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                   if (_requestType == "message") {
                     noaMessages += await NoaApi.getMessage(
-                      (await userAuthToken)!,
+                      (await _getUserAuthToken())!,
                       Uint8List.fromList(_audioData),
                       Uint8List.fromList(_imageData),
                       getTunePrompt(),
@@ -523,12 +526,12 @@ class AppLogicModel extends ChangeNotifier {
                     );
                   } else {
                     noaMessages += await NoaApi.getImage(
-                      (await userAuthToken)!,
+                      (await _getUserAuthToken())!,
                       Uint8List.fromList(_audioData),
                       Uint8List.fromList(_imageData),
                     );
                   }
-                  noaUser = await NoaApi.getUser((await userAuthToken)!);
+                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
                   triggerEvent(Event.noaResponse);
                   break;
               }
@@ -576,7 +579,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.logout:
           state.onEntry(() async {
             await _connectedDevice?.disconnect();
-            await NoaApi.signOut((await userAuthToken)!);
+            await NoaApi.signOut((await _getUserAuthToken())!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
             triggerEvent(Event.done);
@@ -587,7 +590,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.deleteAccount:
           state.onEntry(() async {
             await _connectedDevice?.disconnect();
-            await NoaApi.deleteUser((await userAuthToken)!);
+            await NoaApi.deleteUser((await _getUserAuthToken())!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
             triggerEvent(Event.done);
