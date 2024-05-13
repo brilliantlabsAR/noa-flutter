@@ -441,7 +441,7 @@ class AppLogicModel extends ChangeNotifier {
               String getTunePrompt() {
                 String prompt = "";
                 if (_tuneStyle != "" || _tuneTone != "" || _tuneFormat != "") {
-                  prompt += "Respond ";
+                  prompt += "Respond";
 
                   if (_tuneStyle != "") {
                     prompt += " in the style of $_tuneStyle";
