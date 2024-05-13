@@ -238,8 +238,10 @@ class NoaApi {
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
-      var serverResponse = await streamedResponse.stream.first;
-      var body = jsonDecode(String.fromCharCodes(serverResponse));
+      List<int> serverResponse = List.empty(growable: true);
+      await streamedResponse.stream
+          .forEach((element) => serverResponse += element);
+      var body = jsonDecode(utf8.decode(serverResponse));
 
       List<NoaMessage> response = List.empty(growable: true);
 
@@ -296,8 +298,10 @@ class NoaApi {
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
-      var serverResponse = await streamedResponse.stream.first;
-      var body = jsonDecode(String.fromCharCodes(serverResponse));
+      List<int> serverResponse = List.empty(growable: true);
+      await streamedResponse.stream
+          .forEach((element) => serverResponse += element);
+      var body = jsonDecode(utf8.decode(serverResponse));
 
       List<NoaMessage> response = List.empty(growable: true);
 
@@ -363,8 +367,10 @@ class NoaApi {
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
-      var serverResponse = await streamedResponse.stream.first;
-      var body = jsonDecode(String.fromCharCodes(serverResponse));
+      List<int> serverResponse = List.empty(growable: true);
+      await streamedResponse.stream
+          .forEach((element) => serverResponse += element);
+      var body = jsonDecode(utf8.decode(serverResponse));
 
       List<NoaMessage> response = List.empty(growable: true);
 
