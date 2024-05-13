@@ -71,12 +71,14 @@ class NoaMessage {
   NoaRole from;
   DateTime time;
   Uint8List? image;
+  Uint8List? audio;
 
   NoaMessage({
     required this.message,
     required this.from,
     required this.time,
     this.image,
+    this.audio
   });
 
   Map<String, dynamic> toJson() {

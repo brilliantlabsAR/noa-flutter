@@ -26,6 +26,7 @@ dependencies:
   webview_flutter: ^4.7.0
   saver_gallery: ^3.0.5
   uuid: ^4.4.0
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
