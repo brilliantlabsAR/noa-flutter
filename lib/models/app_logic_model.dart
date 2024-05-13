@@ -26,8 +26,8 @@ enum State {
   updateFirmware,
   requiresRepair,
   connected,
-  sendResponseToDevice,
   disconnected,
+  sendResponseToDevice,
   logout,
   deleteAccount
 }
@@ -37,12 +37,9 @@ enum Event {
   done,
   error,
   loggedIn,
-  pairedDeviceFound,
-  pairedDeviceNotFound,
   deviceFound,
   deviceLost,
   deviceConnected,
-  deviceReconnected,
   updatableDeviceConnected,
   deviceDisconnected,
   deviceInvalid,
@@ -52,7 +49,6 @@ enum Event {
   deletePressed,
   deviceUpToDate,
   deviceNeedsUpdate,
-  deviceDataResponse,
   noaResponse,
 }
 
@@ -84,6 +80,18 @@ class AppLogicModel extends ChangeNotifier {
   Future<String?> _getUserAuthToken() async {
     return await SharedPreferences.getInstance()
         .then((value) => value.getString('userAuthToken'));
+  }
+
+  void _setPairedDevice(String token) {
+    SharedPreferences.getInstance().then((value) async {
+      await value.setString("PairedDevice", token);
+      triggerEvent(Event.loggedIn);
+    });
+  }
+
+  Future<String?> _getPairedDevice() async {
+    return await SharedPreferences.getInstance()
+        .then((value) => value.getString('PairedDevice'));
   }
 
   // User's tune preferences
@@ -159,7 +167,6 @@ class AppLogicModel extends ChangeNotifier {
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
   String _requestType = "";
-  String? _pairedDevice; // TODO
 
   AppLogicModel() {
     // Uncomment to create AppStore images
@@ -212,10 +219,11 @@ class AppLogicModel extends ChangeNotifier {
                   .firstWhere((e) => e.toString() == 'TuneLength.$len');
 
               // Check if the auto token is loaded and if Frame is paired
-              _pairedDevice = savedData
-                  .getString('pairedDevice'); // TODO move to getter/setter
-              if (await _getUserAuthToken() != null && _pairedDevice != null) {
+              if (await _getUserAuthToken() != null &&
+                  await _getPairedDevice() != null) {
                 noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
+                BrilliantBluetooth.reconnect((await _getPairedDevice())!)
+                    .then((device) => _connectedDevice = device);
                 triggerEvent(Event.done);
                 return;
               }
@@ -225,9 +233,7 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          state.changeOn(Event.done, State.disconnected, transitionTask: () {
-            // TODO call reconnect function
-          });
+          state.changeOn(Event.done, State.disconnected);
           state.changeOn(Event.error, State.waitForLogin);
           break;
 
@@ -263,16 +269,21 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.connect:
           state.onEntry(() async {
-            _connectedDevice = await BrilliantBluetooth.connect(_nearbyDevice!);
-            switch (_connectedDevice!.state) {
-              case BrilliantConnectionState.connected:
-                triggerEvent(Event.deviceConnected);
-                break;
-              case BrilliantConnectionState.dfuConnected:
-                triggerEvent(Event.updatableDeviceConnected);
-                break;
-              default:
-                triggerEvent(Event.deviceInvalid);
+            try {
+              _connectedDevice =
+                  await BrilliantBluetooth.connect(_nearbyDevice!);
+              switch (_connectedDevice!.state) {
+                case BrilliantConnectionState.connected:
+                  triggerEvent(Event.deviceConnected);
+                  break;
+                case BrilliantConnectionState.dfuConnected:
+                  triggerEvent(Event.updatableDeviceConnected);
+                  break;
+                default:
+                  throw ();
+              }
+            } catch (_) {
+              triggerEvent(Event.deviceInvalid);
             }
           });
           state.changeOn(Event.deviceConnected, State.stopLuaApp);
@@ -356,16 +367,14 @@ class AppLogicModel extends ChangeNotifier {
                 'assets/lua_scripts/state.lua',
               );
               await _connectedDevice!.sendResetSignal();
+              _setPairedDevice(_connectedDevice!.device.remoteId.toString());
               triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.error);
             }
           });
 
-          state.changeOn(Event.done, State.connected, transitionTask: () async {
-            SharedPreferences savedData = await SharedPreferences.getInstance();
-            // await savedData.setString('pairedDevice', _connectedDevice!.uuid); // TODO save device
-          });
+          state.changeOn(Event.done, State.connected);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
@@ -405,9 +414,8 @@ class AppLogicModel extends ChangeNotifier {
                   triggerEvent(Event.deviceFound);
                 });
               });
-            } catch (error) {
+            } catch (_) {
               await _connectedDevice?.disconnect();
-              _log.warning("DFU error: $error");
               triggerEvent(Event.error);
             }
           });
@@ -562,30 +570,28 @@ class AppLogicModel extends ChangeNotifier {
                 await Future.delayed(const Duration(milliseconds: 50));
               }
               await Future.delayed(const Duration(milliseconds: 300));
-            } catch (error) {
-              _log.warning("Could not respond to device: $error");
-            }
+            } catch (_) {}
             triggerEvent(Event.done);
           });
 
           state.changeOn(Event.done, State.connected);
-          state.changeOn(Event.deviceDisconnected, State.disconnected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
 
         case State.disconnected:
-          state.changeOn(Event.deviceReconnected, State.connected);
+          state.changeOn(Event.deviceConnected, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
 
         case State.logout:
           state.onEntry(() async {
-            await _connectedDevice?.disconnect();
-            await NoaApi.signOut((await _getUserAuthToken())!);
-            final savedData = await SharedPreferences.getInstance();
-            await savedData.clear();
+            try {
+              await _connectedDevice?.disconnect();
+              await NoaApi.signOut((await _getUserAuthToken())!);
+            } catch (_) {}
+            await SharedPreferences.getInstance().then((sp) => sp.clear());
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);
@@ -593,10 +599,11 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.deleteAccount:
           state.onEntry(() async {
-            await _connectedDevice?.disconnect();
-            await NoaApi.deleteUser((await _getUserAuthToken())!);
-            final savedData = await SharedPreferences.getInstance();
-            await savedData.clear();
+            try {
+              await _connectedDevice?.disconnect();
+              await NoaApi.deleteUser((await _getUserAuthToken())!);
+            } catch (_) {}
+            await SharedPreferences.getInstance().then((sp) => sp.clear());
             triggerEvent(Event.done);
           });
           state.changeOn(Event.done, State.waitForLogin);

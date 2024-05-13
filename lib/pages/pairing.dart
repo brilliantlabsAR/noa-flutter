@@ -11,8 +11,6 @@ class PairingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // TODO can we leave the page earlier?
-      // Leave once done
       if (ref.watch(app.model).state.current == app.State.connected ||
           ref.watch(app.model).state.current == app.State.disconnected) {
         switchPage(context, const NoaPage());
