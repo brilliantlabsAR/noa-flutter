@@ -123,12 +123,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       'assets/images/sign_in_with_apple_button.png',
                       SignIn().withApple,
                     ),
-                  _loginButton(
-                    context,
-                    ref,
-                    'assets/images/sign_in_with_google_button.png',
-                    SignIn().withGoogle,
-                  ),
+                  if (Platform.isIOS)
+                    _loginButton(
+                      context,
+                      ref,
+                      'assets/images/sign_in_with_google_button.png',
+                      SignIn().withGoogle,
+                    ),
                   GestureDetector(
                     onTap: () async => setState(() => showWebview = true),
                     child: Padding(
