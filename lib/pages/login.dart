@@ -35,7 +35,7 @@ Widget _loginButton(
   return GestureDetector(
     onTap: () async {
       try {
-        ref.read(app.model).loggedIn(await action());
+        ref.read(app.model).userAuthToken = await action();
       } on CheckInternetConnectionError catch (_) {
         if (context.mounted) {
           alertDialog(
@@ -139,13 +139,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ..setJavaScriptMode(JavaScriptMode.unrestricted)
                     ..addJavaScriptChannel("userAuthToken",
                         onMessageReceived: (message) {
-                      print(message.message);
                       if (message.message == "cancelled") {
                         setState(() {
                           showWebview = false;
                         });
                       } else if (message.message != "") {
-                        ref.read(app.model).loggedIn(message.message);
+                        ref.read(app.model).userAuthToken =
+                            Future(() => message.message);
                       }
                     }),
                 ),

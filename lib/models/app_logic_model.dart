@@ -12,8 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 final _log = Logger("App logic");
 
 enum State {
+  getUserSettings,
   waitForLogin,
-  getPairedDevice,
   scanning,
   found,
   connect,
@@ -69,10 +69,22 @@ enum TuneLength {
 
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
-  StateMachine state = StateMachine(State.waitForLogin);
+  StateMachine state = StateMachine(State.getUserSettings);
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
-  final List<NoaMessage> noaMessages = List.empty(growable: true);
+  List<NoaMessage> noaMessages = List.empty(growable: true);
+
+  Future<String?> get userAuthToken async {
+    return await SharedPreferences.getInstance()
+        .then((value) => value.getString('userAuthToken'));
+  }
+
+  set userAuthToken(Future<String?> token) {
+    SharedPreferences.getInstance().then((value) async {
+      await value.setString("userAuthToken", (await token)!);
+      triggerEvent(Event.loggedIn);
+    });
+  }
 
   // User's tune preferences
   String _tuneStyle = "";
@@ -128,7 +140,7 @@ class AppLogicModel extends ChangeNotifier {
 
   TuneLength _tuneLength = TuneLength.standard;
   TuneLength get tuneLength => _tuneLength;
-  set length(TuneLength value) {
+  set tuneLength(TuneLength value) {
     _tuneLength = value;
     () async {
       final savedData = await SharedPreferences.getInstance();
@@ -147,11 +159,7 @@ class AppLogicModel extends ChangeNotifier {
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
   String _requestType = "";
-  String? _userAuthToken;
-
-  // Noa steam listeners
-  final _noaResponseStreamController = StreamController<NoaMessage>();
-  final _noaUserInfoStreamController = StreamController<NoaUser>();
+  String? _pairedDevice; // TODO
 
   AppLogicModel() {
     // Uncomment to create AppStore images
@@ -180,31 +188,6 @@ class AppLogicModel extends ChangeNotifier {
     //   from: NoaRole.noa,
     //   time: DateTime.now().add(const Duration(seconds: 5)),
     // ));
-
-    // Monitor noa responses
-    _noaResponseStreamController.stream.listen((message) {
-      noaMessages.add(NoaMessage(
-        message: message.message,
-        from: message.from,
-        time: message.time,
-        image: message.image,
-      ));
-      if (message.from == NoaRole.noa) {
-        triggerEvent(Event.noaResponse);
-      }
-    });
-
-    // Monitor user stats
-    _noaUserInfoStreamController.stream.listen((user) {
-      noaUser = user;
-    });
-  }
-
-  void loggedIn(String userAuthToken) async {
-    _userAuthToken = userAuthToken;
-    final savedData = await SharedPreferences.getInstance();
-    await savedData.setString('userAuthToken', userAuthToken);
-    triggerEvent(Event.loggedIn);
   }
 
   void triggerEvent(Event event) {
@@ -212,38 +195,51 @@ class AppLogicModel extends ChangeNotifier {
 
     do {
       switch (state.current) {
-        case State.waitForLogin:
+        case State.getUserSettings:
           state.onEntry(() async {
-            final savedData = await SharedPreferences.getInstance();
-            _tuneStyle = savedData.getString('tuneStyle') ?? "";
-            _tuneTone = savedData.getString('tuneTone') ?? "";
-            _tuneFormat = savedData.getString('tuneFormat') ?? "";
-            _referToMe = savedData.getString('referToMe') ?? "";
-            _tuneTemperature = savedData.getInt('tuneTemperature') ?? 50;
-            var len = savedData.getString('tuneLength') ?? 'standard';
-            _tuneLength = TuneLength.values
-                .firstWhere((e) => e.toString() == 'TuneLength.$len');
-            _userAuthToken = savedData.getString('userAuthToken');
-            if (_userAuthToken != null) {
-              triggerEvent(Event.loggedIn);
+            // Try to load user from server
+            try {
+              final savedData = await SharedPreferences.getInstance();
+
+              // Load the user's Tune settings or defaults if none are set
+              _tuneStyle = savedData.getString('tuneStyle') ??
+                  "a witty, friendly but occasionally sarcastic assistant";
+              _tuneTone =
+                  savedData.getString('tuneTone') ?? "entertaining and funny";
+              _tuneFormat = savedData.getString('tuneFormat') ?? "";
+              _referToMe = savedData.getString('referToMe') ?? "";
+              _tuneTemperature = savedData.getInt('tuneTemperature') ?? 50;
+              var len = savedData.getString('tuneLength') ?? 'standard';
+              _tuneLength = TuneLength.values
+                  .firstWhere((e) => e.toString() == 'TuneLength.$len');
+
+              // Check if the auto token is loaded and if Frame is paired
+              _pairedDevice = savedData
+                  .getString('pairedDevice'); // TODO move to getter/setter
+              if (await userAuthToken != null && _pairedDevice != null) {
+                noaUser = await NoaApi.getUser((await userAuthToken)!);
+                triggerEvent(Event.done);
+                return;
+              }
+              throw ("Not logged in or paired");
+            } catch (error) {
+              _log.info(error);
+              triggerEvent(Event.error);
             }
           });
-          state.changeOn(Event.loggedIn, State.getPairedDevice,
-              transitionTask: () => NoaApi.getUser(
-                  _userAuthToken!, _noaUserInfoStreamController));
+          state.changeOn(Event.done, State.disconnected, transitionTask: () {
+            // TODO call reconnect function
+          });
+          state.changeOn(Event.error, State.waitForLogin);
           break;
 
-        case State.getPairedDevice:
+        case State.waitForLogin:
           state.onEntry(() async {
-            final savedData = await SharedPreferences.getInstance();
-            if (savedData.getString('pairedDevice') != null) {
-              triggerEvent(Event.pairedDeviceFound);
-            } else {
-              triggerEvent(Event.pairedDeviceNotFound);
-            }
+            // listen to login changes
           });
-          state.changeOn(Event.pairedDeviceNotFound, State.scanning);
-          state.changeOn(Event.pairedDeviceFound, State.disconnected);
+          state.changeOn(Event.loggedIn, State.scanning,
+              transitionTask: () async =>
+                  noaUser = await NoaApi.getUser((await userAuthToken)!));
           break;
 
         case State.scanning:
@@ -444,9 +440,9 @@ class AppLogicModel extends ChangeNotifier {
 
             _dataResponseStream?.cancel();
             _dataResponseStream =
-                _connectedDevice!.dataResponse.listen((event) {
+                _connectedDevice!.dataResponse.listen((event) async {
               String getTunePrompt() {
-                String prompt = "";
+                String prompt = ""; // TODO do we need to add "Respond"
                 if (_tuneStyle != "") {
                   prompt += " in the style of $_tuneStyle";
                 }
@@ -498,13 +494,13 @@ class AppLogicModel extends ChangeNotifier {
                   break;
                 case 0x12:
                   _log.info("Received wildcard request from device");
-                  NoaApi.getWildcardMessage(
-                    _userAuthToken!,
+                  noaMessages += await NoaApi.getWildcardMessage(
+                    (await userAuthToken)!,
                     getTunePrompt(),
                     _tuneTemperature / 50,
-                    _noaResponseStreamController,
-                    _noaUserInfoStreamController,
                   );
+                  noaUser = await NoaApi.getUser((await userAuthToken)!);
+                  triggerEvent(Event.noaResponse);
                   break;
                 case 0x13:
                   _audioData += event.sublist(1);
@@ -516,25 +512,23 @@ class AppLogicModel extends ChangeNotifier {
                   _log.info(
                       "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                   if (_requestType == "message") {
-                    NoaApi.getMessage(
-                      _userAuthToken!,
+                    noaMessages += await NoaApi.getMessage(
+                      (await userAuthToken)!,
                       Uint8List.fromList(_audioData),
                       Uint8List.fromList(_imageData),
                       getTunePrompt(),
                       _tuneTemperature / 50,
                       noaMessages,
-                      _noaResponseStreamController,
-                      _noaUserInfoStreamController,
                     );
                   } else {
-                    NoaApi.getImage(
-                      _userAuthToken!,
+                    noaMessages += await NoaApi.getImage(
+                      (await userAuthToken)!,
                       Uint8List.fromList(_audioData),
                       Uint8List.fromList(_imageData),
-                      _noaResponseStreamController,
-                      _noaUserInfoStreamController,
                     );
                   }
+                  noaUser = await NoaApi.getUser((await userAuthToken)!);
+                  triggerEvent(Event.noaResponse);
                   break;
               }
             });
@@ -581,7 +575,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.logout:
           state.onEntry(() async {
             await _connectedDevice?.disconnect();
-            await NoaApi.signOut(_userAuthToken!);
+            await NoaApi.signOut((await userAuthToken)!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
             triggerEvent(Event.done);
@@ -592,7 +586,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.deleteAccount:
           state.onEntry(() async {
             await _connectedDevice?.disconnect();
-            await NoaApi.deleteUser(_userAuthToken!);
+            await NoaApi.deleteUser((await userAuthToken)!);
             final savedData = await SharedPreferences.getInstance();
             await savedData.clear();
             triggerEvent(Event.done);
@@ -608,8 +602,6 @@ class AppLogicModel extends ChangeNotifier {
   @override
   void dispose() {
     BrilliantBluetooth.stopScan();
-    _noaResponseStreamController.close();
-    _noaUserInfoStreamController.close();
     super.dispose();
   }
 }
