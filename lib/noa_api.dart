@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -236,6 +237,7 @@ class NoaApi {
       request.fields['location'] = await Location.getAddress();
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = temperature.toString();
+      request.fields['tts'] = "1";
       request.fields['experimental'] =
           '{"vision":"claude-3-haiku-20240307"}'; // TODO can we remove this?
 
@@ -253,10 +255,14 @@ class NoaApi {
       streamedResponse.stream.listen((value) {
         var body = jsonDecode(String.fromCharCodes(value));
 
+
+
+
         responseListener.add(NoaMessage(
           message: body['user_prompt'],
           from: NoaRole.user,
           time: DateTime.now(),
+          audio: body['audio'],
           image: kReleaseMode ? null : image,
         ));
 
@@ -282,10 +288,31 @@ class NoaApi {
             "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
         _log.info(
             "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
+
+
+        if (body['audio'] != null) {
+          String base64String = body['audio'];
+          Uint8List byteArray = decodeBase64String(base64String);
+          playByteArray(byteArray);
+        }
       });
     } catch (error) {
       _log.warning("Could not complete Noa request: $error");
       return Future.error(Exception(error));
+    }
+  }
+
+static Uint8List decodeBase64String(String base64String) {
+  List<int> bytes = base64.decode(base64String);
+  return Uint8List.fromList(bytes);
+}
+ static Future<void> playByteArray(Uint8List byteArray) async {
+
+    try {
+      AudioPlayer audioPlayer = AudioPlayer();
+      audioPlayer.play(BytesSource(byteArray));
+    } catch (e) {
+      print("Error playing audio: $e");
     }
   }
 
