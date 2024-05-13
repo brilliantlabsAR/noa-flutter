@@ -197,11 +197,9 @@ class AppLogicModel extends ChangeNotifier {
       switch (state.current) {
         case State.getUserSettings:
           state.onEntry(() async {
-            // Try to load user from server
             try {
-              final savedData = await SharedPreferences.getInstance();
-
               // Load the user's Tune settings or defaults if none are set
+              final savedData = await SharedPreferences.getInstance();
               _tuneStyle = savedData.getString('tuneStyle') ??
                   "a witty, friendly but occasionally sarcastic assistant";
               _tuneTone =
@@ -414,7 +412,7 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           state.changeOn(Event.deviceFound, State.connect);
-          // state.changeOn(Event.deviceConnected, State.stopLuaApp);
+          // state.changeOn(Event.deviceConnected, State.stopLuaApp); // TODO do we need these?
           // state.changeOn(Event.deviceInvalid, State.requiresRepair);
           state.changeOn(Event.error, State.requiresRepair);
           break;
@@ -498,13 +496,16 @@ class AppLogicModel extends ChangeNotifier {
                   break;
                 case 0x12:
                   _log.info("Received wildcard request from device");
-                  noaMessages += await NoaApi.getWildcardMessage(
-                    (await _getUserAuthToken())!,
-                    getTunePrompt(),
-                    _tuneTemperature / 50,
-                  );
-                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
-                  triggerEvent(Event.noaResponse);
+                  try {
+                    noaMessages += await NoaApi.getWildcardMessage(
+                      (await _getUserAuthToken())!,
+                      getTunePrompt(),
+                      _tuneTemperature / 50,
+                    );
+                    noaUser =
+                        await NoaApi.getUser((await _getUserAuthToken())!);
+                    triggerEvent(Event.noaResponse);
+                  } catch (_) {}
                   break;
                 case 0x13:
                   _audioData += event.sublist(1);
@@ -515,24 +516,27 @@ class AppLogicModel extends ChangeNotifier {
                 case 0x15:
                   _log.info(
                       "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
-                  if (_requestType == "message") {
-                    noaMessages += await NoaApi.getMessage(
-                      (await _getUserAuthToken())!,
-                      Uint8List.fromList(_audioData),
-                      Uint8List.fromList(_imageData),
-                      getTunePrompt(),
-                      _tuneTemperature / 50,
-                      noaMessages,
-                    );
-                  } else {
-                    noaMessages += await NoaApi.getImage(
-                      (await _getUserAuthToken())!,
-                      Uint8List.fromList(_audioData),
-                      Uint8List.fromList(_imageData),
-                    );
-                  }
-                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
-                  triggerEvent(Event.noaResponse);
+                  try {
+                    if (_requestType == "message") {
+                      noaMessages += await NoaApi.getMessage(
+                        (await _getUserAuthToken())!,
+                        Uint8List.fromList(_audioData),
+                        Uint8List.fromList(_imageData),
+                        getTunePrompt(),
+                        _tuneTemperature / 50,
+                        noaMessages,
+                      );
+                    } else {
+                      noaMessages += await NoaApi.getImage(
+                        (await _getUserAuthToken())!,
+                        Uint8List.fromList(_audioData),
+                        Uint8List.fromList(_imageData),
+                      );
+                    }
+                    noaUser =
+                        await NoaApi.getUser((await _getUserAuthToken())!);
+                    triggerEvent(Event.noaResponse);
+                  } catch (_) {}
                   break;
               }
             });
