@@ -149,7 +149,7 @@ Widget _slider(WidgetRef ref, int index) {
                       enumValue = app.TuneLength.longest;
                       break;
                   }
-                  ref.read(app.model.select((v) => v.length = enumValue));
+                  ref.read(app.model.select((v) => v.tuneLength = enumValue));
                   break;
               }
             },

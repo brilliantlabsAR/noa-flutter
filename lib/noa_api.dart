@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart';
 import 'package:logging/logging.dart';
@@ -104,7 +103,6 @@ class NoaApi {
         body: {
           'id_token': id,
           'provider': provider.value,
-          'app': 'flutter', // TODO remove this
         },
       );
 
@@ -142,10 +140,7 @@ class NoaApi {
     }
   }
 
-  static Future<void> getUser(
-    String userAuthToken,
-    StreamController<NoaUser> userInfoListener,
-  ) async {
+  static Future<NoaUser> getUser(String userAuthToken) async {
     _log.info("Getting user info");
     try {
       final response = await http.get(
@@ -163,15 +158,15 @@ class NoaApi {
       final creditsUsed = body['user']['credit_used'];
       final maxCredits = body['user']['credit_total'];
 
-      userInfoListener.add(NoaUser(
+      _log.info(
+          "Got user account info: Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
+
+      return NoaUser(
         email: email,
         plan: plan,
         creditsUsed: creditsUsed,
         maxCredits: maxCredits,
-      ));
-
-      _log.info(
-          "Updated user account info: Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
+      );
     } catch (error) {
       _log.warning("Error getting user info: $error");
       return Future.error(Exception(error));
@@ -198,15 +193,13 @@ class NoaApi {
     }
   }
 
-  static Future<void> getMessage(
+  static Future<List<NoaMessage>> getMessage(
     String userAuthToken,
     Uint8List audio,
     Uint8List image,
     String systemRole,
     double temperature,
     List<NoaMessage> noaHistory,
-    StreamController<NoaMessage> responseListener,
-    StreamController<NoaUser> userInfoListener,
   ) async {
     try {
       await checkInternetConnection(); // TODO do we need this?
@@ -252,76 +245,38 @@ class NoaApi {
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
-      streamedResponse.stream.listen((value) {
-        var body = jsonDecode(String.fromCharCodes(value));
+      var serverResponse = await streamedResponse.stream.first;
+      var body = jsonDecode(String.fromCharCodes(serverResponse));
 
+      List<NoaMessage> response = List.empty(growable: true);
 
+      response.add(NoaMessage(
+        message: body['user_prompt'],
+        from: NoaRole.user,
+        time: DateTime.now(),
+        image: kReleaseMode ? null : image,
+      ));
 
+      response.add(NoaMessage(
+        message: body['message'],
+        from: NoaRole.noa,
+        time: DateTime.now(),
+      ));
 
-        responseListener.add(NoaMessage(
-          message: body['user_prompt'],
-          from: NoaRole.user,
-          time: DateTime.now(),
-          audio: body['audio'],
-          image: kReleaseMode ? null : image,
-        ));
+      _log.info(
+          "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
 
-        responseListener.add(NoaMessage(
-          message: body['message'],
-          from: NoaRole.noa,
-          time: DateTime.now(),
-        ));
-
-        final email = body['user']['email'];
-        final plan = body['user']['plan'];
-        final creditsUsed = body['user']['credit_used'];
-        final maxCredits = body['user']['credit_total'];
-
-        userInfoListener.add(NoaUser(
-          email: email,
-          plan: plan,
-          creditsUsed: creditsUsed,
-          maxCredits: maxCredits,
-        ));
-
-        _log.info(
-            "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
-        _log.info(
-            "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
-
-
-        if (body['audio'] != null) {
-          String base64String = body['audio'];
-          Uint8List byteArray = decodeBase64String(base64String);
-          playByteArray(byteArray);
-        }
-      });
+      return response;
     } catch (error) {
       _log.warning("Could not complete Noa request: $error");
       return Future.error(Exception(error));
     }
   }
 
-static Uint8List decodeBase64String(String base64String) {
-  List<int> bytes = base64.decode(base64String);
-  return Uint8List.fromList(bytes);
-}
- static Future<void> playByteArray(Uint8List byteArray) async {
-
-    try {
-      AudioPlayer audioPlayer = AudioPlayer();
-      audioPlayer.play(BytesSource(byteArray));
-    } catch (e) {
-      print("Error playing audio: $e");
-    }
-  }
-
-  static Future<void> getWildcardMessage(
+  static Future<List<NoaMessage>> getWildcardMessage(
     String userAuthToken,
     String systemRole,
     double temperature,
-    StreamController<NoaMessage> responseListener,
-    StreamController<NoaUser> userInfoListener,
   ) async {
     try {
       await checkInternetConnection(); // TODO do we need this?
@@ -348,50 +303,37 @@ static Uint8List decodeBase64String(String base64String) {
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
-      streamedResponse.stream.listen((value) {
-        var body = jsonDecode(String.fromCharCodes(value));
+      var serverResponse = await streamedResponse.stream.first;
+      var body = jsonDecode(String.fromCharCodes(serverResponse));
 
-        responseListener.add(NoaMessage(
-          message: body['user_prompt'],
-          from: NoaRole.user,
-          time: DateTime.now(),
-        ));
+      List<NoaMessage> response = List.empty(growable: true);
 
-        responseListener.add(NoaMessage(
-          message: body['message'],
-          from: NoaRole.noa,
-          time: DateTime.now(),
-        ));
+      response.add(NoaMessage(
+        message: body['user_prompt'],
+        from: NoaRole.user,
+        time: DateTime.now(),
+      ));
 
-        final email = body['user']['email'];
-        final plan = body['user']['plan'];
-        final creditsUsed = body['user']['credit_used'];
-        final maxCredits = body['user']['credit_total'];
+      response.add(NoaMessage(
+        message: body['message'],
+        from: NoaRole.noa,
+        time: DateTime.now(),
+      ));
 
-        userInfoListener.add(NoaUser(
-          email: email,
-          plan: plan,
-          creditsUsed: creditsUsed,
-          maxCredits: maxCredits,
-        ));
+      _log.info(
+          "Received wildcard response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
 
-        _log.info(
-            "Received wildcard response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
-        _log.info(
-            "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
-      });
+      return response;
     } catch (error) {
       _log.warning("Could not complete Noa request: $error");
-      return Future.error(Exception(error));
+      return Future.error(error);
     }
   }
 
-  static Future<void> getImage(
+  static Future<List<NoaMessage>> getImage(
     String userAuthToken,
     Uint8List audio,
     Uint8List image,
-    StreamController<NoaMessage> responseListener,
-    StreamController<NoaUser> userInfoListener,
   ) async {
     try {
       await checkInternetConnection(); // TODO do we need this?
@@ -428,40 +370,29 @@ static Uint8List decodeBase64String(String base64String) {
         throw NoaApiServerError(streamedResponse.statusCode);
       }
 
-      streamedResponse.stream.listen((value) {
-        var body = jsonDecode(String.fromCharCodes(value));
+      var serverResponse = await streamedResponse.stream.first;
+      var body = jsonDecode(String.fromCharCodes(serverResponse));
 
-        responseListener.add(NoaMessage(
-          message: body['user_prompt'],
-          from: NoaRole.user,
-          time: DateTime.now(),
-          image: kReleaseMode ? null : image,
-        ));
+      List<NoaMessage> response = List.empty(growable: true);
 
-        responseListener.add(NoaMessage(
-          message: "Here's what I generated",
-          from: NoaRole.noa,
-          time: DateTime.now(),
-          image: body['image'] != "" ? base64.decode(body['image']) : null,
-        ));
+      response.add(NoaMessage(
+        message: body['user_prompt'],
+        from: NoaRole.user,
+        time: DateTime.now(),
+        image: kReleaseMode ? null : image,
+      ));
 
-        final email = body['user']['email'];
-        final plan = body['user']['plan'];
-        final creditsUsed = body['user']['credit_used'];
-        final maxCredits = body['user']['credit_total'];
+      response.add(NoaMessage(
+        message: "Here's what I generated",
+        from: NoaRole.noa,
+        time: DateTime.now(),
+        image: body['image'] != "" ? base64.decode(body['image']) : null,
+      ));
 
-        userInfoListener.add(NoaUser(
-          email: email,
-          plan: plan,
-          creditsUsed: creditsUsed,
-          maxCredits: maxCredits,
-        ));
+      _log.info(
+          "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
 
-        _log.info(
-            "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
-        _log.info(
-            "Updated user account info. Email: $email, plan: $plan, credits: $creditsUsed/$maxCredits");
-      });
+      return response;
     } catch (error) {
       _log.warning("Could not complete Noa request: $error");
       return Future.error(Exception(error));
