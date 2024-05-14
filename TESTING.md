@@ -38,7 +38,7 @@ The following tests describe various tests that are done pre-release. All of the
 ## Noa screen
 - ✔️ Send noa requests and ensure the page populates as expected
 - ✔️ Long press images to save to gallery: reject permission
-- Long press images to save to gallery: accept permission
+- ✔️ Long press images to save to gallery: accept permission
 - ✔️ Ensure message history is cleared after logout
 
 ## Tune screen
@@ -48,23 +48,23 @@ The following tests describe various tests that are done pre-release. All of the
 
 ## Hack screen
 - ✔️ Ask Noa queries and ensure the logs scroll
-- Turn off internet connection and try to send requests
+- ✔️ Turn off internet connection and try to send requests
 - ✔️ Dock app during responses, un-dock and ensure fresh queries work again
 - ✔️ Dock/un-dock Frame and check state transitions are correct
 - ✔️ Ask Noa queries and ensure no duplicate listeners created after multiple disconnects
 - ✔️ Restart killed app and ensure reconnect works
 - ✔️ Ask Noa queries and ensure no duplicate listeners created after reconnect
 - ✔️ Factory reset Frame and check connection status is being rejected
-- Factory reset Frame, restart app and check connection status being rejected
-- Copy bluetooth log on hack page by long pressing
-- Copy app log on hack page by long pressing
+- ✔️ Un-pair in system settings and check connection status being rejected
+- ✔️ Copy bluetooth log on hack page by long pressing
+- ✔️ Copy app log on hack page by long pressing
 
 ## Account screen
-- Privacy policy link on account page
-- T&C link on account page
-- Logout
-- Delete account: cancel confirmation
-- Delete account: accept confirmation
+- ✔️ Privacy policy link on account page
+- ✔️ T&C link on account page
+- ✔️ Logout
+- ⨯ Delete account: cancel confirmation
+- ✔️ Delete account: accept confirmation
 
 ## Frame UI
 - Wake up Frame with app open and ensure kiss emoji is shown
