@@ -3,19 +3,18 @@
 The following tests describe various tests that are done pre-release. All of these tests are done manually as they require interacting with the real device, and system Bluetooth settings.
 
 ## First install permissions
-- Reject location permissions and test sending messages to Noa
-- Accept coarse location permissions and test sending messages to Noa
-- Accept fine location permissions and test sending messages to Noa
-- Reject bluetooth permissions and try to login
+- ✔️ Reject location permissions and test sending messages to Noa
+- ✔️ Accept coarse location permissions and test sending messages to Noa
+- ✔️ Reject bluetooth permissions and try to login
 
 ## Login screen
-- Open privacy policy link on login page
-- Open T&C link on login page
-- Open and close sign in with email window
-- Turn off internet and try all the sign in buttons
-- Sign in with Apple and check account info on account screen
-- Sign in with Google and check account info on account screen
-- Sign in with Email and check account info on account screen
+- ✔️ Open privacy policy link on login page
+- ✔️ Open T&C link on login page
+- ✔️ Open and close sign in with email window
+- ✔️ Turn off internet and try all the sign in buttons
+- ✔️ Sign in with Apple and check account info on account screen
+- ✔️ Sign in with Google and check account info on account screen
+- ✔️ Sign in with Email and check account info on account screen
 
 ## Pairing screen
 - Dock/un-dock Frame and ensure switching between "Bring your device close" and "Frame found"

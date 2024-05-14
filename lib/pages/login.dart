@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
-import 'package:noa/noa_api.dart';
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
@@ -18,7 +17,9 @@ TextSpan _clickableLink({required String text, required String url}) {
     style: textStylePink,
     recognizer: TapGestureRecognizer()
       ..onTap = () async {
-        await launchUrl(Uri.parse(url));
+        try {
+          await launchUrl(Uri.parse(url));
+        } catch (_) {}
       },
   );
 }
@@ -34,21 +35,20 @@ Widget _loginButton(
       try {
         await InternetAddress.lookup('www.google.com');
         ref.read(app.model).setUserAuthToken(await action());
-      } on NoaApiServerException catch (error) {
-        if (context.mounted) {
-          alertDialog(
-            context,
-            "Couldn't Sign In",
-            "Server responded with an error: $error",
-          );
-        }
-      } catch (error) {
-        print(error); // TODO filter the internet connection error properly
+      } on SocketException catch (_) {
         if (context.mounted) {
           alertDialog(
             context,
             "Couldn't Sign In",
             "Noa requires an internet connection",
+          );
+        }
+      } catch (error) {
+        if (context.mounted) {
+          alertDialog(
+            context,
+            "Couldn't Sign In",
+            "Server responded with an error: $error",
           );
         }
       }
@@ -113,7 +113,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       SignIn().withGoogle,
                     ),
                   GestureDetector(
-                    onTap: () async => setState(() => showWebview = true),
+                    onTap: () async {
+                      try {
+                        await InternetAddress.lookup('www.google.com');
+                        setState(() => showWebview = true);
+                      } on SocketException catch (_) {
+                        if (context.mounted) {
+                          alertDialog(
+                            context,
+                            "Couldn't Sign In",
+                            "Noa requires an internet connection",
+                          );
+                        }
+                      }
+                    },
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 20),
                       child: Image.asset(
