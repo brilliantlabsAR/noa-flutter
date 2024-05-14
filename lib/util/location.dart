@@ -9,9 +9,18 @@ Position? _position;
 
 class Location {
   static Future<void> requestPermission() async {
-    if (await Geolocator.checkPermission() == LocationPermission.denied) {
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
       _log.info("Requesting location permission from user");
+
       await Geolocator.requestPermission();
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        _log.info("Permission rejected by user. Won't use location");
+        return;
+      }
     }
 
     late LocationSettings locationSettings;

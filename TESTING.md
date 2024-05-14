@@ -48,6 +48,7 @@ The following tests describe various tests that are done pre-release. All of the
 - Ask Noa queries and ensure the logs scroll
 - Ask Noa queries and check last message for correct Tune parameters
 - Turn off internet connection and try to send requests
+- Dock app during responses, un-dock and ensure fresh queries work again
 - Dock/un-dock Frame and check state transitions are correct
 - Ask Noa queries and ensure no duplicate listeners created after multiple disconnects
 - Restart killed app and ensure reconnect works
