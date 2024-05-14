@@ -222,8 +222,6 @@ class AppLogicModel extends ChangeNotifier {
               if (await _getUserAuthToken() != null &&
                   await _getPairedDevice() != null) {
                 noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
-                BrilliantBluetooth.reconnect((await _getPairedDevice())!)
-                    .then((device) => _connectedDevice = device);
                 triggerEvent(Event.done);
                 return;
               }
@@ -435,6 +433,9 @@ class AppLogicModel extends ChangeNotifier {
             _connectionStream =
                 _connectedDevice!.connectionState.listen((event) {
               _connectedDevice = event;
+              if (event.state == BrilliantConnectionState.disconnected) {
+                triggerEvent(Event.deviceDisconnected);
+              }
             });
 
             _luaResponseStream?.cancel();
@@ -579,6 +580,24 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.disconnected:
+          state.onEntry(() async {
+            _connectionStream?.cancel();
+            _connectionStream =
+                _connectedDevice?.connectionState.listen((event) {
+              _connectedDevice = event;
+              if (event.state == BrilliantConnectionState.connected) {
+                triggerEvent(Event.deviceConnected);
+              }
+            });
+            try {
+              _connectedDevice ??= await BrilliantBluetooth.reconnect(
+                  (await _getPairedDevice())!);
+              if (_connectedDevice?.state ==
+                  BrilliantConnectionState.connected) {
+                triggerEvent(Event.deviceConnected);
+              }
+            } catch (_) {}
+          });
           state.changeOn(Event.deviceConnected, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
