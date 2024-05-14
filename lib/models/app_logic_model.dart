@@ -413,7 +413,6 @@ class AppLogicModel extends ChangeNotifier {
                     triggerEvent(Event.deviceFound);
                   });
                 } catch (error) {
-                  print("APPL $error");
                   triggerEvent(Event.error);
                 }
               },

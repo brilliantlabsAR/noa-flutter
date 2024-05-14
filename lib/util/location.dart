@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
@@ -8,11 +10,35 @@ final _log = Logger("Location");
 Position? _position;
 
 class Location {
-  static Future<void> requestPermission() async {
+  static Future<void> requestPermission(BuildContext context) async {
     LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
       _log.info("Requesting location permission from user");
+
+      if (Platform.isAndroid) {
+        Completer completer = Completer();
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) => AlertDialog(
+              title: const Text("Allow location?"),
+              content: const Text(
+                  "Noa can give responses and recommendations based on your current location. This is optional and can be turned off at anytime from your system settings"),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    completer.complete();
+                  },
+                  child: const Text('Okay'),
+                )
+              ],
+            ),
+          );
+        }
+        await completer.future;
+      }
 
       await Geolocator.requestPermission();
       permission = await Geolocator.checkPermission();

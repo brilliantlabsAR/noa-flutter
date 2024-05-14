@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/util/app_log.dart';
-import 'package:noa/util/location.dart';
 
 final globalPageStorageBucket = PageStorageBucket();
 
@@ -16,8 +15,7 @@ void main() async {
   final container = ProviderContainer();
   container.read(appLog);
 
-  // Request user permissions
-  await Location.requestPermission();
+  // Request bluetooth permission
   BrilliantBluetooth.requestPermission();
 
   runApp(UncontrolledProviderScope(

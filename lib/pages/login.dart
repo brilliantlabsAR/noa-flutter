@@ -7,6 +7,7 @@ import 'package:noa/noa_api.dart';
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
+import 'package:noa/util/location.dart';
 import 'package:noa/util/sign_in.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -80,6 +81,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      Location.requestPermission(context);
       if (ref.watch(app.model).state.current != app.State.waitForLogin) {
         switchPage(context, const PairingPage());
       }
