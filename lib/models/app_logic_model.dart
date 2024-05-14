@@ -398,27 +398,33 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.updateFirmware:
           state.onEntry(() async {
-            try {
-              _connectedDevice!
-                  .updateFirmware("assets/frame-firmware-v24.129.1316.zip")
-                  .listen((value) {
+            _connectedDevice!
+                .updateFirmware("assets/frame-firmware-v24.129.1316.zip")
+                .listen(
+              (value) {
                 bluetoothUploadProgress = value;
                 notifyListeners();
-              }).onDone(() async {
-                await _scanStream?.cancel();
-                _scanStream = BrilliantBluetooth.scan().listen((device) {
-                  _nearbyDevice = device;
-                  triggerEvent(Event.deviceFound);
-                });
-              });
-            } catch (_) {
-              await _connectedDevice?.disconnect();
-              triggerEvent(Event.error);
-            }
+              },
+              onDone: () async {
+                try {
+                  await _scanStream?.cancel();
+                  _scanStream = BrilliantBluetooth.scan().listen((device) {
+                    _nearbyDevice = device;
+                    triggerEvent(Event.deviceFound);
+                  });
+                } catch (error) {
+                  print("APPL $error");
+                  triggerEvent(Event.error);
+                }
+              },
+              onError: (_) async {
+                await _connectedDevice?.disconnect();
+                triggerEvent(Event.error);
+              },
+              cancelOnError: true,
+            );
           });
           state.changeOn(Event.deviceFound, State.connect);
-          // state.changeOn(Event.deviceConnected, State.stopLuaApp); // TODO do we need these?
-          // state.changeOn(Event.deviceInvalid, State.requiresRepair);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 

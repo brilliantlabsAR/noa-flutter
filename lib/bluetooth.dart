@@ -60,15 +60,16 @@ class BrilliantDevice {
                 event.device.disconnectReason!.code != 23789258))
         .asyncMap((event) async {
       if (event.connectionState == BluetoothConnectionState.connected) {
-        _log.info("Connected");
+        _log.info("Connection state stream: Connected");
         try {
           return await BrilliantBluetooth._enableServices(event.device);
         } catch (error) {
-          _log.warning("connectionState: $error");
+          _log.warning("Connection state stream: Invalid due to $error");
           return Future.error(BrilliantBluetoothException(error.toString()));
         }
       }
-      _log.info("Disconnected. ${event.device.disconnectReason!.description}");
+      _log.info(
+          "Connection state stream: Disconnected due to ${event.device.disconnectReason!.description}");
       return BrilliantDevice(
         state: BrilliantConnectionState.disconnected,
         device: event.device,
@@ -140,12 +141,12 @@ class BrilliantDevice {
       }
 
       final response = await _rxChannel!.onValueReceived
-          .timeout(const Duration(seconds: 3))
+          .timeout(const Duration(seconds: 1))
           .first;
 
       return utf8.decode(response);
     } catch (error) {
-      _log.warning(error);
+      _log.warning("Couldn't send string. $error");
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
@@ -167,7 +168,7 @@ class BrilliantDevice {
 
       await _txChannel!.write(finalData, withoutResponse: true);
     } catch (error) {
-      _log.warning(error);
+      _log.warning("Couldn't send data. $error");
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
@@ -188,7 +189,7 @@ class BrilliantDevice {
           log: false);
 
       if (resp != "\x02") {
-        throw ("Couldn't open file. Received error: $resp");
+        throw ("Error opening file: $resp");
       }
 
       int index = 0;
@@ -210,7 +211,7 @@ class BrilliantDevice {
         resp = await sendString("f:write('$chunk');print('\x02')", log: false);
 
         if (resp != "\x02") {
-          throw ("Couldn't write to file. Received error: $resp");
+          throw ("Error writing file: $resp");
         }
 
         index += chunkSize;
@@ -219,16 +220,18 @@ class BrilliantDevice {
       resp = await sendString("f:close();print('\x02')", log: false);
 
       if (resp != "\x02") {
-        throw ("Couldn't close file. Received error: $resp");
+        throw ("Error closing file: $resp");
       }
     } catch (error) {
-      _log.warning(error);
+      _log.warning("Couldn't upload script. $error");
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
 
   Stream<double> updateFirmware(String filePath) async* {
     try {
+      yield 0;
+
       _log.info("Starting firmware update");
 
       if (state != BrilliantConnectionState.dfuConnected) {
@@ -247,23 +250,30 @@ class BrilliantDevice {
 
       await for (var _ in _transferDfuFile(initFile.content, true)) {}
       await Future.delayed(const Duration(milliseconds: 500));
-      yield* _transferDfuFile(imageFile.content, false);
+      await for (var value in _transferDfuFile(imageFile.content, false)) {
+        yield value;
+      }
 
       _log.info("Firmware update completed");
     } catch (error) {
-      _log.warning(error);
+      _log.warning("Couldn't complete firmware update. $error");
       yield* Stream.error(BrilliantBluetoothException(error.toString()));
     }
   }
 
   Stream<double> _transferDfuFile(Uint8List file, bool isInitFile) async* {
     Uint8List response;
-    if (isInitFile) {
-      _log.fine("Uploading DFU init file. Size: ${file.length}");
-      response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x01]));
-    } else {
-      _log.fine("Uploading DFU image file. Size: ${file.length}");
-      response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
+
+    try {
+      if (isInitFile) {
+        _log.fine("Uploading DFU init file. Size: ${file.length}");
+        response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x01]));
+      } else {
+        _log.fine("Uploading DFU image file. Size: ${file.length}");
+        response = await _dfuSendControlData(Uint8List.fromList([0x06, 0x02]));
+      }
+    } catch (_) {
+      throw ("Couldn't create DFU file on device");
     }
 
     final maxSize = ByteData.view(response.buffer).getUint32(3, Endian.little);
@@ -284,12 +294,16 @@ class BrilliantDevice {
         chunkSize >> 24 & 0xff
       ];
 
-      if (isInitFile) {
-        await _dfuSendControlData(
-            Uint8List.fromList([0x01, 0x01, ...chunkSizeAsBytes]));
-      } else {
-        await _dfuSendControlData(
-            Uint8List.fromList([0x01, 0x02, ...chunkSizeAsBytes]));
+      try {
+        if (isInitFile) {
+          await _dfuSendControlData(
+              Uint8List.fromList([0x01, 0x01, ...chunkSizeAsBytes]));
+        } else {
+          await _dfuSendControlData(
+              Uint8List.fromList([0x01, 0x02, ...chunkSizeAsBytes]));
+        }
+      } catch (_) {
+        throw ("Couldn't issue DFU create command");
       }
 
       // Split chunk into packets of MTU size
@@ -318,17 +332,22 @@ class BrilliantDevice {
         _log.fine(
             "Sending ${fileSlice.length} bytes of packet data. ${percentDone.toInt()}% Complete");
 
-        await _dfuSendPacketData(fileSlice);
+        await _dfuSendPacketData(fileSlice)
+            .onError((_, __) => throw ("Couldn't send DFU data"));
       }
 
       // Calculate CRC
-      response = await _dfuSendControlData(Uint8List.fromList([0x03]));
+      try {
+        response = await _dfuSendControlData(Uint8List.fromList([0x03]));
+      } catch (_) {
+        throw ("Couldn't get CRC from device");
+      }
       offset = ByteData.view(response.buffer).getUint32(3, Endian.little);
       final returnedCrc =
           ByteData.view(response.buffer).getUint32(7, Endian.little);
 
       if (returnedCrc != chunkCrc) {
-        yield* Stream.error("CRC mismatch after sending this chunk");
+        throw ("CRC mismatch after sending this chunk");
       }
 
       // Execute command (The last command may disconnect which is normal)
@@ -344,15 +363,14 @@ class BrilliantDevice {
     try {
       _log.fine("Sending ${data.length} bytes of DFU control data: $data");
 
-      await _dfuControl!.write(data, timeout: 3);
+      await _dfuControl!.write(data, timeout: 1);
 
       final response = await _dfuControl!.onValueReceived
-          .timeout(const Duration(seconds: 3))
+          .timeout(const Duration(seconds: 1))
           .first;
 
       return Uint8List.fromList(response);
     } catch (error) {
-      _log.warning(error);
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
@@ -368,7 +386,7 @@ class BrilliantBluetooth {
       await FlutterBluePlus.startScan();
       await FlutterBluePlus.stopScan();
     } catch (error) {
-      _log.warning(error);
+      _log.warning("Couldn't obtain Bluetooth permission. $error");
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
@@ -386,8 +404,8 @@ class BrilliantBluetooth {
         removeIfGone: const Duration(seconds: 2),
       );
     } catch (error) {
-      _log.warning(error);
-      yield* Stream.error(BrilliantBluetoothException(error.toString()));
+      _log.warning("Scanning failed. $error");
+      throw BrilliantBluetoothException(error.toString());
     }
 
     yield* FlutterBluePlus.scanResults
@@ -416,7 +434,7 @@ class BrilliantBluetooth {
       _log.info("Stopping scan for devices");
       await FlutterBluePlus.stopScan();
     } catch (error) {
-      _log.warning(error);
+      _log.warning("Couldn't stop scanning. $error");
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
@@ -434,7 +452,7 @@ class BrilliantBluetooth {
 
       final connectionState = await scanned.device.connectionState
           .firstWhere((event) => event == BluetoothConnectionState.connected)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 3));
 
       if (connectionState == BluetoothConnectionState.connected) {
         return await _enableServices(scanned.device);
@@ -443,7 +461,7 @@ class BrilliantBluetooth {
       throw ("${scanned.device.disconnectReason?.description}");
     } catch (error) {
       await scanned.device.disconnect();
-      _log.warning(error);
+      _log.warning("Couldn't connect. $error");
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
@@ -472,7 +490,7 @@ class BrilliantBluetooth {
 
       throw ("${device.disconnectReason?.description}");
     } catch (error) {
-      _log.warning(error);
+      _log.warning("Couldn't reconnect. $error");
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }

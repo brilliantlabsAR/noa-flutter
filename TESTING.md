@@ -42,6 +42,7 @@ The following tests describe various tests that are done pre-release. All of the
 
 ## Tune screen
 - Set values in tune screen and restart app to check persistance
+- Logout and check that values are reset to defaults
 
 ## Hack screen
 - Ask Noa queries and ensure the logs scroll
