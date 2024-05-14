@@ -2,12 +2,11 @@
 
 The following tests describe various tests that are done pre-release. All of these tests are done manually as they require interacting with the real device, and system Bluetooth settings.
 
-## First install
+## First install permissions
 - Reject location permissions and test sending messages to Noa
 - Accept coarse location permissions and test sending messages to Noa
 - Accept fine location permissions and test sending messages to Noa
 - Reject bluetooth permissions and try to login
-- Accept bluetooth permissions
 
 ## Login screen
 - Open privacy policy link on login page
@@ -70,7 +69,14 @@ The following tests describe various tests that are done pre-release. All of the
 - Wait for 10 seconds to ensure sleep emoji is shown, and then 3 seconds later sleep
 - Tap from kiss emoji to make a full Noa query
 - Tap from sleep emoji to make a full Noa query
-- 
+- Tap from reply state to make a full Noa query
+- Wait 5 seconds in reply state to go to ready state
+- Tap from every ready state emoji to a make a full Noa query
+- Wait for 10 seconds in ready state to ensure sleep emoji is shown, and then 3 seconds later sleep
+- Check wildcard frequency from ready state before going to sleep
+- Double tap for image gen
+- Turn off internet and ensure queries timeout correctly
+- Turn off phone bluetooth and ensure Frame shows disconnected icon and goes to sleep
 
 ## Background mode
 - Background app and lock phone and ensure full Noa queries work
