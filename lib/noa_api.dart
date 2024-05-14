@@ -276,7 +276,11 @@ class NoaApi {
         from: NoaRole.noa,
         time: DateTime.now(),
       ));
-
+      if (body['audio'] != null) {
+          String base64String = body['audio'];
+          Uint8List byteArray =  Uint8List.fromList(base64.decode(base64String));
+          playByteArray(byteArray);
+        }
       _log.info(
           "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
 
@@ -286,7 +290,15 @@ class NoaApi {
       return Future.error(error);
     }
   }
+ static Future<void> playByteArray(Uint8List byteArray) async {
 
+    try {
+      AudioPlayer audioPlayer = AudioPlayer();
+      audioPlayer.play(BytesSource(byteArray));
+    } catch (e) {
+      print("Error playing audio: $e");
+    }
+  }
   static Future<List<NoaMessage>> getWildcardMessage(
     String userAuthToken,
     String systemRole,
