@@ -619,9 +619,10 @@ class AppLogicModel extends ChangeNotifier {
               await NoaApi.signOut((await _getUserAuthToken())!);
             } catch (_) {}
             await SharedPreferences.getInstance().then((sp) => sp.clear());
+            noaMessages.clear();
             triggerEvent(Event.done);
           });
-          state.changeOn(Event.done, State.waitForLogin);
+          state.changeOn(Event.done, State.getUserSettings);
           break;
 
         case State.deleteAccount:
@@ -631,9 +632,10 @@ class AppLogicModel extends ChangeNotifier {
               await NoaApi.deleteUser((await _getUserAuthToken())!);
             } catch (_) {}
             await SharedPreferences.getInstance().then((sp) => sp.clear());
+            noaMessages.clear();
             triggerEvent(Event.done);
           });
-          state.changeOn(Event.done, State.waitForLogin);
+          state.changeOn(Event.done, State.getUserSettings);
           break;
       }
     } while (state.changePending());

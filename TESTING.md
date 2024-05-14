@@ -21,9 +21,9 @@ The following tests describe various tests that are done pre-release. All of the
 - ✔️ Skip pairing during "Bring your device close"
 - ✔️ Skip pairing during "Frame found"
 - ✔️ Pair but cancel system popup
-- Pair and start DFU process but kill app half way and then restart DFU
-- Pair and start DFU process but kill Frame half way and then restart DFU
-- Pair and complete DFU. Ensure full setup process completes
+- ✔️ Pair and start DFU process but kill app half way and then restart DFU
+- ✔️ Pair and start DFU process but kill Frame half way and then restart DFU
+- ✔️ Pair and complete DFU. Ensure full setup process completes
 - ✔️ Factory reset Frame and repair. On "Un-pair frame first", delete pairing from phone and try again
 - ✔️ Delete pairing from phone and repair. On "Un-pair frame first", factory reset Frame and try again
 - ✔️ Skip pairing during "Un-pair frame first"
@@ -36,24 +36,25 @@ The following tests describe various tests that are done pre-release. All of the
 - ✔️ Open and close account page from noa, tune and hack pages
 
 ## Noa screen
-- Send noa requests and ensure the page populates as expected
-- Long press images to save to gallery: reject permission
+- ✔️ Send noa requests and ensure the page populates as expected
+- ✔️ Long press images to save to gallery: reject permission
 - Long press images to save to gallery: accept permission
+- ✔️ Ensure message history is cleared after logout
 
 ## Tune screen
-- Set values in tune screen and restart app to check persistance
-- Logout and check that values are reset to defaults
+- ✔️ Set values in tune screen and restart app to check persistance
+- ✔️ Ask Noa queries and check last message for correct Tune parameters
+- ✔️ Logout and check that values are reset to defaults
 
 ## Hack screen
-- Ask Noa queries and ensure the logs scroll
-- Ask Noa queries and check last message for correct Tune parameters
+- ✔️ Ask Noa queries and ensure the logs scroll
 - Turn off internet connection and try to send requests
-- Dock app during responses, un-dock and ensure fresh queries work again
-- Dock/un-dock Frame and check state transitions are correct
-- Ask Noa queries and ensure no duplicate listeners created after multiple disconnects
-- Restart killed app and ensure reconnect works
-- Ask Noa queries and ensure no duplicate listeners created after reconnect
-- Factory reset Frame and check connection status is being rejected
+- ✔️ Dock app during responses, un-dock and ensure fresh queries work again
+- ✔️ Dock/un-dock Frame and check state transitions are correct
+- ✔️ Ask Noa queries and ensure no duplicate listeners created after multiple disconnects
+- ✔️ Restart killed app and ensure reconnect works
+- ✔️ Ask Noa queries and ensure no duplicate listeners created after reconnect
+- ✔️ Factory reset Frame and check connection status is being rejected
 - Factory reset Frame, restart app and check connection status being rejected
 - Copy bluetooth log on hack page by long pressing
 - Copy app log on hack page by long pressing
