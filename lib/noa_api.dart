@@ -25,11 +25,6 @@ class NoaApiServerException implements Exception {
   }
 }
 
-// Authentication and account related classes
-class NoaApiNoAuthTokenError implements Exception {
-  NoaApiNoAuthTokenError();
-}
-
 enum NoaApiAuthProvider {
   google('google'),
   apple('apple'),

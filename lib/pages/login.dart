@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
+import 'package:noa/noa_api.dart';
 import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/alert_dialog.dart';
@@ -43,7 +44,7 @@ Widget _loginButton(
             "Noa requires an internet connection",
           );
         }
-      } catch (error) {
+      } on NoaApiServerException catch (error) {
         if (context.mounted) {
           alertDialog(
             context,
@@ -51,7 +52,7 @@ Widget _loginButton(
             "Server responded with an error: $error",
           );
         }
-      }
+      } catch (_) {}
     },
     child: Padding(
       padding: const EdgeInsets.only(bottom: 20),
