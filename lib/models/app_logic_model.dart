@@ -437,6 +437,7 @@ class AppLogicModel extends ChangeNotifier {
                 triggerEvent(Event.deviceDisconnected);
               }
             });
+            _connectionStream?.onError((_) {});
 
             _luaResponseStream?.cancel();
             _luaResponseStream =
@@ -589,6 +590,8 @@ class AppLogicModel extends ChangeNotifier {
                 triggerEvent(Event.deviceConnected);
               }
             });
+            _connectionStream?.onError((_) {});
+
             try {
               _connectedDevice ??= await BrilliantBluetooth.reconnect(
                   (await _getPairedDevice())!);

@@ -64,7 +64,7 @@ class BrilliantDevice {
         try {
           return await BrilliantBluetooth._enableServices(event.device);
         } catch (error) {
-          _log.warning(error);
+          _log.warning("connectionState: $error");
           return Future.error(BrilliantBluetoothException(error.toString()));
         }
       }

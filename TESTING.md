@@ -17,23 +17,23 @@ The following tests describe various tests that are done pre-release. All of the
 - ✔️ Sign in with Email and check account info on account screen
 
 ## Pairing screen
-- Dock/un-dock Frame and ensure switching between "Bring your device close" and "Frame found"
-- Skip pairing during "Bring your device close"
-- Skip pairing during "Frame found"
-- Pair but cancel system popup
+- ✔️ Dock/un-dock Frame and ensure switching between "Bring your device close" and "Frame found"
+- ✔️ Skip pairing during "Bring your device close"
+- ✔️ Skip pairing during "Frame found"
+- ✔️ Pair but cancel system popup
 - Pair and start DFU process but kill app half way and then restart DFU
 - Pair and start DFU process but kill Frame half way and then restart DFU
 - Pair and complete DFU. Ensure full setup process completes
-- Factory reset Frame and repair. On "Un-pair frame first", delete pairing from phone and try again
-- Delete pairing from phone and repair. On "Un-pair frame first", factory reset Frame and try again
-- Skip pairing during "Un-pair frame first"
-- Pair to an updated Frame but kill Frame half way
-- Pair to an updated Frame. Ensure full set up process completes
+- ✔️ Factory reset Frame and repair. On "Un-pair frame first", delete pairing from phone and try again
+- ✔️ Delete pairing from phone and repair. On "Un-pair frame first", factory reset Frame and try again
+- ✔️ Skip pairing during "Un-pair frame first"
+- ✔️ Pair to an updated Frame but kill Frame half way
+- ✔️ Pair to an updated Frame. Ensure full set up process completes
 
 ## Main screens
-- Tap to switch tabs between noa, tune and hack
-- Slide to switch tabs between noa, tune and hack
-- Open and close account page from noa, tune and hack pages
+- ✔️ Tap to switch tabs between noa, tune and hack
+- ✔️ Slide to switch tabs between noa, tune and hack
+- ✔️ Open and close account page from noa, tune and hack pages
 
 ## Noa screen
 - Send noa requests and ensure the page populates as expected
