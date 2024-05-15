@@ -67,18 +67,23 @@ The following tests describe various tests that are done pre-release. All of the
 - ✔️ Delete account: accept confirmation
 
 ## Frame UI
-- Wake up Frame with app open and ensure kiss emoji is shown
-- Wait for 10 seconds to ensure sleep emoji is shown, and then 3 seconds later sleep
-- Tap from kiss emoji to make a full Noa query
-- Tap from sleep emoji to make a full Noa query
-- Tap from reply state to make a full Noa query
-- Wait 5 seconds in reply state to go to ready state
-- Tap from every ready state emoji to a make a full Noa query
-- Wait for 10 seconds in ready state to ensure sleep emoji is shown, and then 3 seconds later sleep
-- Check wildcard frequency from ready state before going to sleep
-- Double tap for image gen
-- Turn off internet and ensure queries timeout correctly
-- Turn off phone bluetooth and ensure Frame shows disconnected icon and goes to sleep
+- ✔️ Wake up Frame with app open and ensure kiss state is shown
+- ✔️ After 10 seconds of kiss state ensure sleep state is shown
+- ✔️ After 3 seconds of sleep state ensure Frame goes to sleep
+- ✔️ Tap from sleep state and ensure ready state is shown
+- ✔️ Ensure listening state times out and goes to ready state
+- ✔️ Tap from kiss state to make a full Noa query
+- ✔️ Tap from reply state to make a full Noa query
+- ✔️ Tap from every ready state to a make a full Noa query
+- ✔️ Ensure image gen state times out and goes to ready state
+- ✔️ Double tap from kiss state to make a full image generation
+- Double tap from reply state to make a full image generation
+- Double tap from every ready state to make a full image generation
+- ✔️ Wait 5 seconds in reply state to go to ready state
+- ✔️ After all ready states are shown ensure sleep state is shown
+- Check wildcard frequency after ready state
+- ✔️ Turn off internet and ensure queries timeout correctly
+- ✔️ Turn off phone bluetooth and ensure Frame shows disconnected icon and goes to sleep
 
 ## Background mode
 - Background app and lock phone and ensure full Noa queries work

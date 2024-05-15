@@ -31,7 +31,13 @@ local function bluetooth_callback(message)
             graphics:append_text(string.sub(message, 2), "\u{1F60E}")
         end
     elseif string.sub(message, 1, 1) == IMAGE_RESPONSE_FLAG then
-        -- TODO
+        if state:is("ON_IT") then
+            graphics:clear()
+            state:switch("PRINT_IMAGE")
+        end
+        if state:is("PRINT_IMAGE") then
+            -- TODO
+        end
     end
 end
 
@@ -87,6 +93,7 @@ while true do
         end)
         state:switch_after(3, "SLEEP")
         state:switch_on_tap("READY_A")
+        state:switch_on_double_tap("READY_A")
     elseif state:is("SLEEP") then
         state:on_entry(function()
             frame.display.show()
@@ -103,16 +110,16 @@ while true do
     elseif state:is("IMAGE_GEN") then
         state:on_entry(function()
             graphics:clear()
-            graphics:append_text("", "\u{1F4F7}")
+            graphics:append_text("", "\u{1F929}")
             send_data(IMAGE_GEN_FLAG)
             state:switch("LISTEN")
         end)
     elseif state:is("WILDCARD") then
         state:on_entry(function()
-            graphics:append_text("", "\u{1F603}")
+            graphics:append_text("", "\u{1F47B}")
             send_data(WILDCARD_GEN_FLAG)
         end)
-        state:switch_after(10, "PRE_SLEEP")
+        state:switch_after(20, "CANCEL")
     elseif state:is("LISTEN") then
         state:on_entry(function()
             frame.microphone.record {}
@@ -147,7 +154,7 @@ while true do
         if state:has_been() > 2 then
             state:switch_on_tap("ON_IT")
         end
-        state:switch_after(10, "ON_IT")
+        state:switch_after(10, "READY_A")
     elseif state:is("ON_IT") then
         state:on_entry(function()
             frame.microphone.stop()
@@ -166,22 +173,31 @@ while true do
             audio_data_sent = true
             send_data(TRANSFER_DONE_FLAG)
         end
-        state:switch_on_tap("CANCEL")
+        state:switch_after(20, "CANCEL")
     elseif state:is("CANCEL") then
         state:on_entry(function()
             graphics:append_text("", "\u{1F910}")
         end)
-        state:switch_after(1, "LISTEN")
+        state:switch_after(1, "READY_A")
     elseif state:is("PRINT_REPLY") then
         graphics:on_complete(function()
             state:switch("HOLD_REPLY")
         end)
-        state:switch_on_tap("LISTEN")
+        state:switch_on_tap("MESSAGE_GEN")
+        state:switch_on_double_tap("IMAGE_GEN")
+    elseif state:is("PRINT_IMAGE") then
+        graphics:on_complete(function()
+            state:switch("HOLD_REPLY")
+        end)
+        state:switch_on_tap("MESSAGE_GEN")
+        state:switch_on_double_tap("IMAGE_GEN")
     elseif state:is("HOLD_REPLY") then
-        state:switch_on_tap("LISTEN")
-        state:switch_after(3, "READY_A")
+        state:switch_on_tap("MESSAGE_GEN")
+        state:switch_on_double_tap("IMAGE_GEN")
+        state:switch_after(5, "READY_A")
     elseif state:is("NO_CONNECTION") then
         state:on_entry(function()
+            graphics:clear()
             graphics:append_text("", "\u{1F4F5}")
         end)
         if frame.bluetooth.is_connected() == true then
