@@ -160,6 +160,51 @@ Widget _slider(WidgetRef ref, int index) {
   );
 }
 
+Widget _checkBox(WidgetRef ref, int index) {
+  late String title;
+  late bool value;
+
+  switch (index) {
+    case 0:
+      title = "Text to speech";
+      value = ref.watch(app.model.select((v) => v.textToSpeech));
+  }
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Text(title, style: textStyleLightSubHeading),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Text("Disabled", style: textStyleDark),
+            ),
+            Switch(
+              value: value,
+              activeColor: colorDark,
+              inactiveTrackColor: colorWhite,
+              inactiveThumbColor: colorLight,
+              onChanged: (value) =>
+                  ref.read(app.model.select((v) => v.textToSpeech = value)),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(right: 8, left: 8),
+              child: Text("Enabled", style: textStyleDark),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 class TunePage extends ConsumerWidget {
   const TunePage({super.key});
 
@@ -179,6 +224,7 @@ class TunePage extends ConsumerWidget {
               _textBox(ref, 3),
               _slider(ref, 0),
               _slider(ref, 1),
+              _checkBox(ref, 0),
             ],
           ),
         ),

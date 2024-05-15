@@ -79,6 +79,9 @@ class AccountPage extends ConsumerWidget {
                           "https://brilliant.xyz/pages/terms-conditions"));
                     } catch (_) {}
                   }),
+                  _linkedFooterText("Regulatory", false, () async {
+                    // TODO create regulatory popup
+                  }),
                   _linkedFooterText("Delete Account", true, () {
                     // TODO ask user to confirm
                     ref.read(app.model).triggerEvent(app.Event.deletePressed);

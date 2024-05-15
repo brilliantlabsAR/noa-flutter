@@ -27,6 +27,8 @@ dependencies:
   saver_gallery: ^3.0.5
   uuid: ^4.4.0
   collection: ^1.18.0
+  just_audio: ^0.9.37
+  path_provider: ^2.1.3
 
 dev_dependencies:
   flutter_test:

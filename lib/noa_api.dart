@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/util/bytes_to_wav.dart';
 import 'package:noa/util/location.dart';
+import 'package:path_provider/path_provider.dart';
 
 final _log = Logger("Noa API");
 
@@ -204,6 +206,7 @@ class NoaApi {
     String systemRole,
     double temperature,
     List<NoaMessage> noaHistory,
+    bool textToSpeech,
   ) async {
     try {
       var request = http.MultipartRequest(
@@ -232,6 +235,7 @@ class NoaApi {
       request.fields['location'] = await Location.getAddress();
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = temperature.toString();
+      request.fields['tts'] = textToSpeech ? "1" : "0";
 
       _log.info(
           "Sending message request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
@@ -268,6 +272,10 @@ class NoaApi {
       _log.info(
           "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
 
+      if (textToSpeech && body['audio'] != null) {
+        _playAudio(base64.decode(body['audio']));
+      }
+
       return response;
     } catch (error) {
       _log.warning(error);
@@ -279,6 +287,7 @@ class NoaApi {
     String userAuthToken,
     String systemRole,
     double temperature,
+    bool textToSpeech,
   ) async {
     try {
       var request = http.MultipartRequest(
@@ -292,6 +301,7 @@ class NoaApi {
       request.fields['location'] = await Location.getAddress();
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = temperature.toString();
+      request.fields['tts'] = textToSpeech ? "1" : "0";
 
       _log.info("Sending wildcard request: ${request.fields.toString()}");
 
@@ -325,6 +335,10 @@ class NoaApi {
 
       _log.info(
           "Received wildcard response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
+
+      if (textToSpeech && body['audio'] != null) {
+        _playAudio(base64.decode(body['audio']));
+      }
 
       return response;
     } catch (error) {
@@ -400,6 +414,23 @@ class NoaApi {
     } catch (error) {
       _log.warning(error);
       return Future.error(error);
+    }
+  }
+
+  static void _playAudio(Uint8List audio) async {
+    _log.info("Playing ${audio.length} bytes of audio");
+
+    final tempDir = await getTemporaryDirectory();
+    File file = await File('${tempDir.path}/audio.mp3').create();
+    file.writeAsBytesSync(audio);
+
+    try {
+      AudioPlayer player = AudioPlayer();
+      await player.setAudioSource(AudioSource.file(file.path));
+      await player.play();
+      await player.dispose();
+    } catch (error) {
+      _log.warning("Error playing audio. $error");
     }
   }
 }

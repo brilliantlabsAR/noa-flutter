@@ -157,6 +157,15 @@ class AppLogicModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  late bool _textToSpeech;
+  bool get textToSpeech => _textToSpeech;
+  set textToSpeech(bool value) {
+    _textToSpeech = value;
+    SharedPreferences.getInstance()
+        .then((sp) => sp.setBool("textToSpeech", value));
+    notifyListeners();
+  }
+
   // Private state variables
   StreamSubscription? _scanStream;
   StreamSubscription? _connectionStream;
@@ -217,6 +226,7 @@ class AppLogicModel extends ChangeNotifier {
               var len = savedData.getString('tuneLength') ?? 'standard';
               _tuneLength = TuneLength.values
                   .firstWhere((e) => e.toString() == 'TuneLength.$len');
+              _textToSpeech = savedData.getBool('textToSpeech') ?? false;
 
               // Check if the auto token is loaded and if Frame is paired
               if (await _getUserAuthToken() != null &&
@@ -515,6 +525,7 @@ class AppLogicModel extends ChangeNotifier {
                       (await _getUserAuthToken())!,
                       getTunePrompt(),
                       _tuneTemperature / 50,
+                      textToSpeech,
                     );
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
@@ -533,13 +544,13 @@ class AppLogicModel extends ChangeNotifier {
                   try {
                     if (_requestType == "message") {
                       noaMessages += await NoaApi.getMessage(
-                        (await _getUserAuthToken())!,
-                        Uint8List.fromList(_audioData),
-                        Uint8List.fromList(_imageData),
-                        getTunePrompt(),
-                        _tuneTemperature / 50,
-                        noaMessages,
-                      );
+                          (await _getUserAuthToken())!,
+                          Uint8List.fromList(_audioData),
+                          Uint8List.fromList(_imageData),
+                          getTunePrompt(),
+                          _tuneTemperature / 50,
+                          noaMessages,
+                          textToSpeech);
                     } else {
                       noaMessages += await NoaApi.getImage(
                         (await _getUserAuthToken())!,
