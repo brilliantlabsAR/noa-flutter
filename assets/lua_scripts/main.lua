@@ -53,6 +53,8 @@ end
 
 frame.bluetooth.receive_callback(bluetooth_callback)
 
+local graphics_print_coroutine = coroutine.create(graphics.print)
+
 while true do
     if state:is("START") then
         state:on_entry(function()
@@ -206,7 +208,10 @@ while true do
         state:switch_after(10, "PRE_SLEEP")
     end
 
-    graphics:print_text()
+    if (coroutine.status(graphics_print_coroutine) == "dead") then
+        graphics_print_coroutine = coroutine.create(graphics.print)
+    end
+    coroutine.resume(graphics_print_coroutine, graphics)
 
     if frame.time.utc() - last_autoexp_time > 0.1 then
         frame.camera.auto { metering = 'CENTER_WEIGHTED', exposure = -0.5, exposure_limit = 5500 }
