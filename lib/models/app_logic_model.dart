@@ -318,7 +318,7 @@ class AppLogicModel extends ChangeNotifier {
               final response = await _connectedDevice!
                   .sendString("print(frame.FIRMWARE_VERSION)")
                   .timeout(const Duration(seconds: 1));
-              if (response == "v24.129.1316") {
+              if (response == "v24.138.1940") {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -409,7 +409,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             _connectedDevice!
-                .updateFirmware("assets/frame-firmware-v24.129.1316.zip")
+                .updateFirmware("assets/frame-firmware-v24.138.1940.zip")
                 .listen(
               (value) {
                 bluetoothUploadProgress = value;
