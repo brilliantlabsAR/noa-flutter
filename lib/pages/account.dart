@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
+import 'package:noa/pages/regulatory.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
@@ -80,7 +81,7 @@ class AccountPage extends ConsumerWidget {
                     } catch (_) {}
                   }),
                   _linkedFooterText("Regulatory", false, () async {
-                    // TODO create regulatory popup
+                    switchPage(context, const RegulatoryPage());
                   }),
                   _linkedFooterText("Delete Account", true, () {
                     // TODO ask user to confirm
