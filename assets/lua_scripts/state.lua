@@ -42,6 +42,7 @@ function State:switch_after(wait_time, __next_state)
             self.__current_state = self.__next_state
             self.__entry_time = frame.time.utc()
             self.__entered = true
+            self.__tap_handled = true
             print("State: " .. tostring(self.__current_state))
         end
     end
@@ -57,7 +58,6 @@ function State:switch_on_tap(state)
     end
     if frame.time.utc() - self.__tap_time > DOUBLE_TAP_CUTOFF_TIME and
         self.__tap_time - self.__last_tap_time > DOUBLE_TAP_CUTOFF_TIME then
-        self.__tap_handled = true
         print("Tapped")
         self:switch(state)
     end
@@ -68,7 +68,6 @@ function State:switch_on_double_tap(state)
         return
     end
     if self.__tap_time - self.__last_tap_time <= DOUBLE_TAP_CUTOFF_TIME then
-        self.__tap_handled = true
         print("Double tapped")
         self:switch(state)
     end
