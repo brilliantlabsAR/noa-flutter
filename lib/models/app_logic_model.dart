@@ -175,7 +175,6 @@ class AppLogicModel extends ChangeNotifier {
   BrilliantDevice? _connectedDevice;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
-  String _requestType = "";
 
   AppLogicModel() {
     // Uncomment to create AppStore images
@@ -318,7 +317,7 @@ class AppLogicModel extends ChangeNotifier {
               final response = await _connectedDevice!
                   .sendString("print(frame.FIRMWARE_VERSION)")
                   .timeout(const Duration(seconds: 1));
-              if (response == "v24.138.1940") {
+              if (response == "v24.142.1549") {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -409,7 +408,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             _connectedDevice!
-                .updateFirmware("assets/frame-firmware-v24.138.1940.zip")
+                .updateFirmware("assets/frame-firmware-v24.142.1549.zip")
                 .listen(
               (value) {
                 bluetoothUploadProgress = value;
@@ -507,16 +506,9 @@ class AppLogicModel extends ChangeNotifier {
 
               switch (event[0]) {
                 case 0x10:
-                  _log.info("Received message generation request from device");
+                  _log.info("Received user generation request from device");
                   _audioData.clear();
                   _imageData.clear();
-                  _requestType = "message";
-                  break;
-                case 0x11:
-                  _log.info("Received image generation request from device");
-                  _audioData.clear();
-                  _imageData.clear();
-                  _requestType = "image";
                   break;
                 case 0x12:
                   _log.info("Received wildcard request from device");
@@ -542,22 +534,14 @@ class AppLogicModel extends ChangeNotifier {
                   _log.info(
                       "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                   try {
-                    if (_requestType == "message") {
-                      noaMessages += await NoaApi.getMessage(
-                          (await _getUserAuthToken())!,
-                          Uint8List.fromList(_audioData),
-                          Uint8List.fromList(_imageData),
-                          getTunePrompt(),
-                          _tuneTemperature / 50,
-                          noaMessages,
-                          textToSpeech);
-                    } else {
-                      noaMessages += await NoaApi.getImage(
+                    noaMessages += await NoaApi.getMessage(
                         (await _getUserAuthToken())!,
                         Uint8List.fromList(_audioData),
                         Uint8List.fromList(_imageData),
-                      );
-                    }
+                        getTunePrompt(),
+                        _tuneTemperature / 50,
+                        noaMessages,
+                        textToSpeech);
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
                     triggerEvent(Event.noaResponse);

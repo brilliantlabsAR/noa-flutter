@@ -11,7 +11,6 @@ local last_autoexp_time = 0
 
 -- Frame to phone flags
 MESSAGE_GEN_FLAG = "\x10"
-IMAGE_GEN_FLAG = "\x11"
 WILDCARD_GEN_FLAG = "\x12"
 AUDIO_DATA_FLAG = "\x13"
 IMAGE_DATA_FLAG = "\x14"
@@ -28,7 +27,7 @@ local function bluetooth_callback(message)
             state:switch("PRINT_REPLY")
         end
         if state:is("PRINT_REPLY") then
-            graphics:append_text(string.sub(message, 2), "\u{1F60E}")
+            graphics:append_text(string.sub(message, 2), "\u{F0003}")
         end
     elseif string.sub(message, 1, 1) == IMAGE_RESPONSE_FLAG then
         if state:is("ON_IT") then
@@ -58,72 +57,31 @@ local graphics_print_coroutine = coroutine.create(graphics.print)
 while true do
     if state:is("START") then
         state:on_entry(function()
-            graphics:append_text("", "\u{1F618}")
+            graphics:clear()
+            graphics:append_text("Tap me in", "\u{F0000}")
         end)
         state:switch_after(10, "PRE_SLEEP")
-        state:switch_on_tap("MESSAGE_GEN")
-        state:switch_on_double_tap("IMAGE_GEN")
-    elseif state:is("READY_A") then
-        state:on_entry(function()
-            graphics:clear()
-            graphics:append_text("", "\u{1F600}")
-        end)
-        state:switch_after(3, "READY_B")
-        state:switch_on_tap("MESSAGE_GEN")
-        state:switch_on_double_tap("IMAGE_GEN")
-    elseif state:is("READY_B") then
-        state:on_entry(function()
-            graphics:append_text("", "\u{1F60F}")
-        end)
-        state:switch_after(3, "READY_C")
-        state:switch_on_tap("MESSAGE_GEN")
-        state:switch_on_double_tap("IMAGE_GEN")
-    elseif state:is("READY_C") then
-        state:on_entry(function()
-            graphics:append_text("", "\u{1F600}")
-        end)
-        if math.random(1, 3) == 3 then -- TODO make this 1 in 10 chance
-            state:switch_after(3, "WILDCARD")
-        else
-            state:switch_after(3, "PRE_SLEEP")
-        end
-        state:switch_on_tap("MESSAGE_GEN")
-        state:switch_on_double_tap("IMAGE_GEN")
+        state:switch_on_tap("LISTEN")
+        state:switch_on_double_tap("LISTEN")
     elseif state:is("PRE_SLEEP") then
         state:on_entry(function()
-            graphics:append_text("", "\u{1F634}")
+            graphics:clear()
+            graphics:append_text("", "\u{F0008}")
         end)
         state:switch_after(3, "SLEEP")
-        state:switch_on_tap("READY_A")
-        state:switch_on_double_tap("READY_A")
+        state:switch_on_tap("START")
+        state:switch_on_double_tap("START")
     elseif state:is("SLEEP") then
         state:on_entry(function()
             frame.display.show()
             frame.sleep(0.05)
             frame.sleep()
         end)
-    elseif state:is("MESSAGE_GEN") then
-        state:on_entry(function()
-            graphics:clear()
-            graphics:append_text("", "\u{1F3A7}")
-            send_data(MESSAGE_GEN_FLAG)
-            state:switch("LISTEN")
-        end)
-    elseif state:is("IMAGE_GEN") then
-        state:on_entry(function()
-            graphics:clear()
-            graphics:append_text("", "\u{1F929}")
-            send_data(IMAGE_GEN_FLAG)
-            state:switch("LISTEN")
-        end)
-    elseif state:is("WILDCARD") then
-        state:on_entry(function()
-            graphics:append_text("", "\u{1F47B}")
-            send_data(WILDCARD_GEN_FLAG)
-        end)
-        state:switch_after(20, "CANCEL")
     elseif state:is("LISTEN") then
         state:on_entry(function()
+            graphics:clear()
+            graphics:append_text("Tap to finish", "\u{F0010}")
+            send_data(MESSAGE_GEN_FLAG)
             frame.microphone.record {}
             image_taken = false
             image_data_sent = false
@@ -155,12 +113,14 @@ while true do
 
         if state:has_been() > 2 then
             state:switch_on_tap("ON_IT")
+            state:switch_on_double_tap("ON_IT")
         end
-        state:switch_after(10, "READY_A")
+        state:switch_after(10, "ON_IT")
     elseif state:is("ON_IT") then
         state:on_entry(function()
             frame.microphone.stop()
-            graphics:append_text("", "\u{1F603}")
+            graphics:clear()
+            graphics:append_text("...", "")
         end)
         if state:has_been() > 1.4 and audio_data_sent == false then
             while true do
@@ -175,37 +135,51 @@ while true do
             audio_data_sent = true
             send_data(TRANSFER_DONE_FLAG)
         end
-        state:switch_after(20, "CANCEL")
+        state:switch_after(10, "CANCEL")
     elseif state:is("CANCEL") then
         state:on_entry(function()
-            graphics:append_text("", "\u{1F910}")
+            graphics:clear()
+            graphics:append_text("", "\u{F0001}")
         end)
-        state:switch_after(1, "READY_A")
+        state:switch_after(1, "START")
     elseif state:is("PRINT_REPLY") then
         graphics:on_complete(function()
             state:switch("HOLD_REPLY")
         end)
-        state:switch_on_tap("MESSAGE_GEN")
-        state:switch_on_double_tap("IMAGE_GEN")
+        state:switch_on_tap("LISTEN")
+        state:switch_on_double_tap("LISTEN")
     elseif state:is("PRINT_IMAGE") then
         graphics:on_complete(function()
             state:switch("HOLD_REPLY")
         end)
-        state:switch_on_tap("MESSAGE_GEN")
-        state:switch_on_double_tap("IMAGE_GEN")
+        state:switch_on_tap("LISTEN")
+        state:switch_on_double_tap("LISTEN")
     elseif state:is("HOLD_REPLY") then
-        state:switch_on_tap("MESSAGE_GEN")
-        state:switch_on_double_tap("IMAGE_GEN")
-        state:switch_after(5, "READY_A")
+        if math.random(1, 10) == 10 then
+            state:switch_after(5, "WILDCARD")
+        else
+            state:switch_after(5, "PRE_SLEEP")
+        end
+        state:switch_on_tap("LISTEN")
+        state:switch_on_double_tap("LISTEN")
+    elseif state:is("WILDCARD") then
+        state:on_entry(function()
+            graphics:clear()
+            graphics:append_text("", "\u{F000E}")
+            send_data(WILDCARD_GEN_FLAG)
+        end)
+        state:switch_after(20, "CANCEL")
     elseif state:is("NO_CONNECTION") then
         state:on_entry(function()
             graphics:clear()
-            graphics:append_text("", "\u{1F4F5}")
+            graphics:append_text("", "\u{F000D}")
         end)
         if frame.bluetooth.is_connected() == true then
             state:switch("START")
         end
         state:switch_after(10, "PRE_SLEEP")
+    else
+        print("Error: Entered an undefined state: " .. state.__current_state)
     end
 
     if (coroutine.status(graphics_print_coroutine) == "dead") then

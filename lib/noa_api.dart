@@ -267,6 +267,7 @@ class NoaApi {
         message: body['message'],
         from: NoaRole.noa,
         time: DateTime.now(),
+        // image: body['image'] != "" ? base64.decode(body['image']) : null, // TODO enable this once it's ready
       ));
 
       _log.info(
@@ -347,6 +348,7 @@ class NoaApi {
     }
   }
 
+  // TODO remove this function
   static Future<List<NoaMessage>> getImage(
     String userAuthToken,
     Uint8List audio,
