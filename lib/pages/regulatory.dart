@@ -53,35 +53,49 @@ class RegulatoryPage extends ConsumerWidget {
                     ),
                     _regulationEntry(
                       "United States",
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Padding(
+                          const Padding(
                               padding: EdgeInsets.only(bottom: 8),
                               child: Text("FCC ID: 2BFWB-F1",
                                   style: textStyleDark)),
-                          Text(
-                            "This device complies with Part 15 of the FCC Rules. Operation is subject to the following two conditions: (1)This device may not cause harmful interference, and (2)This device must accept any interference received, including interference that may cause undesired operation",
-                            style: textStyleDark,
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Image.asset('assets/images/fcc_icon.png'),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              "This device complies with Part 15 of the FCC Rules. Operation is subject to the following two conditions: (1) This device may not cause harmful interference, and (2) This device must accept any interference received, including interference that may cause undesired operation.",
+                              style: textStyleDark,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     _regulationEntry(
-                        "Europe / \nUnited Kingdom", const Text("TODO")),
-                    _regulationEntry("Japan", const Text("TODO")),
+                      "Europe / \nUnited Kingdom",
+                      Image.asset('assets/images/eu_reg_icons.png'),
+                    ),
+                    _regulationEntry(
+                      "Japan",
+                      Image.asset('assets/images/telec_icon.png'),
+                    ),
                   ],
                 ),
                 const Padding(
-                    padding: EdgeInsets.only(top: 30, bottom: 8),
+                  padding: EdgeInsets.only(top: 40, bottom: 8),
+                  child: Text(
+                    "Brilliant Labs Pte Ltd\n68 Circular Road #02-01\n049422 Singapore",
+                    style: textStyleDark,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const Padding(
+                    padding: EdgeInsets.only(bottom: 40),
                     child: Text(
                       "Frame is made in Singapore",
-                      style: textStyleDark,
-                    )),
-                const Padding(
-                    padding: EdgeInsets.only(bottom: 50),
-                    child: Text(
-                      "TODO Address",
                       style: textStyleDark,
                     )),
               ],
