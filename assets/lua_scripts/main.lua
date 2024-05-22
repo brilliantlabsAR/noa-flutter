@@ -58,7 +58,7 @@ while true do
     if state:is("START") then
         state:on_entry(function()
             graphics:clear()
-            graphics:append_text("Tap me in", "\u{F0000}")
+            graphics:append_text("tap me in", "\u{F0000}")
         end)
         state:switch_after(10, "PRE_SLEEP")
         state:switch_on_tap("LISTEN")
@@ -80,7 +80,7 @@ while true do
     elseif state:is("LISTEN") then
         state:on_entry(function()
             graphics:clear()
-            graphics:append_text("Tap to finish", "\u{F0010}")
+            graphics:append_text("tap to finish", "\u{F0010}")
             send_data(MESSAGE_GEN_FLAG)
             frame.microphone.record {}
             image_taken = false
@@ -113,14 +113,14 @@ while true do
 
         if state:has_been() > 2 then
             state:switch_on_tap("ON_IT")
-            state:switch_on_double_tap("ON_IT")
+            state:switch_on_double_tap("START")
         end
         state:switch_after(10, "ON_IT")
     elseif state:is("ON_IT") then
         state:on_entry(function()
             frame.microphone.stop()
             graphics:clear()
-            graphics:append_text("...", "")
+            graphics:append_text("                   ...", "")
         end)
         if state:has_been() > 1.4 and audio_data_sent == false then
             while true do
