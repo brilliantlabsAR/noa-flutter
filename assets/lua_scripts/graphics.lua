@@ -16,6 +16,7 @@ function Graphics:clear()
     self.__last_line = ""
     self.__last_last_line = ""
     self.__starting_index = 1
+    self.__current_index = 1
     self.__ending_index = 1
     self.__done_function = (function() end)()
     -- Reset the palette
@@ -42,7 +43,7 @@ function Graphics:on_complete(func)
     self.__done_function = func
 end
 
-function Graphics.__print_text(last_last_line, last_line, this_line, emoji)
+function Graphics.__print_layout(last_last_line, last_line, this_line, emoji)
     local TOP_MARGIN = 118
     local LINE_SPACING = 58
     local EMOJI_MAX_WIDTH = 91
@@ -69,6 +70,13 @@ function Graphics:print()
         self.__starting_index = self.__starting_index + 1
     end
 
+    if self.__current_index >= self.__ending_index then
+        self.__starting_index = self.__ending_index
+        self.__last_last_line = self.__last_line
+        self.__last_line = self.__this_line
+        self.__starting_index = self.__ending_index
+    end
+
     for i = self.__starting_index + 22, self.__starting_index, -1 do
         if self.__text:sub(i, i) == ' ' or self.__text:sub(i, i) == '' then
             self.__ending_index = i
@@ -76,21 +84,15 @@ function Graphics:print()
         end
     end
 
-    for i = self.__starting_index, self.__ending_index do
-        if i > #self.__text then
-            self.__print_text(self.__last_last_line, self.__last_line, self.__this_line, self.__emoji)
-            self.__starting_index = self.__ending_index
-            pcall(self.__done_function)
-            self.__done_function = (function() end)()
-            return
-        end
+    self.__this_line = self.__text:sub(self.__starting_index, self.__current_index)
 
-        self.__this_line = self.__text:sub(self.__starting_index, i)
-        self.__print_text(self.__last_last_line, self.__last_line, self.__this_line, self.__emoji)
-        coroutine.yield()
+    self.__print_layout(self.__last_last_line, self.__last_line, self.__this_line, self.__emoji)
+
+    if self.__current_index >= #self.__text then
+        pcall(self.__done_function)
+        self.__done_function = (function() end)()
+        return
     end
 
-    self.__last_last_line = self.__last_line
-    self.__last_line = self.__this_line
-    self.__starting_index = self.__ending_index
+    self.__current_index = self.__current_index + 1
 end

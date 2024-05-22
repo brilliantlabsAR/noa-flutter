@@ -52,8 +52,6 @@ end
 
 frame.bluetooth.receive_callback(bluetooth_callback)
 
-local graphics_print_coroutine = coroutine.create(graphics.print)
-
 while true do
     if state:is("START") then
         state:on_entry(function()
@@ -115,12 +113,12 @@ while true do
             state:switch_on_tap("ON_IT")
             state:switch_on_double_tap("START")
         end
-        state:switch_after(10, "ON_IT")
+        state:switch_after(10, "START")
     elseif state:is("ON_IT") then
         state:on_entry(function()
             frame.microphone.stop()
             graphics:clear()
-            graphics:append_text("...                    ...                    ...", "")
+            graphics:append_text("..................... ..................... .....................", "")
         end)
         if state:has_been() > 1.4 and audio_data_sent == false then
             while true do
@@ -158,7 +156,7 @@ while true do
         if math.random(1, 10) == 10 then
             state:switch_after(5, "WILDCARD")
         else
-            state:switch_after(5, "PRE_SLEEP")
+            state:switch_after(5, "START")
         end
         state:switch_on_tap("LISTEN")
         state:switch_on_double_tap("LISTEN")
@@ -182,11 +180,6 @@ while true do
         print("Error: Entered an undefined state: " .. state.__current_state)
     end
 
-    if (coroutine.status(graphics_print_coroutine) == "dead") then
-        graphics_print_coroutine = coroutine.create(graphics.print)
-    end
-    coroutine.resume(graphics_print_coroutine, graphics)
-
     if frame.time.utc() - last_autoexp_time > 0.1 then
         frame.camera.auto { metering = 'CENTER_WEIGHTED', exposure = -0.5, exposure_limit = 5500 }
         last_autoexp_time = frame.time.utc()
@@ -197,6 +190,8 @@ while true do
             state:switch("NO_CONNECTION")
         end
     end
+
+    graphics:print()
 
     collectgarbage("collect")
 end
