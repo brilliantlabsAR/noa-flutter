@@ -120,7 +120,7 @@ while true do
         state:on_entry(function()
             frame.microphone.stop()
             graphics:clear()
-            graphics:append_text("                   ...", "")
+            graphics:append_text("...                    ...                    ...", "")
         end)
         if state:has_been() > 1.4 and audio_data_sent == false then
             while true do
@@ -135,7 +135,7 @@ while true do
             audio_data_sent = true
             send_data(TRANSFER_DONE_FLAG)
         end
-        state:switch_after(10, "CANCEL")
+        state:switch_after(20, "CANCEL")
     elseif state:is("CANCEL") then
         state:on_entry(function()
             graphics:clear()
