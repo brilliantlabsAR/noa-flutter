@@ -24,7 +24,7 @@ class StateMachine {
       _onEntryHandled = false;
 
       if (transitionTask != null) {
-        _log.info("Executing transitionTask");
+        _log.fine("Executing transitionTask");
         transitionTask();
       }
 
@@ -43,7 +43,7 @@ class StateMachine {
 
   void onEntry(Function task) {
     if (_onEntryHandled == false) {
-      _log.info("Executing onEntry task");
+      _log.fine("Executing onEntry task");
       task();
       _onEntryHandled = true;
     }
