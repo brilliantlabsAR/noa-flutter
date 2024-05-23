@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:collection/collection.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
@@ -374,6 +375,71 @@ class AppLogicModel extends ChangeNotifier {
               );
               await _connectedDevice!.sendResetSignal();
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
+
+              Timer(const Duration(seconds: 1), () {
+                noaMessages.add(NoaMessage(
+                  message: "Hey I'm Noa! Let's show you around",
+                  from: NoaRole.noa,
+                  time: DateTime.now(),
+                ));
+                notifyListeners();
+              });
+
+              Timer(const Duration(seconds: 3), () async {
+                ByteData image =
+                    await rootBundle.load('assets/images/tutorial/wake_up.png');
+                noaMessages.add(NoaMessage(
+                    message: "Tap the side of your Frame to wake me up",
+                    from: NoaRole.noa,
+                    time: DateTime.now(),
+                    image: image.buffer.asUint8List()));
+                notifyListeners();
+              });
+
+              Timer(const Duration(seconds: 5), () async {
+                ByteData image = await rootBundle
+                    .load('assets/images/tutorial/tap_start.png');
+                noaMessages.add(NoaMessage(
+                    message: "Tap again and ask me anything",
+                    from: NoaRole.noa,
+                    time: DateTime.now(),
+                    image: image.buffer.asUint8List()));
+                notifyListeners();
+              });
+
+              Timer(const Duration(seconds: 7), () async {
+                ByteData image = await rootBundle
+                    .load('assets/images/tutorial/tap_finish.png');
+                noaMessages.add(NoaMessage(
+                    message: "...and then a third time to finish",
+                    from: NoaRole.noa,
+                    time: DateTime.now(),
+                    image: image.buffer.asUint8List()));
+                notifyListeners();
+              });
+
+              Timer(const Duration(seconds: 9), () async {
+                ByteData image = await rootBundle
+                    .load('assets/images/tutorial/response.png');
+                noaMessages.add(NoaMessage(
+                    message: "The response just takes a few seconds",
+                    from: NoaRole.noa,
+                    time: DateTime.now(),
+                    image: image.buffer.asUint8List()));
+                notifyListeners();
+              });
+
+              Timer(const Duration(seconds: 11), () async {
+                ByteData image = await rootBundle
+                    .load('assets/images/tutorial/wildcard.png');
+                noaMessages.add(NoaMessage(
+                    message: "Occasionally a wildcard may appear",
+                    from: NoaRole.noa,
+                    time: DateTime.now(),
+                    image: image.buffer.asUint8List()));
+                notifyListeners();
+              });
+
               triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.error);

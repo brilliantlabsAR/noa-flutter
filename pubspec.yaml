@@ -48,4 +48,5 @@ flutter:
     - assets/
     - assets/images/
     - assets/images/2x/
+    - assets/images/tutorial/
     - assets/lua_scripts/

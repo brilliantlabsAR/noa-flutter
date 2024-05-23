@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/main.dart';
@@ -18,11 +20,17 @@ class NoaPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ref.watch(app.model).state.current ==
-          app.State.sendResponseToDevice) {
-        _scrollController.animateTo(_scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 100), curve: Curves.easeOut);
-      }
+      Timer(const Duration(milliseconds: 100), () {
+        if (context.mounted) {
+          ref.watch(app.model.select((value) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 100),
+              curve: Curves.easeOut,
+            );
+          }));
+        }
+      });
     });
 
     return Scaffold(
