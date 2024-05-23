@@ -267,7 +267,7 @@ class NoaApi {
         message: body['message'],
         from: NoaRole.noa,
         time: DateTime.now(),
-        // image: body['image'] != "" ? base64.decode(body['image']) : null, // TODO enable this once it's ready
+        image: body['image'] != null ? base64.decode(body['image']) : null,
       ));
 
       _log.info(
@@ -340,77 +340,6 @@ class NoaApi {
       if (textToSpeech && body['audio'] != null) {
         _playAudio(base64.decode(body['audio']));
       }
-
-      return response;
-    } catch (error) {
-      _log.warning(error);
-      return Future.error(error);
-    }
-  }
-
-  // TODO remove this function
-  static Future<List<NoaMessage>> getImage(
-    String userAuthToken,
-    Uint8List audio,
-    Uint8List image,
-  ) async {
-    try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://api.brilliant.xyz/noa/imagegen'),
-      );
-
-      request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
-
-      request.files.add(http.MultipartFile.fromBytes(
-        'audio',
-        bytesToWav(audio, 8, 8000),
-        filename: 'audio.wav',
-      ));
-
-      image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
-
-      request.files.add(http.MultipartFile.fromBytes(
-        'image',
-        image,
-        filename: 'image.jpg',
-      ));
-
-      _log.info(
-          "Sending image request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
-
-      var streamedResponse = await request.send();
-
-      if (streamedResponse.statusCode != 200) {
-        throw NoaApiServerException(
-          reason: streamedResponse.reasonPhrase ?? "",
-          statusCode: streamedResponse.statusCode,
-        );
-      }
-
-      List<int> serverResponse = List.empty(growable: true);
-      await streamedResponse.stream
-          .forEach((element) => serverResponse += element);
-      var body = jsonDecode(utf8.decode(serverResponse));
-
-      List<NoaMessage> response = List.empty(growable: true);
-
-      response.add(NoaMessage(
-        message: body['user_prompt'],
-        from: NoaRole.user,
-        time: DateTime.now(),
-        image: kReleaseMode ? null : image,
-      ));
-
-      response.add(NoaMessage(
-        message: "Here's what I generated",
-        from: NoaRole.noa,
-        time: DateTime.now(),
-        image: body['image'] != "" ? base64.decode(body['image']) : null,
-      ));
-
-      _log.info(
-          "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
 
       return response;
     } catch (error) {
