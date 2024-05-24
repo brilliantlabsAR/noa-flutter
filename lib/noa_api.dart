@@ -323,7 +323,7 @@ class NoaApi {
       List<NoaMessage> response = List.empty(growable: true);
 
       response.add(NoaMessage(
-        message: body['user_prompt'],
+        message: "Wildcard 👻",
         from: NoaRole.user,
         time: DateTime.now(),
       ));
