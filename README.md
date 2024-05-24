@@ -25,6 +25,8 @@ Welcome to the Noa app repository! Built using Flutter, this repository also ser
     flutter pub get
     ```
 
+1. Rename `.env.template` to `.env` and populate it with your own Google O-auth client IDs if desired
+
 1. Connect your phone and run the app in release mode
 
     ```sh
