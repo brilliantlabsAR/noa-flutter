@@ -94,6 +94,7 @@ class NoaApi {
   static Future<String> signIn(
     String id,
     NoaApiAuthProvider provider,
+    {String socialId = ""}
   ) async {
     _log.info("Signing in to Noa");
     _log.fine("Provider: $provider, ID token: $id");
@@ -103,6 +104,7 @@ class NoaApi {
         body: {
           'id_token': id,
           'provider': provider.value,
+          'social_id': socialId
         },
       );
 

@@ -22,10 +22,10 @@ class SignIn {
           redirectUri: Uri.parse('https://api.brilliant.xyz/noa/login/apple'),
         ),
       );
-
       return await NoaApi.signIn(
         credential.authorizationCode,
         NoaApiAuthProvider.apple,
+        socialId: credential.userIdentifier??"",
       );
     } catch (error) {
       _log.warning("Could not sign in: $error");
