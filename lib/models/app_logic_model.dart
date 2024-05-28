@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -649,6 +650,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.disconnected:
           state.onEntry(() async {
             _connectionStream?.cancel();
+
             _connectionStream =
                 _connectedDevice?.connectionState.listen((event) {
               _connectedDevice = event;
@@ -657,7 +659,9 @@ class AppLogicModel extends ChangeNotifier {
               }
             });
             _connectionStream?.onError((_) {});
-
+            if (Platform.isAndroid) {
+              _connectedDevice = null;
+            }
             try {
               _connectedDevice ??= await BrilliantBluetooth.reconnect(
                   (await _getPairedDevice())!);

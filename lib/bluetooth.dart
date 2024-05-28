@@ -471,11 +471,24 @@ class BrilliantBluetooth {
       _log.info("Will re-connect to device: $uuid once found");
 
       BluetoothDevice device = BluetoothDevice.fromId(uuid);
-
-      await device.connect(
-        autoConnect: true,
-        mtu: null,
-      );
+      if (Platform.isAndroid ){
+      //  Recoonect after 10 seconds
+      Timer.periodic(const Duration(seconds: 10), (timer) async {
+        try {
+          await device.connect(
+            // autoConnect: true,
+            timeout: const Duration(seconds: 10),
+            mtu: null,
+          );
+          timer.cancel();
+        } catch (_) {}
+      });
+      }else{
+        await device.connect(
+            autoConnect: true,
+            mtu: null,
+          );
+      }
 
       final connectionState = await device.connectionState.firstWhere((state) =>
           state == BluetoothConnectionState.connected ||
