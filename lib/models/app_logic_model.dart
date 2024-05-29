@@ -420,9 +420,10 @@ class AppLogicModel extends ChangeNotifier {
 
               Timer(const Duration(seconds: 9), () async {
                 ByteData image = await rootBundle
-                    .load('assets/images/tutorial/response.png');
+                    .load('assets/images/tutorial/tap_follow_up.png');
                 noaMessages.add(NoaMessage(
-                    message: "The response just takes a few seconds",
+                    message:
+                        "The response just takes a few seconds. Tap again to ask a follow up question",
                     from: NoaRole.noa,
                     time: DateTime.now(),
                     image: image.buffer.asUint8List()));
@@ -430,6 +431,17 @@ class AppLogicModel extends ChangeNotifier {
               });
 
               Timer(const Duration(seconds: 11), () async {
+                ByteData image = await rootBundle
+                    .load('assets/images/tutorial/response.png');
+                noaMessages.add(NoaMessage(
+                    message: "The follow up just takes a few more seconds",
+                    from: NoaRole.noa,
+                    time: DateTime.now(),
+                    image: image.buffer.asUint8List()));
+                notifyListeners();
+              });
+
+              Timer(const Duration(seconds: 13), () async {
                 ByteData image = await rootBundle
                     .load('assets/images/tutorial/wildcard.png');
                 noaMessages.add(NoaMessage(

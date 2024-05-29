@@ -257,14 +257,14 @@ class NoaApi {
       List<NoaMessage> response = List.empty(growable: true);
 
       response.add(NoaMessage(
-        message: body['user_prompt'],
+        message: body['user_prompt'].toString().replaceAll(RegExp(r'—'), '-'),
         from: NoaRole.user,
         time: DateTime.now(),
         image: kReleaseMode ? null : image,
       ));
 
       response.add(NoaMessage(
-        message: body['message'],
+        message: body['message'].toString().replaceAll(RegExp(r'—'), '-'),
         from: NoaRole.noa,
         time: DateTime.now(),
         image: body['image'] != null ? base64.decode(body['image']) : null,
@@ -329,7 +329,7 @@ class NoaApi {
       ));
 
       response.add(NoaMessage(
-        message: body['message'],
+        message: body['message'].toString().replaceAll(RegExp(r'—'), '-'),
         from: NoaRole.noa,
         time: DateTime.now(),
       ));
