@@ -70,6 +70,9 @@ class BrilliantDevice {
       }
       _log.info(
           "Connection state stream: Disconnected due to ${event.device.disconnectReason!.description}");
+      if (Platform.isAndroid) {
+        event.device.connect(timeout: const Duration(days: 365));
+      }
       return BrilliantDevice(
         state: BrilliantConnectionState.disconnected,
         device: event.device,
@@ -446,7 +449,7 @@ class BrilliantBluetooth {
       await FlutterBluePlus.stopScan();
 
       await scanned.device.connect(
-        autoConnect: true,
+        autoConnect: Platform.isIOS ? true : false,
         mtu: null,
       );
 
@@ -473,7 +476,8 @@ class BrilliantBluetooth {
       BluetoothDevice device = BluetoothDevice.fromId(uuid);
 
       await device.connect(
-        autoConnect: true,
+        timeout: const Duration(days: 365),
+        autoConnect: Platform.isIOS ? true : false,
         mtu: null,
       );
 
