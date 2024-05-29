@@ -472,17 +472,12 @@ class BrilliantBluetooth {
 
       BluetoothDevice device = BluetoothDevice.fromId(uuid);
       if (Platform.isAndroid) {
-        //  Recoonect after 10 seconds
-        // Timer.periodic(const Duration(seconds: 10), (timer) async {
         try {
           await device.connect(
-            // autoConnect: true,
             timeout: const Duration(seconds: 10),
             mtu: null,
           );
-          // timer.cancel();
         } catch (_) {}
-        // });
       } else {
         await device.connect(
           autoConnect: true,

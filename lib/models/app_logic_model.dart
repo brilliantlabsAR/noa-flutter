@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 import 'package:collection/collection.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
@@ -449,10 +449,11 @@ class AppLogicModel extends ChangeNotifier {
                 notifyListeners();
               });
 
-              triggerEvent(Event.done);
               if (Platform.isAndroid) {
                 ForegroundTask().init();
               }
+
+              triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.error);
             }
