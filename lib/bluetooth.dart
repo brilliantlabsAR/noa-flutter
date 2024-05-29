@@ -363,6 +363,25 @@ class BrilliantDevice {
     try {
       _log.fine("Sending ${data.length} bytes of DFU control data: $data");
 
+      if (Platform.isAndroid) {
+        Completer<List<int>> completer = Completer();
+        StreamSubscription? subscription;
+
+        subscription = _dfuControl?.onValueReceived.timeout(
+          const Duration(seconds: 2),
+          onTimeout: (sink) {
+            subscription?.cancel();
+            completer.completeError("Timeout");
+          },
+        ).listen((event) {
+          completer.complete(event);
+          subscription?.cancel();
+        });
+
+        await _dfuControl!.write(data, timeout: 1);
+        return Uint8List.fromList(await completer.future);
+      }
+
       await _dfuControl!.write(data, timeout: 1);
 
       final response = await _dfuControl!.onValueReceived
