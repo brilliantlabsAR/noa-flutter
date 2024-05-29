@@ -465,24 +465,24 @@ class BrilliantBluetooth {
       return Future.error(BrilliantBluetoothException(error.toString()));
     }
   }
-
   static Future<BrilliantDevice> reconnect(String uuid) async {
     try {
       _log.info("Will re-connect to device: $uuid once found");
 
       BluetoothDevice device = BluetoothDevice.fromId(uuid);
       if (Platform.isAndroid ){
+
       //  Recoonect after 10 seconds
-      Timer.periodic(const Duration(seconds: 10), (timer) async {
+      // Timer.periodic(const Duration(seconds: 10), (timer) async {
         try {
           await device.connect(
             // autoConnect: true,
             timeout: const Duration(seconds: 10),
             mtu: null,
           );
-          timer.cancel();
+          // timer.cancel();
         } catch (_) {}
-      });
+      // });
       }else{
         await device.connect(
             autoConnect: true,

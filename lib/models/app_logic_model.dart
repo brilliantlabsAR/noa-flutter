@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:collection/collection.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
+import 'package:noa/util/foreground_task.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -71,7 +75,9 @@ class AppLogicModel extends ChangeNotifier {
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
   List<NoaMessage> noaMessages = List.empty(growable: true);
-
+  static ReceivePort? _receivePort;
+  static SendPort? _sendPort;
+  
   void setUserAuthToken(String token) {
     SharedPreferences.getInstance().then((value) async {
       await value.setString("userAuthToken", token);
@@ -233,6 +239,9 @@ class AppLogicModel extends ChangeNotifier {
               if (await _getUserAuthToken() != null &&
                   await _getPairedDevice() != null) {
                 noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
+                if (Platform.isAndroid){
+                  ForegroundTask().init();
+                }
                 triggerEvent(Event.done);
                 return;
               }
@@ -442,6 +451,9 @@ class AppLogicModel extends ChangeNotifier {
               });
 
               triggerEvent(Event.done);
+              if (Platform.isAndroid){
+                ForegroundTask().init();
+              }
             } catch (_) {
               triggerEvent(Event.error);
             }
@@ -650,26 +662,52 @@ class AppLogicModel extends ChangeNotifier {
         case State.disconnected:
           state.onEntry(() async {
             _connectionStream?.cancel();
-
-            _connectionStream =
-                _connectedDevice?.connectionState.listen((event) {
-              _connectedDevice = event;
-              if (event.state == BrilliantConnectionState.connected) {
-                triggerEvent(Event.deviceConnected);
-              }
-            });
-            _connectionStream?.onError((_) {});
-            if (Platform.isAndroid) {
+            if(Platform.isAndroid) {
               _connectedDevice = null;
-            }
-            try {
-              _connectedDevice ??= await BrilliantBluetooth.reconnect(
-                  (await _getPairedDevice())!);
-              if (_connectedDevice?.state ==
-                  BrilliantConnectionState.connected) {
-                triggerEvent(Event.deviceConnected);
+              if (_receivePort == null){
+                _receivePort = FlutterForegroundTask.receivePort;
+                _receivePort?.listen((message) async {
+                  if (message == 'connect' && _connectedDevice ==null) {
+                    FlutterForegroundTask.updateService(
+                      notificationText: 'Sleeping..',
+                    );
+                  try {
+                    _connectedDevice ??= await BrilliantBluetooth.reconnect(
+                        (await _getPairedDevice())!);
+                    if (_connectedDevice?.state ==
+                        BrilliantConnectionState.connected) {
+                      triggerEvent(Event.deviceConnected);
+                      FlutterForegroundTask.updateService(
+                      notificationText: 'Listening..',
+                    );
+                    }
+                  } catch (_) {
+                    _connectedDevice =null;
+                  } 
+                    }
+                });
               }
-            } catch (_) {}
+            }else{
+              
+              _connectionStream =
+                  _connectedDevice?.connectionState.listen((event) {
+                _connectedDevice = event;
+                if (event.state == BrilliantConnectionState.connected) {
+                  triggerEvent(Event.deviceConnected);
+                }
+              });
+              _connectionStream?.onError((_) {});
+      
+              try {
+                _connectedDevice ??= await BrilliantBluetooth.reconnect(
+                    (await _getPairedDevice())!);
+                if (_connectedDevice?.state ==
+                    BrilliantConnectionState.connected) {
+                  triggerEvent(Event.deviceConnected);
+                }
+              } catch (_) {}
+            }
+
           });
           state.changeOn(Event.deviceConnected, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
@@ -709,7 +747,12 @@ class AppLogicModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    BrilliantBluetooth.stopScan();
+    BrilliantBluetooth.stopScan(); 
+    if (Platform.isAndroid){
+      _receivePort?.close();
+      FlutterForegroundTask.stopService();
+    }
+  
     super.dispose();
   }
 }

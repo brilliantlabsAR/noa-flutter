@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- In the permission part of your manifest, these permission are needed if you target Android 14 phones -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" /> <!-- Here, chose the type according to your app -->
+
+<!-- Add android:stopWithTask option only when necessary. -->
+  
+
     <application
         android:label="Noa"
         android:name="${applicationName}"
@@ -35,6 +42,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+              <service 
+        android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+        android:foregroundServiceType="connectedDevice" 
+        android:exported="false" 
+        android:stopWithTask="true" 
+        
+        />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility?hl=en and
@@ -52,4 +67,5 @@
             <data android:scheme="https" />
         </intent>
     </queries>
+    
 </manifest>
