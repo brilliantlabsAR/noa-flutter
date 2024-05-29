@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-
     <application
         android:label="Noa"
         android:name="${applicationName}"
@@ -38,7 +37,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-
               <service 
                 android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
                 android:foregroundServiceType="connectedDevice"

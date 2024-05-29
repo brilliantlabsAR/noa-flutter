@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'dart:isolate';
 
@@ -7,7 +6,6 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger("App logic");
-
 
 // The callback function should always be a top-level function.
 @pragma('vm:entry-point')
@@ -41,14 +39,11 @@ class Noa extends TaskHandler {
   void onDestroy(DateTime timestamp, SendPort? sendPort) async {
     _log.info("Foreground task is destroyed");
     FlutterForegroundTask.stopService();
-    
   }
 
   // Called when the notification button on the Android platform is pressed.
   @override
-  void onNotificationButtonPressed(String id) {
-
-  }
+  void onNotificationButtonPressed(String id) {}
 
   // Called when the notification itself on the Android platform is pressed.
   //
@@ -63,14 +58,16 @@ class Noa extends TaskHandler {
     _sendPort?.send('onNotificationPressed');
   }
 }
+
 class ForegroundTask {
-    ReceivePort? _receivePort;
+  ReceivePort? _receivePort;
 
   void init() async {
     await _requestPermissionForAndroid();
     _initForegroundTask();
     await _startForegroundTask();
   }
+
   Future<void> _requestPermissionForAndroid() async {
     if (!Platform.isAndroid) {
       return;
@@ -100,8 +97,7 @@ class ForegroundTask {
         foregroundServiceType: AndroidForegroundServiceType.CONNECTED_DEVICE,
         channelId: 'noa_service',
         channelName: 'Listening...',
-        channelDescription:
-            'Noa is listening for your commands',
+        channelDescription: 'Noa is listening for your commands',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
         iconData: const NotificationIconData(
@@ -138,7 +134,6 @@ class ForegroundTask {
   }
 
   Future<bool> _startForegroundTask() async {
-
     if (await FlutterForegroundTask.isRunningService) {
       return FlutterForegroundTask.restartService();
     } else {
@@ -153,5 +148,4 @@ class ForegroundTask {
   static Future<bool> stopForegroundTask() {
     return FlutterForegroundTask.stopService();
   }
-
 }
