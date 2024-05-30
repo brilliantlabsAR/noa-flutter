@@ -366,7 +366,7 @@ class BrilliantDevice {
     try {
       _log.fine("Sending ${data.length} bytes of DFU control data: $data");
 
-      await _dfuControl!.write(data, timeout: 1);
+      _dfuControl!.write(data, timeout: 1);
 
       final response = await _dfuControl!.onValueReceived
           .timeout(const Duration(seconds: 1))
