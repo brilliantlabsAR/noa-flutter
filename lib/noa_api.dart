@@ -356,7 +356,7 @@ class NoaApi {
     file.writeAsBytesSync(audio);
 
     try {
-      AudioPlayer player = AudioPlayer();
+      AudioPlayer player = AudioPlayer(handleAudioSessionActivation: false);
       await player.setAudioSource(AudioSource.file(file.path));
       await player.play();
       await player.dispose();
