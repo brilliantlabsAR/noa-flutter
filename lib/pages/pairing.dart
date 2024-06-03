@@ -118,7 +118,7 @@ class PairingPage extends ConsumerWidget {
                     ),
                   ), //
                   Expanded(
-                    child: Image.asset('assets/images/temp_frame.png'),
+                    child: Image.asset('assets/images/pairing.gif'),
                   ),
                   GestureDetector(
                     onTap: () {
