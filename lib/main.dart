@@ -1,10 +1,10 @@
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/util/app_log.dart';
-import 'package:audio_session/audio_session.dart';
 
 final globalPageStorageBucket = PageStorageBucket();
 
