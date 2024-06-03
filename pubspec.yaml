@@ -29,6 +29,7 @@ dependencies:
   collection: ^1.18.0
   just_audio: ^0.9.37
   path_provider: ^2.1.3
+  audio_session: ^0.1.19
 
 dev_dependencies:
   flutter_test:
