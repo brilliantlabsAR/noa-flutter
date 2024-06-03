@@ -8,6 +8,7 @@ local image_taken = false
 local image_data_sent = false
 local audio_data_sent = false
 local last_autoexp_time = 0
+local last_print_time = 0
 
 -- Frame to phone flags
 MESSAGE_GEN_FLAG = "\x10"
@@ -71,6 +72,7 @@ while true do
         state:switch_on_double_tap("START")
     elseif state:is("SLEEP") then
         state:on_entry(function()
+            frame.microphone.stop()
             frame.display.show()
             frame.sleep(0.05)
             frame.sleep()
@@ -80,7 +82,7 @@ while true do
             graphics:clear()
             graphics:append_text("tap to finish", "\u{F0010}")
             send_data(MESSAGE_GEN_FLAG)
-            frame.microphone.record {}
+            frame.microphone.start {}
             image_taken = false
             image_data_sent = false
             audio_data_sent = false
@@ -103,9 +105,9 @@ while true do
         end
 
         local audio_data = frame.microphone.read(
-            math.floor((frame.bluetooth.max_length() - 1) / 4) * 4
+            math.floor((frame.bluetooth.max_length() - 1) / 2) * 2
         )
-        if audio_data ~= nil then
+        if audio_data ~= nil and audio_data ~= '' then
             send_data(AUDIO_DATA_FLAG .. audio_data)
         end
 
@@ -120,15 +122,17 @@ while true do
             graphics:clear()
             graphics:append_text("..................... ..................... .....................", "")
         end)
-        if state:has_been() > 1.4 and audio_data_sent == false then
+        if audio_data_sent == false then
             while true do
                 local audio_data = frame.microphone.read(
-                    math.floor((frame.bluetooth.max_length() - 1) / 4) * 4
+                    math.floor((frame.bluetooth.max_length() - 1) / 2) * 2
                 )
                 if (audio_data == nil) then
                     break
                 end
-                send_data(AUDIO_DATA_FLAG .. audio_data)
+                if (audio_data ~= '') then
+                    send_data(AUDIO_DATA_FLAG .. audio_data)
+                end
             end
             audio_data_sent = true
             send_data(TRANSFER_DONE_FLAG)
@@ -191,7 +195,10 @@ while true do
         end
     end
 
-    graphics:print()
+    if frame.time.utc() - last_print_time > 0.07 then
+        graphics:print()
+        last_print_time = frame.time.utc()
+    end
 
     collectgarbage("collect")
 end

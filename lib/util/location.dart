@@ -24,7 +24,7 @@ class Location {
             builder: (BuildContext context) => AlertDialog(
               title: const Text("Allow location?"),
               content: const Text(
-                  "Noa can give responses and recommendations based on your current location. This is optional and can be turned off at anytime from your system settings"),
+                  "Noa can give responses and recommendations based on your current location even when the app is in the background. This is optional and can be turned off at anytime from your system settings"),
               actions: <Widget>[
                 TextButton(
                   onPressed: () {

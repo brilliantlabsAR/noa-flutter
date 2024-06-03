@@ -62,7 +62,6 @@ function Graphics.__print_layout(last_last_line, last_line, this_line, emoji)
     end
 
     frame.display.show()
-    frame.sleep(0.07)
 end
 
 function Graphics:print()
