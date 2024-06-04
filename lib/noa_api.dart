@@ -222,13 +222,17 @@ class NoaApi {
         filename: 'audio.wav',
       ));
 
-      image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
+      try {
+        image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
 
-      request.files.add(http.MultipartFile.fromBytes(
-        'image',
-        image,
-        filename: 'image.jpg',
-      ));
+        request.files.add(http.MultipartFile.fromBytes(
+          'image',
+          image,
+          filename: 'image.jpg',
+        ));
+      } catch (error) {
+        _log.warning(error);
+      }
 
       request.fields['noa_system_prompt'] = systemRole;
       request.fields['messages'] = jsonEncode(noaHistory);
