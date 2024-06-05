@@ -706,6 +706,7 @@ class AppLogicModel extends ChangeNotifier {
               await NoaApi.deleteUser((await _getUserAuthToken())!);
               await SharedPreferences.getInstance().then((sp) => sp.clear());
               noaMessages.clear();
+              triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.done);
             }
