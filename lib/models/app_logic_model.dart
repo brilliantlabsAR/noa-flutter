@@ -692,7 +692,8 @@ class AppLogicModel extends ChangeNotifier {
               await SharedPreferences.getInstance().then((sp) => sp.clear());
               noaMessages.clear();
               triggerEvent(Event.done);
-            } catch (_) {
+            } catch (error) {
+              _log.warning("Error logging out. $error");
               triggerEvent(Event.done);
             }
           });
@@ -707,7 +708,8 @@ class AppLogicModel extends ChangeNotifier {
               await SharedPreferences.getInstance().then((sp) => sp.clear());
               noaMessages.clear();
               triggerEvent(Event.done);
-            } catch (_) {
+            } catch (error) {
+              _log.warning("Error deleting account. $error");
               triggerEvent(Event.done);
             }
           });
