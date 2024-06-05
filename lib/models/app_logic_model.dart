@@ -689,10 +689,12 @@ class AppLogicModel extends ChangeNotifier {
             try {
               await _connectedDevice?.disconnect();
               await NoaApi.signOut((await _getUserAuthToken())!);
-            } catch (_) {}
-            await SharedPreferences.getInstance().then((sp) => sp.clear());
-            noaMessages.clear();
-            triggerEvent(Event.done);
+              await SharedPreferences.getInstance().then((sp) => sp.clear());
+              noaMessages.clear();
+              triggerEvent(Event.done);
+            } catch (_) {
+              triggerEvent(Event.done);
+            }
           });
           state.changeOn(Event.done, State.getUserSettings);
           break;
@@ -702,10 +704,11 @@ class AppLogicModel extends ChangeNotifier {
             try {
               await _connectedDevice?.disconnect();
               await NoaApi.deleteUser((await _getUserAuthToken())!);
-            } catch (_) {}
-            await SharedPreferences.getInstance().then((sp) => sp.clear());
-            noaMessages.clear();
-            triggerEvent(Event.done);
+              await SharedPreferences.getInstance().then((sp) => sp.clear());
+              noaMessages.clear();
+            } catch (_) {
+              triggerEvent(Event.done);
+            }
           });
           state.changeOn(Event.done, State.getUserSettings);
           break;
