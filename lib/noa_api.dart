@@ -11,6 +11,7 @@ import 'package:noa/util/location.dart';
 import 'package:path_provider/path_provider.dart';
 
 final _log = Logger("Noa API");
+const baseURl = "https://api.brilliant.xyz/dev";
 
 class NoaApiServerException implements Exception {
   String reason;
@@ -96,7 +97,7 @@ class NoaApi {
     _log.fine("Provider: $provider, ID token: $id");
     try {
       final response = await http.post(
-        Uri.parse('https://api.brilliant.xyz/noa/user/signin'),
+        Uri.parse('$baseURl/noa/user/signin'),
         body: {
           'id_token': id,
           'provider': provider.value,
@@ -125,7 +126,7 @@ class NoaApi {
     _log.info("Signing out");
     try {
       final response = await http.post(
-        Uri.parse('https://api.brilliant.xyz/noa/user/signout'),
+        Uri.parse('$baseURl/noa/user/signout'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -145,7 +146,7 @@ class NoaApi {
     _log.info("Getting user info");
     try {
       final response = await http.get(
-        Uri.parse('https://api.brilliant.xyz/noa/user'),
+        Uri.parse('$baseURl/noa/user'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -183,7 +184,7 @@ class NoaApi {
     _log.info("Deleting user");
     try {
       final response = await http.post(
-        Uri.parse('https://api.brilliant.xyz/noa/user/delete'),
+        Uri.parse('$baseURl/noa/user/delete'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -211,7 +212,7 @@ class NoaApi {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.brilliant.xyz/noa'),
+        Uri.parse('$baseURl/noa/stream'),
       );
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
@@ -245,43 +246,67 @@ class NoaApi {
           "Sending message request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
 
       var streamedResponse = await request.send();
-
+      // streamedResponse.asStream().listen((streamedResponse) {
+      //   print("Received streamedResponse.statusCode:${streamedResponse.statusCode}");
+      //   streamedResponse.stream
+      //       .transform(utf8.decoder)  // Decode the stream as UTF-8
+      //       .listen((data) {
+      //     print("Received data: $data");
+      //     setState(() {
+      //       _events.add(data);  // Add received data to the list
+      //     });
+      //   });
+      // });
       if (streamedResponse.statusCode != 200) {
         throw NoaApiServerException(
           reason: streamedResponse.reasonPhrase ?? "",
           statusCode: streamedResponse.statusCode,
         );
       }
+      var finalResponse="";
+      dynamic body;
+      //TODO: need to handle the stream response
+      Completer<List<NoaMessage>> completer = Completer();
+      streamedResponse.stream.transform(utf8.decoder)
+            .listen((data) {
+          _log.info("Received data: $data");
+          var parts = data.split("\n");
+          var event = parts[0].replaceFirst("event:", "").trim();
+          var responseData = parts[1].replaceFirst("data:", "").trim();
+          if (event == "json") {
+            body = jsonDecode(responseData);
+            if (body['message'] != null){
+              finalResponse += body['message'].toString().replaceAll(RegExp(r'—'), '-');
+            }
+          }
+          if (event == "end") {
+            List<NoaMessage> response = List.empty(growable: true);
 
-      List<int> serverResponse = List.empty(growable: true);
-      await streamedResponse.stream
-          .forEach((element) => serverResponse += element);
-      var body = jsonDecode(utf8.decode(serverResponse));
+            response.add(NoaMessage(
+              message: body['user_prompt'].toString().replaceAll(RegExp(r'—'), '-'),
+              from: NoaRole.user,
+              time: DateTime.now(),
+              image: kReleaseMode ? null : image,
+            ));
 
-      List<NoaMessage> response = List.empty(growable: true);
+            response.add(NoaMessage(
+              message: finalResponse,
+              from: NoaRole.noa,
+              time: DateTime.now(),
+              image: body['image'] != null ? base64.decode(body['image']) : null,
+            ));
 
-      response.add(NoaMessage(
-        message: body['user_prompt'].toString().replaceAll(RegExp(r'—'), '-'),
-        from: NoaRole.user,
-        time: DateTime.now(),
-        image: kReleaseMode ? null : image,
-      ));
+            _log.info(
+                "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
 
-      response.add(NoaMessage(
-        message: body['message'].toString().replaceAll(RegExp(r'—'), '-'),
-        from: NoaRole.noa,
-        time: DateTime.now(),
-        image: body['image'] != null ? base64.decode(body['image']) : null,
-      ));
-
-      _log.info(
-          "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
-
-      if (textToSpeech && body['audio'] != null) {
-        _playAudio(base64.decode(body['audio']));
-      }
-
-      return response;
+            if (textToSpeech && body['audio'] != null) {
+              _playAudio(base64.decode(body['audio']));
+            }
+            completer.complete(response);
+          }
+      });
+      
+      return completer.future;
     } catch (error) {
       _log.warning(error);
       return Future.error(error);
@@ -297,7 +322,7 @@ class NoaApi {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.brilliant.xyz/noa/wildcard'),
+        Uri.parse('$baseURl/noa/wildcard'),
       );
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
