@@ -11,7 +11,7 @@ import 'package:noa/util/location.dart';
 import 'package:path_provider/path_provider.dart';
 
 final _log = Logger("Noa API");
-const baseURl = "https://api.brilliant.xyz/dev";
+const baseURL = "https://api.brilliant.xyz/dev";
 
 class NoaApiServerException implements Exception {
   String reason;
@@ -97,7 +97,7 @@ class NoaApi {
     _log.fine("Provider: $provider, ID token: $id");
     try {
       final response = await http.post(
-        Uri.parse('$baseURl/noa/user/signin'),
+        Uri.parse('$baseURL/noa/user/signin'),
         body: {
           'id_token': id,
           'provider': provider.value,
@@ -126,7 +126,7 @@ class NoaApi {
     _log.info("Signing out");
     try {
       final response = await http.post(
-        Uri.parse('$baseURl/noa/user/signout'),
+        Uri.parse('$baseURL/noa/user/signout'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -146,7 +146,7 @@ class NoaApi {
     _log.info("Getting user info");
     try {
       final response = await http.get(
-        Uri.parse('$baseURl/noa/user'),
+        Uri.parse('$baseURL/noa/user'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -184,7 +184,7 @@ class NoaApi {
     _log.info("Deleting user");
     try {
       final response = await http.post(
-        Uri.parse('$baseURl/noa/user/delete'),
+        Uri.parse('$baseURL/noa/user/delete'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -212,7 +212,7 @@ class NoaApi {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseURl/noa/stream'),
+        Uri.parse('$baseURL/noa/stream'),
       );
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
@@ -246,17 +246,6 @@ class NoaApi {
           "Sending message request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
 
       var streamedResponse = await request.send();
-      // streamedResponse.asStream().listen((streamedResponse) {
-      //   print("Received streamedResponse.statusCode:${streamedResponse.statusCode}");
-      //   streamedResponse.stream
-      //       .transform(utf8.decoder)  // Decode the stream as UTF-8
-      //       .listen((data) {
-      //     print("Received data: $data");
-      //     setState(() {
-      //       _events.add(data);  // Add received data to the list
-      //     });
-      //   });
-      // });
       if (streamedResponse.statusCode != 200) {
         throw NoaApiServerException(
           reason: streamedResponse.reasonPhrase ?? "",
@@ -305,7 +294,7 @@ class NoaApi {
             completer.complete(response);
           }
       });
-      
+
       return completer.future;
     } catch (error) {
       _log.warning(error);
@@ -322,7 +311,7 @@ class NoaApi {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseURl/noa/wildcard'),
+        Uri.parse('$baseURL/noa/wildcard'),
       );
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
