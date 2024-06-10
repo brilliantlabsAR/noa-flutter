@@ -57,6 +57,16 @@ while true do
     if state:is("START") then
         state:on_entry(function()
             graphics:clear()
+            graphics:append_text("look ahead", "\u{F0000}")
+        end)
+        local pos = frame.imu.direction()
+        if pos['roll'] > -20 and pos['roll'] < 20 and pos['pitch'] > -60 and pos['pitch'] < 40 then
+            state:switch("TAP_ME_IN")
+        end
+        state:switch_after(10, "SLEEP")
+    elseif state:is('TAP_ME_IN') then
+        state:on_entry(function()
+            graphics:clear()
             graphics:append_text("tap me in", "\u{F0000}")
         end)
         state:switch_after(10, "PRE_SLEEP")
@@ -113,9 +123,9 @@ while true do
 
         if state:has_been() > 2 then
             state:switch_on_tap("ON_IT")
-            state:switch_on_double_tap("START")
+            state:switch_on_double_tap("TAP_ME_IN")
         end
-        state:switch_after(10, "START")
+        state:switch_after(10, "TAP_ME_IN")
     elseif state:is("ON_IT") then
         state:on_entry(function()
             frame.microphone.stop()
@@ -143,7 +153,7 @@ while true do
             graphics:clear()
             graphics:append_text("", "\u{F0001}")
         end)
-        state:switch_after(1, "START")
+        state:switch_after(1, "TAP_ME_IN")
     elseif state:is("PRINT_REPLY") then
         graphics:on_complete(function()
             state:switch("HOLD_REPLY")
@@ -158,9 +168,10 @@ while true do
         state:switch_on_double_tap("LISTEN")
     elseif state:is("HOLD_REPLY") then
         if math.random(1, 10) == 10 then
-            state:switch_after(5, "WILDCARD")
+            -- state:switch_after(5, "WILDCARD") -- TODO disabled for now
+            state:switch_after(5, "TAP_ME_IN")
         else
-            state:switch_after(5, "START")
+            state:switch_after(5, "TAP_ME_IN")
         end
         state:switch_on_tap("LISTEN")
         state:switch_on_double_tap("LISTEN")
