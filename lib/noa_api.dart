@@ -264,8 +264,10 @@ class NoaApi {
           var responseData = parts[1].replaceFirst("data:", "").trim();
           if (event == "json") {
             body = jsonDecode(responseData);
-            if (body['message'] != null){
-              finalResponse += body['message'].toString().replaceAll(RegExp(r'—'), '-');
+            if(body['user_prompt'] == null || body['user_prompt'] == ""){
+              if (body['message'] != null){
+                finalResponse += body['message'].toString().replaceAll(RegExp(r'—'), '-');
+              }
             }
           }
           if (event == "end") {
