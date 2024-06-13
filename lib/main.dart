@@ -40,7 +40,7 @@ void setupAudioSession() {
       androidAudioAttributes: AndroidAudioAttributes(
         contentType: AndroidAudioContentType.speech,
         flags: AndroidAudioFlags.none,
-        usage: AndroidAudioUsage.voiceCommunication,
+        usage: AndroidAudioUsage.assistant,
       ),
       androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
       androidWillPauseWhenDucked: true,

@@ -479,7 +479,7 @@ class BrilliantBluetooth {
         timeout: const Duration(days: 365),
         autoConnect: Platform.isIOS ? true : false,
         mtu: null,
-      );
+      ); // TODO Should wait but it throws an error on Android after some time
 
       final connectionState = await device.connectionState.firstWhere((state) =>
           state == BluetoothConnectionState.connected ||
