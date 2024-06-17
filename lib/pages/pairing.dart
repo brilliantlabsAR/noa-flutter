@@ -19,6 +19,7 @@ class PairingPage extends ConsumerWidget {
 
     String pairingBoxText = "";
     String pairingBoxButtonText = "";
+    Image pairingBoxImage = Image.asset('assets/images/charge.gif');
     bool pairingBoxButtonEnabled = false;
     int updateProgress = ref.watch(app.model).bluetoothUploadProgress.toInt();
 
@@ -26,11 +27,13 @@ class PairingPage extends ConsumerWidget {
       case app.State.scanning:
         pairingBoxText = "Bring your device close";
         pairingBoxButtonText = "Searching";
+        pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;
         break;
       case app.State.found:
         pairingBoxText = "Frame found";
         pairingBoxButtonText = "Pair";
+        pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = true;
         break;
       case app.State.connect:
@@ -39,31 +42,37 @@ class PairingPage extends ConsumerWidget {
       case app.State.triggerUpdate:
         pairingBoxText = "Frame found";
         pairingBoxButtonText = "Connecting";
+        pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;
         break;
       case app.State.updateFirmware:
         pairingBoxText = "Updating software $updateProgress%";
         pairingBoxButtonText = "Keep your device close";
+        pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;
         break;
       case app.State.uploadMainLua:
         pairingBoxText = "Setting up Noa 50%";
         pairingBoxButtonText = "Keep your device close";
+        pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;
         break;
       case app.State.uploadGraphicsLua:
         pairingBoxText = "Setting up Noa 68%";
         pairingBoxButtonText = "Keep your device close";
+        pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;
         break;
       case app.State.uploadStateLua:
         pairingBoxText = "Setting up Noa 83%";
         pairingBoxButtonText = "Keep your device close";
+        pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;
         break;
       case app.State.requiresRepair:
         pairingBoxText = "Un-pair Frame first";
         pairingBoxButtonText = "Try again";
+        pairingBoxImage = Image.asset('assets/images/repair.gif');
         pairingBoxButtonEnabled = true;
         break;
     }
@@ -118,7 +127,7 @@ class PairingPage extends ConsumerWidget {
                     ),
                   ), //
                   Expanded(
-                    child: Image.asset('assets/images/pairing.gif'),
+                    child: pairingBoxImage,
                   ),
                   GestureDetector(
                     onTap: () {
