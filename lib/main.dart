@@ -1,10 +1,12 @@
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/util/app_log.dart';
+import 'package:noa/util/foreground_service.dart';
 
 final globalPageStorageBucket = PageStorageBucket();
 
@@ -16,10 +18,13 @@ void main() async {
   final container = ProviderContainer();
   container.read(appLog);
 
+  // Set up Android foreground service
+  initializeForegroundService();
+
   // Request bluetooth permission
   BrilliantBluetooth.requestPermission();
 
-  setupAudioSession();
+  _setupAudioSession();
 
   runApp(UncontrolledProviderScope(
     container: container,
@@ -27,7 +32,7 @@ void main() async {
   ));
 }
 
-void setupAudioSession() {
+void _setupAudioSession() {
   AudioSession.instance.then((audioSession) async {
     await audioSession.configure(const AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playback,
@@ -54,9 +59,11 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    startForegroundService();
+    return const WithForegroundTask(
+        child: MaterialApp(
       debugShowCheckedModeBanner: false,
       home: SplashPage(),
-    );
+    ));
   }
 }

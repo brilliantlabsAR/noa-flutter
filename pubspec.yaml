@@ -30,6 +30,7 @@ dependencies:
   just_audio: ^0.9.37
   path_provider: ^2.1.3
   audio_session: ^0.1.19
+  flutter_foreground_task: ^6.5.0
 
 dev_dependencies:
   flutter_test:
