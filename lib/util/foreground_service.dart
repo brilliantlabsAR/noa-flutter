@@ -1,5 +1,8 @@
 import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger("Foreground task");
 
 void initializeForegroundService() {
   FlutterForegroundTask.init(
@@ -39,17 +42,17 @@ void _startForegroundCallback() {
 class _ForegroundFirstTaskHandler extends TaskHandler {
   @override
   void onStart(DateTime timestamp, SendPort? sendPort) async {
-    print("Starting foreground task");
+    _log.info("Starting foreground task");
   }
 
   @override
   void onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {
-    print("Foreground task tick");
+    _log.info("Foreground repeat event triggered");
   }
 
   @override
   void onDestroy(DateTime timestamp, SendPort? sendPort) async {
-    print("Destroying foreground task");
+    _log.info("Destroying foreground task");
     FlutterForegroundTask.stopService();
   }
 }
