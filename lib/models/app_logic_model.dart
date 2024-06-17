@@ -441,17 +441,6 @@ class AppLogicModel extends ChangeNotifier {
                 notifyListeners();
               });
 
-              Timer(const Duration(seconds: 13), () async {
-                ByteData image = await rootBundle
-                    .load('assets/images/tutorial/wildcard.png');
-                noaMessages.add(NoaMessage(
-                    message: "Occasionally a wildcard may appear",
-                    from: NoaRole.noa,
-                    time: DateTime.now(),
-                    image: image.buffer.asUint8List()));
-                notifyListeners();
-              });
-
               triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.error);
