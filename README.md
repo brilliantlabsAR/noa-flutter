@@ -2,7 +2,7 @@
 
 Welcome to the Noa app repository! Built using Flutter, this repository also serves as a great example of how to build your own Frame apps.
 
-<p style="text-align: center;"><a href="https://apps.apple.com/us/app/noa-for-frame/id6482980023"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Apple App Store badge" width="125"/></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://play.google.com/store/apps/details?id=xyz.brilliant.argpt"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play Store badge" width="125"/></a></p>
+<p style="text-align: center;"><a href="https://apps.apple.com/us/app/noa-for-frame/id6482980023"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Apple App Store badge" width="125"/></a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://play.google.com/store/apps/details?id=xyz.brilliant.noaflutter"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play Store badge" width="125"/></a></p>
 
 ![Noa screenshots](/docs/screenshots.png)
 
