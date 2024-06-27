@@ -99,7 +99,7 @@ while true do
         end)
 
         if state:has_been() > 0.2 and image_taken == false then
-            frame.camera.capture()
+            frame.camera.capture {}
             image_taken = true
         end
 

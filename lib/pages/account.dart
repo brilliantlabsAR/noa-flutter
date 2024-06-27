@@ -61,6 +61,12 @@ class AccountPage extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _linkedFooterText("Tutorials", false, () async {
+                    try {
+                      await launchUrl(Uri.parse(
+                          "https://www.youtube.com/playlist?list=PLfbaC5GRVJJgSPdN-KWndTld35tihu1Ic"));
+                    } catch (_) {}
+                  }),
                   _linkedFooterText("Logout", false, () async {
                     ref.read(app.model).triggerEvent(app.Event.logoutPressed);
                     if (context.mounted) {
