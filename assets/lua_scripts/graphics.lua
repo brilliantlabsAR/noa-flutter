@@ -20,8 +20,8 @@ function Graphics:clear()
     self.__ending_index = 1
     self.__done_function = (function() end)()
     -- Reset the palette
-    frame.display.assign_color(1, 0x00, 0x00, 0x00)
-    frame.display.assign_color(2, 0xFF, 0xFF, 0xFF)
+    -- frame.display.assign_color(1, 0x00, 0x00, 0x00)
+    -- frame.display.assign_color(2, 0xFF, 0xFF, 0xFF)
 end
 
 function Graphics:append_text(data, emoji)
