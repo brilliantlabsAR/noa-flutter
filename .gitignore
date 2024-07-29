@@ -25,6 +25,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/key.properties
 
 # Symbolication related
 app.*.symbols
