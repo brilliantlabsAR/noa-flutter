@@ -22,6 +22,7 @@ class PairingPage extends ConsumerWidget {
     Image pairingBoxImage = Image.asset('assets/images/charge.gif');
     bool pairingBoxButtonEnabled = false;
     int updateProgress = ref.watch(app.model).bluetoothUploadProgress.toInt();
+    String deviceName = ref.watch(app.model).deviceName;
 
     switch (ref.watch(app.model).state.current) {
       case app.State.scanning:
@@ -31,7 +32,7 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = false;
         break;
       case app.State.found:
-        pairingBoxText = "Frame found";
+        pairingBoxText = "$deviceName found";
         pairingBoxButtonText = "Pair";
         pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = true;
@@ -40,7 +41,7 @@ class PairingPage extends ConsumerWidget {
       case app.State.stopLuaApp:
       case app.State.checkVersion:
       case app.State.triggerUpdate:
-        pairingBoxText = "Frame found";
+        pairingBoxText = "$deviceName found";
         pairingBoxButtonText = "Connecting";
         pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;

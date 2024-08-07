@@ -69,6 +69,7 @@ class AppLogicModel extends ChangeNotifier {
   StateMachine state = StateMachine(State.getUserSettings);
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
+  String deviceName = "";
   List<NoaMessage> noaMessages = List.empty(growable: true);
 
   void setUserAuthToken(String token) {
@@ -260,6 +261,7 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.deviceLost);
             }).listen((device) {
               _nearbyDevice = device;
+              deviceName = device.device.advName;
               triggerEvent(Event.deviceFound);
             });
           });
@@ -318,7 +320,7 @@ class AppLogicModel extends ChangeNotifier {
               final response = await _connectedDevice!
                   .sendString("print(frame.FIRMWARE_VERSION)")
                   .timeout(const Duration(seconds: 1));
-              if (response == "v24.200.1206") {
+              if (response == "v24.220.1445") {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -475,7 +477,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             _connectedDevice!
-                .updateFirmware("assets/frame-firmware-v24.200.1206.zip")
+                .updateFirmware("assets/frame-firmware-v24.220.1445.zip")
                 .listen(
               (value) {
                 bluetoothUploadProgress = value;
