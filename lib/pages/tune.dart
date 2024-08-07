@@ -39,6 +39,7 @@ Widget _textBox(WidgetRef ref, int index) {
             initialValue: value,
             minLines: 3,
             maxLines: null,
+            onTapOutside: (event) => FocusScope.of(ref.context).unfocus(),
             onChanged: (value) {
               switch (index) {
                 case 0:
