@@ -11,20 +11,8 @@ Widget _textBox(WidgetRef ref, int index) {
 
   switch (index) {
     case 0:
-      title = "In the style of";
-      value = ref.watch(app.model.select((v) => v.tuneStyle));
-      break;
-    case 1:
-      title = "Tone";
-      value = ref.watch(app.model.select((v) => v.tuneTone));
-      break;
-    case 2:
-      title = "Formatted as";
-      value = ref.watch(app.model.select((v) => v.tuneFormat));
-      break;
-    case 3:
-      title = "Refer to me as";
-      value = ref.watch(app.model.select((v) => v.referToMe));
+      title = "System prompt";
+      value = ref.watch(app.model.select((v) => v.tunePrompt));
       break;
   }
   return Padding(
@@ -49,19 +37,12 @@ Widget _textBox(WidgetRef ref, int index) {
           ),
           child: TextFormField(
             initialValue: value,
+            minLines: 3,
+            maxLines: null,
             onChanged: (value) {
               switch (index) {
                 case 0:
-                  ref.read(app.model.select((v) => v.tuneStyle = value));
-                  break;
-                case 1:
-                  ref.read(app.model.select((v) => v.tuneTone = value));
-                  break;
-                case 2:
-                  ref.read(app.model.select((v) => v.tuneFormat = value));
-                  break;
-                case 3:
-                  ref.read(app.model.select((v) => v.referToMe = value));
+                  ref.read(app.model.select((v) => v.tunePrompt = value));
                   break;
               }
             },
@@ -219,9 +200,6 @@ class TunePage extends ConsumerWidget {
           child: Column(
             children: [
               _textBox(ref, 0),
-              _textBox(ref, 1),
-              _textBox(ref, 2),
-              _textBox(ref, 3),
               _slider(ref, 0),
               _slider(ref, 1),
               _checkBox(ref, 0),

@@ -97,43 +97,13 @@ class AppLogicModel extends ChangeNotifier {
   }
 
   // User's tune preferences
-  String _tuneStyle = "";
-  String get tuneStyle => _tuneStyle;
-  set tuneStyle(String value) {
-    _tuneStyle = value;
+  String _tunePrompt = "";
+  String get tunePrompt => _tunePrompt;
+  set tunePrompt(String value) {
+    _tunePrompt = value;
     () async {
       final savedData = await SharedPreferences.getInstance();
-      savedData.setString("tuneStyle", _tuneStyle);
-    }();
-  }
-
-  String _tuneTone = "";
-  String get tuneTone => _tuneTone;
-  set tuneTone(String value) {
-    _tuneTone = value;
-    () async {
-      final savedData = await SharedPreferences.getInstance();
-      savedData.setString("tuneTone", _tuneTone);
-    }();
-  }
-
-  String _tuneFormat = "";
-  String get tuneFormat => _tuneFormat;
-  set tuneFormat(String value) {
-    _tuneFormat = value;
-    () async {
-      final savedData = await SharedPreferences.getInstance();
-      savedData.setString("tuneFormat", _tuneFormat);
-    }();
-  }
-
-  String _referToMe = "";
-  String get referToMe => _referToMe;
-  set referToMe(String value) {
-    _referToMe = value;
-    () async {
-      final savedData = await SharedPreferences.getInstance();
-      savedData.setString("referToMe", _referToMe);
+      savedData.setString("tunePrompt", _tunePrompt);
     }();
   }
 
@@ -217,12 +187,8 @@ class AppLogicModel extends ChangeNotifier {
             try {
               // Load the user's Tune settings or defaults if none are set
               final savedData = await SharedPreferences.getInstance();
-              _tuneStyle = savedData.getString('tuneStyle') ??
-                  "a witty, friendly but occasionally sarcastic assistant";
-              _tuneTone =
-                  savedData.getString('tuneTone') ?? "entertaining and funny";
-              _tuneFormat = savedData.getString('tuneFormat') ?? "";
-              _referToMe = savedData.getString('referToMe') ?? "";
+              _tunePrompt = savedData.getString('tunePrompt') ??
+                  "You are Noa, a smart personal AI assistant inside the user's AR smart glasses that answers all user queries and questions";
               _tuneTemperature = savedData.getInt('tuneTemperature') ?? 50;
               var len = savedData.getString('tuneLength') ?? 'standard';
               _tuneLength = TuneLength.values
@@ -531,26 +497,8 @@ class AppLogicModel extends ChangeNotifier {
                 _connectedDevice!.dataResponse.listen((event) async {
               String getTunePrompt() {
                 String prompt = "";
-                if (_tuneStyle != "" || _tuneTone != "" || _tuneFormat != "") {
-                  prompt += "Respond";
-
-                  if (_tuneStyle != "") {
-                    prompt += " in the style of $_tuneStyle";
-                  }
-
-                  if (_tuneTone != "") {
-                    prompt += " with a $_tuneTone tone";
-                  }
-
-                  if (_tuneFormat != "") {
-                    prompt += " formatted as $_tuneFormat";
-                  }
-
-                  prompt += ". ";
-                }
-
-                if (_referToMe != "") {
-                  prompt += "Refer to me as $_referToMe. ";
+                if (_tunePrompt != "") {
+                  prompt += "$_tunePrompt. ";
                 }
 
                 switch (_tuneLength) {
