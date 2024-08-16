@@ -12,6 +12,7 @@ import 'package:noa/widgets/top_title_bar.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:uuid/uuid.dart';
 import 'package:noa/util/location.dart';
+
 final ScrollController _scrollController = ScrollController();
 
 class NoaPage extends ConsumerWidget {
