@@ -11,7 +11,7 @@ import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:uuid/uuid.dart';
-
+import 'package:noa/util/location.dart';
 final ScrollController _scrollController = ScrollController();
 
 class NoaPage extends ConsumerWidget {
@@ -19,6 +19,7 @@ class NoaPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    Location.requestPermission(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Timer(const Duration(milliseconds: 100), () {
         if (context.mounted) {
