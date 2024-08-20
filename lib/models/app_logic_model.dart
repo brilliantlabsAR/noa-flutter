@@ -64,6 +64,34 @@ enum TuneLength {
   final String value;
 }
 
+class Note {
+  final String title;
+  final String content;
+  final DateTime dateTime;
+
+  Note({
+    required this.title,
+    required this.content,
+    required this.dateTime,
+  });
+
+  factory Note.fromJson(Map<String, dynamic> json) {
+    return Note(
+      title: json['title'],
+      content: json['content'],
+      dateTime: DateTime.parse(json['dateTime']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'content': content,
+      'dateTime': dateTime.toIso8601String(),
+    };
+  }
+}
+
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
   StateMachine state = StateMachine(State.getUserSettings);
@@ -71,6 +99,50 @@ class AppLogicModel extends ChangeNotifier {
   double bluetoothUploadProgress = 0;
   String deviceName = "";
   List<NoaMessage> noaMessages = List.empty(growable: true);
+  List<Note> _notes = [];
+
+  List<Note> get notes => _notes;
+
+  set notes(List<Note> value) {
+    _notes = value;
+    notifyListeners();
+  }
+
+  // Load notes from SharedPreferences
+  Future<void> loadNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final notesString = prefs.getString('notes') ?? '[]';
+    final List<dynamic> notesJson = jsonDecode(notesString);
+    _notes = notesJson.map((json) => Note.fromJson(json)).toList();
+    notifyListeners();
+  }
+
+  // Save notes to SharedPreferences
+  Future<void> saveNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final notesString = jsonEncode(_notes.map((note) => note.toJson()).toList());
+    await prefs.setString('notes', notesString);
+  }
+
+  void addNote({
+    required String title,
+    required String content,
+  }) {
+    final newNote = Note(
+      title: title,
+      content: content,
+      dateTime: DateTime.now(),
+    );
+    notes = [...notes, newNote];
+    saveNotes();
+    notifyListeners();
+  }
+
+  void deleteNoteAt(int index) {
+    _notes.removeAt(index);
+    saveNotes();
+    notifyListeners();
+  }
 
   void setUserAuthToken(String token) {
     SharedPreferences.getInstance().then((value) async {
@@ -149,6 +221,8 @@ class AppLogicModel extends ChangeNotifier {
   List<int> _imageData = List.empty(growable: true);
 
   AppLogicModel() {
+    loadNotes(); // Load notes when the model is instantiated
+
     // Uncomment to create AppStore images
     // noaMessages.add(NoaMessage(
     //   message: "Recommend me some pizza places I near Union Square",
@@ -535,6 +609,7 @@ class AppLogicModel extends ChangeNotifier {
                       getTunePrompt(),
                       _tuneTemperature / 50,
                       textToSpeech,
+                      this,
                     );
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
@@ -558,7 +633,8 @@ class AppLogicModel extends ChangeNotifier {
                         getTunePrompt(),
                         _tuneTemperature / 50,
                         noaMessages,
-                        textToSpeech);
+                        textToSpeech,
+                        this);
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
                     triggerEvent(Event.noaResponse);
@@ -596,6 +672,9 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
+          
+
+          
 
         case State.disconnected:
           state.onEntry(() async {
@@ -659,6 +738,8 @@ class AppLogicModel extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  BrilliantDevice? get connectedDevice => _connectedDevice;
 
   @override
   void dispose() {

@@ -3,6 +3,7 @@ import 'package:noa/style.dart';
 import 'package:noa/pages/noa.dart';
 import 'package:noa/pages/tune.dart';
 import 'package:noa/pages/hack.dart';
+import 'package:noa/pages/notes.dart';
 import 'package:noa/util/switch_page.dart';
 
 Color getButtonColor(bool selected, bool darkMode) {
@@ -89,6 +90,25 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
               child: Center(
                 child: Text(
                   "HACK",
+                  style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              switchPage(context, const NotesPage());
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: getButtonColor(selected == 3, darkMode),
+                borderRadius: const BorderRadius.all(Radius.circular(20)),
+              ),
+              child: Center(
+                child: Text(
+                  "NOTES",
                   style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
                 ),
               ),
