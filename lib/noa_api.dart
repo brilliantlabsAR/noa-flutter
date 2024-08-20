@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:noa/util/bytes_to_wav.dart';
 import 'package:noa/util/location.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:noa/models/app_logic_model.dart'; // Add this import
 
 final _log = Logger("Noa API");
 
@@ -207,6 +208,7 @@ class NoaApi {
     double temperature,
     List<NoaMessage> noaHistory,
     bool textToSpeech,
+    AppLogicModel appLogicModel, // Add this parameter
   ) async {
     try {
       var request = http.MultipartRequest(
@@ -216,33 +218,33 @@ class NoaApi {
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
 
-      request.files.add(http.MultipartFile.fromBytes(
-        'audio',
-        bytesToWav(audio, 8, 8000),
-        filename: 'audio.wav',
-      ));
+      // Create mm JSON object
+      var mmData = {
+        'local_time': DateTime.now().toLocal().toString(),
+        'address': await Location.getAddress(),
+      };
 
-      try {
-        image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
+      request.fields['mm'] = jsonEncode(mmData);
 
+      // Add image file
+      if (image.isNotEmpty) {
         request.files.add(http.MultipartFile.fromBytes(
           'image',
           image,
           filename: 'image.jpg',
         ));
-      } catch (error) {
-        _log.warning(error);
       }
 
-      request.fields['noa_system_prompt'] = systemRole;
-      request.fields['messages'] = jsonEncode(noaHistory);
-      request.fields['location'] = await Location.getAddress();
-      request.fields['time'] = DateTime.now().toString();
-      request.fields['temperature'] = temperature.toString();
-      request.fields['tts'] = textToSpeech ? "1" : "0";
+      // Add audio file
+      if (audio.isNotEmpty) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'audio',
+          bytesToWav(audio, 8, 8000),
+          filename: 'audio.wav',
+        ));
+      }
 
-      _log.info(
-          "Sending message request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");
+      _log.info("Sending message request: ${request.fields}");
 
       var streamedResponse = await request.send();
 
@@ -274,13 +276,22 @@ class NoaApi {
         image: body['image'] != null ? base64.decode(body['image']) : null,
       ));
 
-      _log.info(
-          "Received response. User: \"${body['user_prompt']}\". Noa: \"${body['message']}\". Debug: ${body['debug']}");
-
+      // Check for note in the response and save it if present
+      List<dynamic> notes = body['note'] ?? [];
+      for (var note in notes) {
+        String title = note['title'] ?? "";
+        String content = note['note_content'] ?? "";
+        if (title.isNotEmpty) {
+          appLogicModel.addNote(
+            title: title,
+            content: content,
+          );
+        }
+      }
+      _log.info(body);
       if (textToSpeech && body['audio'] != null) {
         _playAudio(base64.decode(body['audio']));
       }
-
       return response;
     } catch (error) {
       _log.warning(error);
@@ -293,6 +304,7 @@ class NoaApi {
     String systemRole,
     double temperature,
     bool textToSpeech,
+    AppLogicModel appLogicModel,
   ) async {
     try {
       var request = http.MultipartRequest(
