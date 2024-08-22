@@ -3,7 +3,6 @@ import 'package:noa/pages/noa.dart';
 import 'package:noa/pages/tune.dart';
 import 'package:noa/pages/hack.dart';
 import 'package:noa/pages/account.dart';
-import 'package:noa/widgets/top_title_bar.dart';
 import 'package:noa/util/switch_page.dart';
 import 'package:flutter/services.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
