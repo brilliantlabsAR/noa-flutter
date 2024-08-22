@@ -4,6 +4,7 @@ import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
+import 'package:noa/pages/home.dart';
 
 class PairingPage extends ConsumerWidget {
   const PairingPage({super.key});
@@ -13,7 +14,7 @@ class PairingPage extends ConsumerWidget {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (ref.watch(app.model).state.current == app.State.connected ||
           ref.watch(app.model).state.current == app.State.disconnected) {
-        switchPage(context, const NoaPage());
+        switchPage(context, const HomePage());
       }
     });
 

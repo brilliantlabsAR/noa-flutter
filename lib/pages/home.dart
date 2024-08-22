@@ -76,8 +76,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         modelFile = 'assets/models/3dframemodel_smokeyBlack.glb';
         break;
     }
-    print('Selected color: $color');
-    print('Loading model file: $modelFile');
     return modelFile;
   }
 

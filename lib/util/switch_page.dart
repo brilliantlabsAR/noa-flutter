@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 void switchPage(BuildContext context, Widget to) {
-  Navigator.push(
+  Navigator.pushReplacement(
     context,
     PageRouteBuilder(
       pageBuilder: (context, animation1, animation2) => to,

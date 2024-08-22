@@ -19,27 +19,27 @@ AppBar topTitleBar(BuildContext context, String title, bool darkMode, bool accou
     ),
     centerTitle: false,
     titleSpacing: 16,
-    actions: Navigator.of(context).canPop()
-        ? [
-            Container(
-              margin: EdgeInsets.only(right: 16),
-              child: ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(Icons.arrow_back, color: Colors.black, size: 18),
-                label: Text('Back', style: TextStyle(color: Colors.black)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  elevation: 0,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: Colors.black, width: 1),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
+    actions: [
+      Container(
+        margin: EdgeInsets.only(right: 16),
+        child: ElevatedButton.icon(
+          onPressed: () => Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => HomePage()),
+          ),
+          icon: Icon(Icons.arrow_back, color: Colors.black, size: 18),
+          label: Text('Back', style: TextStyle(color: Colors.black)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: Colors.black, width: 1),
             ),
-          ]
-        : null,
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+        ),
+      ),
+    ],
   );
 }
