@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:noa/pages/home.dart';
 import 'package:noa/pages/account.dart';
 import 'package:noa/style.dart';
 
-AppBar topTitleBar(
-    BuildContext context, String title, bool darkMode, bool accountPage) {
+AppBar topTitleBar(BuildContext context, String title, bool darkMode, bool accountPage) {
   return AppBar(
     toolbarHeight: 84,
     automaticallyImplyLeading: false,
@@ -11,34 +11,35 @@ AppBar topTitleBar(
     scrolledUnderElevation: 0,
     title: Text(
       title,
-      style: darkMode ? textStyleWhiteTitle : textStyleDarkTitle,
+      style: TextStyle(
+        fontSize: 40,
+        fontWeight: FontWeight.w300,
+        color: darkMode ? colorWhite : colorDark,
+      ),
     ),
     centerTitle: false,
-    titleSpacing: 42,
-    actions: [
-      Container(
-          width: 28,
-          height: 28,
-          margin: const EdgeInsets.only(right: 42),
-          child: GestureDetector(
-            onTap: () {
-              if (accountPage) {
-                Navigator.pop(context);
-              } else {
-                Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation1, animation2) =>
-                        const AccountPage(),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
+    titleSpacing: 16,
+    actions: Navigator.of(context).canPop()
+        ? [
+            Container(
+              margin: EdgeInsets.only(right: 16),
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: Icon(Icons.arrow_back, color: Colors.black, size: 18),
+                label: Text('Back', style: TextStyle(color: Colors.black)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: Colors.black, width: 1),
                   ),
-                );
-              }
-            },
-            child: Icon(accountPage ? Icons.cancel : Icons.person,
-                color: darkMode ? colorWhite : colorDark),
-          ))
-    ],
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ),
+          ]
+        : null,
   );
 }

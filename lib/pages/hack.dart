@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/app_log.dart';
 import 'package:noa/util/show_toast.dart';
-import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 
 final ScrollController _bluetoothLogScrollController = ScrollController();
@@ -24,9 +23,9 @@ Widget _logTextBox(
         }
       },
       child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: colorLight),
-          borderRadius: const BorderRadius.all(Radius.circular(10)),
+        decoration: const BoxDecoration(
+          color: Color.fromRGBO(245, 245, 245, 1),
+          borderRadius: BorderRadius.all(Radius.circular(0)),
         ),
         padding: const EdgeInsets.all(10),
         margin: const EdgeInsets.only(bottom: 28),
@@ -39,7 +38,7 @@ Widget _logTextBox(
             scrollDirection: Axis.horizontal,
             child: Text(
               data,
-              style: textStyleLight,
+              style: textStyleDark,
             ),
           ),
         ),
@@ -65,25 +64,37 @@ class HackPage extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: colorDark,
-      appBar: topTitleBar(context, 'HACK', true, false),
+      backgroundColor: colorWhite,
+      appBar: topTitleBar(context, 'Hack', false, false),
       body: Padding(
-        padding: const EdgeInsets.only(left: 42, right: 42),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
-              child: Text("Bluetooth log", style: textStyleLightSubHeading),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                "Bluetooth log",
+                style: textStyleLightSubHeading.copyWith(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14.0,
+                ),
+              ),
             ),
             _logTextBox(
               context,
               ref.watch(appLog).bluetooth,
               _bluetoothLogScrollController,
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
-              child: Text("App log", style: textStyleLightSubHeading),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                "App log",
+                style: textStyleLightSubHeading.copyWith(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14.0,
+                ),
+              ),
             ),
             _logTextBox(
               context,
@@ -92,8 +103,7 @@ class HackPage extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: bottomNavBar(context, 2, true),
+      )
     );
   }
 }

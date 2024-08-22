@@ -31,7 +31,7 @@ class RegulatoryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
         backgroundColor: colorWhite,
-        appBar: topTitleBar(context, 'REGULATORY', false, true),
+        appBar: topTitleBar(context, 'Regulatory', false, true),
         body: Padding(
           padding: const EdgeInsets.only(left: 42, right: 42),
           child: SingleChildScrollView(

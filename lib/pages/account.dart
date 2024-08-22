@@ -12,9 +12,22 @@ Widget _accountInfoText(String title, String detail) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 42),
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: textStyleLightSubHeading),
-        Text(detail, style: textStyleDarkTitle),
+        Text(
+          title,
+          style: textStyleLightSubHeading.copyWith(
+            fontWeight: FontWeight.w400,
+            fontSize: 14.0,
+          ),
+        ),
+        Text(
+          detail,
+          style: textStyleDarkTitle.copyWith(
+            fontWeight: FontWeight.w300,
+            fontSize: 22.0,
+          ),
+        ),
       ],
     ),
   );
@@ -22,12 +35,15 @@ Widget _accountInfoText(String title, String detail) {
 
 Widget _linkedFooterText(String text, bool redText, Function action) {
   return Padding(
-    padding: const EdgeInsets.only(top: 8),
+    padding: const EdgeInsets.only(top: 20),
     child: GestureDetector(
       onTap: () => action(),
-      child: Text(
-        text,
-        style: redText ? textStyleRed : textStyleDark,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: redText ? textStyleRed : textStyleDark,
+        ),
       ),
     ),
   );
@@ -40,68 +56,66 @@ class AccountPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: colorWhite,
-      appBar: topTitleBar(context, 'ACCOUNT', false, true),
-      body: Column(
-        children: [
-          Center(
-            child: Column(
-              children: [
-                _accountInfoText(
-                    "Signed In As", ref.watch(app.model).noaUser.email),
-                _accountInfoText("Credits Used",
-                    "${ref.watch(app.model).noaUser.creditsUsed} / ${ref.watch(app.model).noaUser.maxCredits}"),
-                _accountInfoText("Plan", ref.watch(app.model).noaUser.plan)
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 42, bottom: 50),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _linkedFooterText("Tutorials", false, () async {
-                    try {
-                      await launchUrl(Uri.parse(
-                          "https://www.youtube.com/playlist?list=PLfbaC5GRVJJgSPdN-KWndTld35tihu1Ic"));
-                    } catch (_) {}
-                  }),
-                  _linkedFooterText("Logout", false, () async {
-                    ref.read(app.model).triggerEvent(app.Event.logoutPressed);
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      switchPage(context, const SplashPage());
-                    }
-                  }),
-                  _linkedFooterText("Privacy Policy", false, () async {
-                    try {
-                      await launchUrl(Uri.parse(
-                          "https://brilliant.xyz/pages/privacy-policy"));
-                    } catch (_) {}
-                  }),
-                  _linkedFooterText("Terms & Conditions", false, () async {
-                    try {
-                      await launchUrl(Uri.parse(
-                          "https://brilliant.xyz/pages/terms-conditions"));
-                    } catch (_) {}
-                  }),
-                  _linkedFooterText("Regulatory", false, () async {
-                    switchPage(context, const RegulatoryPage());
-                  }),
-                  _linkedFooterText("Delete Account", true, () {
-                    // TODO ask user to confirm
-                    ref.read(app.model).triggerEvent(app.Event.deletePressed);
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      switchPage(context, const SplashPage());
-                    }
-                  }),
-                ],
+      appBar: topTitleBar(context, 'Account', false, true),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 40.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _accountInfoText(
+                  "Signed In As", ref.watch(app.model).noaUser.email),
+              _accountInfoText("Credits Used",
+                  "${ref.watch(app.model).noaUser.creditsUsed} / ${ref.watch(app.model).noaUser.maxCredits}"),
+              _accountInfoText("Plan", ref.watch(app.model).noaUser.plan),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _linkedFooterText("Tutorials", false, () async {
+                      try {
+                        await launchUrl(Uri.parse(
+                            "https://www.youtube.com/playlist?list=PLfbaC5GRVJJgSPdN-KWndTld35tihu1Ic"));
+                      } catch (_) {}
+                    }),
+                    _linkedFooterText("Logout", false, () async {
+                      ref.read(app.model).triggerEvent(app.Event.logoutPressed);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        switchPage(context, const SplashPage());
+                      }
+                    }),
+                    _linkedFooterText("Privacy Policy", false, () async {
+                      try {
+                        await launchUrl(Uri.parse(
+                            "https://brilliant.xyz/pages/privacy-policy"));
+                      } catch (_) {}
+                    }),
+                    _linkedFooterText("Terms & Conditions", false, () async {
+                      try {
+                        await launchUrl(Uri.parse(
+                            "https://brilliant.xyz/pages/terms-conditions"));
+                      } catch (_) {}
+                    }),
+                    _linkedFooterText("Regulatory", false, () async {
+                      switchPage(context, const RegulatoryPage());
+                    }),
+                    _linkedFooterText("Delete Account", true, () {
+                      // TODO ask user to confirm
+                      ref.read(app.model).triggerEvent(app.Event.deletePressed);
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        switchPage(context, const SplashPage());
+                      }
+                    }),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
