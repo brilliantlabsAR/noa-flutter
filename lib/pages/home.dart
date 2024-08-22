@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:noa/pages/noa.dart';
 import 'package:noa/pages/tune.dart';
 import 'package:noa/pages/hack.dart';
-import 'package:noa/pages/notes.dart';
 import 'package:noa/pages/account.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 import 'package:noa/util/switch_page.dart';
