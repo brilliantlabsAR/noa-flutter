@@ -65,6 +65,10 @@ enum TuneLength {
 }
 
 class AppLogicModel extends ChangeNotifier {
+  // THROUGHPUT TESTING
+  int _total_data_received = 0;
+  int _last_data_time = DateTime.now().microsecondsSinceEpoch;
+
   // Public state variables
   StateMachine state = StateMachine(State.getUserSettings);
   NoaUser noaUser = NoaUser();
@@ -296,7 +300,7 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           state.changeOn(Event.deviceUpToDate, State.uploadMainLua);
-          state.changeOn(Event.deviceNeedsUpdate, State.triggerUpdate);
+          state.changeOn(Event.deviceNeedsUpdate, State.uploadMainLua);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
@@ -521,6 +525,20 @@ class AppLogicModel extends ChangeNotifier {
                 return prompt;
               }
 
+              // THROUGHPUT TESTING
+              _total_data_received += event.length;
+
+              if (event.isEmpty) {
+                double throughput = _total_data_received /
+                    (DateTime.now().millisecondsSinceEpoch - _last_data_time);
+
+                _log.info("Throughput: ${throughput.toStringAsFixed(2)} KB/s");
+
+                _last_data_time = DateTime.now().millisecondsSinceEpoch;
+                _total_data_received = 0;
+              }
+
+              /*
               switch (event[0]) {
                 case 0x10:
                   _log.info("Received user generation request from device");
@@ -565,6 +583,7 @@ class AppLogicModel extends ChangeNotifier {
                   } catch (_) {}
                   break;
               }
+              */
             });
           });
 
