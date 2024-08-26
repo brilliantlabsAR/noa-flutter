@@ -8,9 +8,15 @@ import 'package:logging/logging.dart';
 final _log = Logger("Location");
 
 Position? _position;
+bool _setup_mutex = false;
 
 class Location {
   static Future<void> requestPermission(BuildContext context) async {
+    if (_setup_mutex) {
+      return;
+    }
+    _setup_mutex = true;
+
     LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
