@@ -81,7 +81,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Location.requestPermission(context);
       if (ref.watch(app.model).state.current != app.State.waitForLogin) {
         switchPage(context, const PairingPage());
       }

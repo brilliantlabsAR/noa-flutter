@@ -6,6 +6,7 @@ import 'package:noa/main.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/noa_api.dart';
 import 'package:noa/style.dart';
+import 'package:noa/util/location.dart';
 import 'package:noa/util/show_toast.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
@@ -20,6 +21,7 @@ class NoaPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      Location.requestPermission(context);
       Timer(const Duration(milliseconds: 100), () {
         if (context.mounted) {
           ref.watch(app.model.select((value) {
