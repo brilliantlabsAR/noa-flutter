@@ -101,6 +101,9 @@ while true do
         if state:has_been() > 0.2 and image_taken == false then
             frame.camera.capture {}
             image_taken = true
+            graphics:append_text("photo captured!", "\u{F0002}")
+            frame.sleep(0.5)
+            graphics:append_text("tap to finish", "\u{F0010}")
         end
 
         if state:has_been() > 1.4 and image_data_sent == false then
