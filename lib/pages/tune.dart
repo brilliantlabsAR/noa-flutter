@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/style.dart';
-import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 
 Widget _textBox(WidgetRef ref, int index) {
@@ -16,25 +15,26 @@ Widget _textBox(WidgetRef ref, int index) {
       break;
   }
   return Padding(
-    padding: const EdgeInsets.only(bottom: 21),
+    padding: const EdgeInsets.only(bottom: 42),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: Text(title, style: textStyleLightSubHeading),
+          child: Text(
+            title,
+            style: textStyleLightSubHeading.copyWith(
+              fontWeight: FontWeight.w400,
+              fontSize: 14.0,
+            ),
+          ),
         ),
         Container(
           decoration: const BoxDecoration(
-            color: colorLight,
-            borderRadius: BorderRadius.all(Radius.circular(10)),
+            color: Color.fromRGBO(245, 245, 245, 1), // Updated color
+            borderRadius: BorderRadius.all(Radius.circular(0)),
           ),
-          padding: const EdgeInsets.only(
-            top: 5,
-            bottom: 7,
-            left: 10,
-            right: 10,
-          ),
+          padding: const EdgeInsets.all(10),
           child: TextFormField(
             initialValue: value,
             minLines: 3,
@@ -49,8 +49,6 @@ Widget _textBox(WidgetRef ref, int index) {
             },
             style: textStyleDark,
             decoration: const InputDecoration.collapsed(
-              fillColor: colorLight,
-              filled: true,
               hintText: "",
             ),
           ),
@@ -81,22 +79,26 @@ Widget _slider(WidgetRef ref, int index) {
       break;
   }
   return Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: 42),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 0),
-          child: Text(title, style: textStyleLightSubHeading),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(
+            title,
+            style: textStyleLightSubHeading.copyWith(
+              fontWeight: FontWeight.w400,
+              fontSize: 14.0,
+            ),
+          ),
         ),
         SliderTheme(
-          data: const SliderThemeData(
+          data: SliderThemeData(
             trackHeight: 5,
-            activeTrackColor: colorLight,
-            activeTickMarkColor: colorLight,
-            inactiveTrackColor: colorLight,
-            inactiveTickMarkColor: colorLight,
-            thumbColor: colorLight,
+            activeTrackColor: Color.fromRGBO(245, 245, 245, 1), // Updated color
+            inactiveTrackColor: Color.fromRGBO(245, 245, 245, 1), // Updated color
+            thumbColor: Colors.black, // Updated handle color
             valueIndicatorColor: colorDark,
             trackShape: RectangularSliderTrackShape(),
           ),
@@ -153,13 +155,19 @@ Widget _checkBox(WidgetRef ref, int index) {
   }
 
   return Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: 42),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Text(title, style: textStyleLightSubHeading),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(
+            title,
+            style: textStyleLightSubHeading.copyWith(
+              fontWeight: FontWeight.w400,
+              fontSize: 14.0,
+            ),
+          ),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -194,11 +202,12 @@ class TunePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: colorWhite,
-      appBar: topTitleBar(context, 'TUNE', false, false),
+      appBar: topTitleBar(context, 'Tune', false, false),
       body: Padding(
-        padding: const EdgeInsets.only(left: 42, right: 42),
+        padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _textBox(ref, 0),
               _slider(ref, 0),
@@ -208,7 +217,6 @@ class TunePage extends ConsumerWidget {
           ),
         ),
       ),
-      bottomNavigationBar: bottomNavBar(context, 1, false),
     );
   }
 }

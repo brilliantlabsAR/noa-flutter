@@ -7,7 +7,6 @@ import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/noa_api.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/show_toast.dart';
-import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:uuid/uuid.dart';
@@ -35,93 +34,115 @@ class NoaPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colorWhite,
-      appBar: topTitleBar(context, 'NOA', false, false),
+      appBar: topTitleBar(context, 'Noa', false, false),
       body: PageStorage(
         bucket: globalPageStorageBucket,
-        child: ListView.builder(
-          key: const PageStorageKey<String>('noaPage'),
-          controller: _scrollController,
-          itemCount: ref.watch(app.model).noaMessages.length,
-          itemBuilder: (context, index) {
-            TextStyle style = textStyleLight;
-            if (ref.watch(app.model).noaMessages[index].from == NoaRole.noa) {
-              style = textStyleDark;
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (index == 0 ||
-                    ref
-                            .watch(app.model)
-                            .noaMessages[index]
-                            .time
-                            .difference(ref
+        child: ref.watch(app.model).noaMessages.isEmpty
+          ? _buildEmptyState(context)
+          : ListView.builder(
+              key: const PageStorageKey<String>('noaPage'),
+              controller: _scrollController,
+              itemCount: ref.watch(app.model).noaMessages.length,
+              itemBuilder: (context, index) {
+                TextStyle style = textStyleLight;
+                if (ref.watch(app.model).noaMessages[index].from == NoaRole.noa) {
+                  style = textStyleDark;
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (index == 0 ||
+                        ref
                                 .watch(app.model)
-                                .noaMessages[index - 1]
-                                .time)
-                            .inSeconds >
-                        1700)
-                  Container(
-                    margin: const EdgeInsets.only(top: 40, left: 42, right: 42),
-                    child: Row(
-                      children: [
-                        Text(
-                          "${ref.watch(app.model).noaMessages[index].time.hour.toString().padLeft(2, '0')}:${ref.watch(app.model).noaMessages[index].time.minute.toString().padLeft(2, '0')}",
-                          style: const TextStyle(color: colorLight),
+                                .noaMessages[index]
+                                .time
+                                .difference(ref
+                                    .watch(app.model)
+                                    .noaMessages[index - 1]
+                                    .time)
+                                .inSeconds >
+                            1700)
+                      Container(
+                        margin: const EdgeInsets.only(top: 40, left: 42, right: 42),
+                        child: Row(
+                          children: [
+                            Text(
+                              "${ref.watch(app.model).noaMessages[index].time.hour.toString().padLeft(2, '0')}:${ref.watch(app.model).noaMessages[index].time.minute.toString().padLeft(2, '0')}",
+                              style: const TextStyle(color: colorLight),
+                            ),
+                            const Flexible(
+                              child: Divider(
+                                indent: 10,
+                                color: colorLight,
+                              ),
+                            ),
+                          ],
                         ),
-                        const Flexible(
-                          child: Divider(
-                            indent: 10,
+                      ),
+                    Container(
+                      margin: const EdgeInsets.only(top: 10, left: 65, right: 42),
+                      child: Text(
+                        ref.watch(app.model).noaMessages[index].message,
+                        style: style,
+                      ),
+                    ),
+                    if (ref.watch(app.model).noaMessages[index].image != null)
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
                             color: colorLight,
+                            width: 0.5,
+                          ),
+                          borderRadius: BorderRadius.circular(10.5),
+                        ),
+                        margin: const EdgeInsets.only(
+                            top: 10, bottom: 10, left: 65, right: 65),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: SizedBox.fromSize(
+                            child: GestureDetector(
+                              onLongPress: () async {
+                                await SaverGallery.saveImage(
+                                    ref.watch(app.model).noaMessages[index].image!,
+                                    name: const Uuid().v1(),
+                                    androidExistNotSave: false);
+                                if (context.mounted) {
+                                  showToast("Saved to photos", context);
+                                }
+                              },
+                              child: Image.memory(
+                                  ref.watch(app.model).noaMessages[index].image!),
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                Container(
-                  margin: const EdgeInsets.only(top: 10, left: 65, right: 42),
-                  child: Text(
-                    ref.watch(app.model).noaMessages[index].message,
-                    style: style,
-                  ),
-                ),
-                if (ref.watch(app.model).noaMessages[index].image != null)
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: colorLight,
-                        width: 0.5,
                       ),
-                      borderRadius: BorderRadius.circular(10.5),
-                    ),
-                    margin: const EdgeInsets.only(
-                        top: 10, bottom: 10, left: 65, right: 65),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: SizedBox.fromSize(
-                        child: GestureDetector(
-                          onLongPress: () async {
-                            await SaverGallery.saveImage(
-                                ref.watch(app.model).noaMessages[index].image!,
-                                name: const Uuid().v1(),
-                                androidExistNotSave: false);
-                            if (context.mounted) {
-                              showToast("Saved to photos", context);
-                            }
-                          },
-                          child: Image.memory(
-                              ref.watch(app.model).noaMessages[index].image!),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-          padding: const EdgeInsets.only(bottom: 20),
-        ),
+                  ],
+                );
+              },
+              padding: const EdgeInsets.only(bottom: 20),
+            ),
+      )
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.chat_bubble_outline, size: 64, color: colorLight),
+          SizedBox(height: 16),
+          Text(
+            'No messages yet',
+            style: textStyleLight.copyWith(fontSize: 18),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Start a conversation with Noa',
+            style: textStyleLight,
+          ),
+        ],
       ),
-      bottomNavigationBar: bottomNavBar(context, 0, false),
     );
   }
 }

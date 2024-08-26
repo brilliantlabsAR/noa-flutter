@@ -6,6 +6,7 @@ import 'package:noa/pages/login.dart';
 import 'package:noa/pages/noa.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/switch_page.dart';
+import 'package:noa/pages/home.dart';
 
 class SplashPage extends ConsumerWidget {
   const SplashPage({super.key});
@@ -18,7 +19,7 @@ class SplashPage extends ConsumerWidget {
         switch (ref.watch(app.model).state.current) {
           case app.State.connected:
           case app.State.disconnected:
-            switchPage(context, const NoaPage());
+            switchPage(context, const HomePage());
             break;
           default:
             switchPage(context, const LoginPage());

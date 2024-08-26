@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 const Color colorWhite = Color(0xFFFFFFFF);
 const Color colorLight = Color(0xFFB6BEC9);
@@ -88,4 +89,10 @@ const TextStyle textStyleDarkWidget = TextStyle(
   color: colorDark,
   fontSize: 14,
   fontWeight: FontWeight.w900,
+);
+
+final TextStyle textStyleRoboto = GoogleFonts.roboto(
+  color: colorDark,
+  fontSize: 14,
+  fontWeight: FontWeight.w400,
 );
