@@ -7,6 +7,7 @@ import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/util/app_log.dart';
 import 'package:noa/util/foreground_service.dart';
+import 'package:noa/util/location.dart';
 
 final globalPageStorageBucket = PageStorageBucket();
 
@@ -24,6 +25,9 @@ void main() async {
   // Request bluetooth permission
   BrilliantBluetooth.requestPermission();
 
+  // Start location stream
+  Location.startLocationStream();
+  
   _setupAudioSession();
 
   runApp(UncontrolledProviderScope(

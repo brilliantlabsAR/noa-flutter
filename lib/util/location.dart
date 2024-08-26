@@ -49,7 +49,18 @@ class Location {
       }
     }
 
+    startLocationStream();
+  }
+
+static void startLocationStream() async {
     late LocationSettings locationSettings;
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      _log.info("location permission not present. Won't use location");
+      return;
+    }
 
     if (Platform.isIOS) {
       locationSettings = AppleSettings(
