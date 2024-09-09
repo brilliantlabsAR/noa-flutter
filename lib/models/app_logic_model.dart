@@ -551,7 +551,7 @@ class AppLogicModel extends ChangeNotifier {
                   _log.info(
                       "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                   try {
-                    noaMessages += await NoaApi.getMessage(
+                    final newMessages = await NoaApi.getMessage(
                         (await _getUserAuthToken())!,
                         Uint8List.fromList(_audioData),
                         Uint8List.fromList(_imageData),
@@ -559,6 +559,11 @@ class AppLogicModel extends ChangeNotifier {
                         _tuneTemperature / 50,
                         noaMessages,
                         textToSpeech);
+                    if (newMessages.isNotEmpty && newMessages[0].topicChanged == true) {
+                      noaMessages = newMessages;
+                    }else{
+                      noaMessages += newMessages;
+                    }
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
                     triggerEvent(Event.noaResponse);

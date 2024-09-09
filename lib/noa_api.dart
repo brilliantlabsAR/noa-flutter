@@ -70,12 +70,14 @@ class NoaMessage {
   NoaRole from;
   DateTime time;
   Uint8List? image;
+  bool? topicChanged;
 
   NoaMessage({
     required this.message,
     required this.from,
     required this.time,
     this.image,
+    this.topicChanged
   });
 
   Map<String, dynamic> toJson() {
@@ -96,7 +98,7 @@ class NoaApi {
     _log.fine("Provider: $provider, ID token: $id");
     try {
       final response = await http.post(
-        Uri.parse('https://api.brilliant.xyz/noa/user/signin'),
+        Uri.parse('https://api.brilliant.xyz/dev/noa/user/signin'),
         body: {
           'id_token': id,
           'provider': provider.value,
@@ -125,7 +127,7 @@ class NoaApi {
     _log.info("Signing out");
     try {
       final response = await http.post(
-        Uri.parse('https://api.brilliant.xyz/noa/user/signout'),
+        Uri.parse('https://api.brilliant.xyz/dev/noa/user/signout'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -145,7 +147,7 @@ class NoaApi {
     _log.info("Getting user info");
     try {
       final response = await http.get(
-        Uri.parse('https://api.brilliant.xyz/noa/user'),
+        Uri.parse('https://api.brilliant.xyz/dev/noa/user'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -183,7 +185,7 @@ class NoaApi {
     _log.info("Deleting user");
     try {
       final response = await http.post(
-        Uri.parse('https://api.brilliant.xyz/noa/user/delete'),
+        Uri.parse('https://api.brilliant.xyz/dev/noa/user/delete'),
         headers: {"Authorization": userAuthToken},
       );
 
@@ -211,7 +213,7 @@ class NoaApi {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.brilliant.xyz/noa'),
+        Uri.parse('https://api.brilliant.xyz/dev/noa'),
       );
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
@@ -265,6 +267,7 @@ class NoaApi {
         from: NoaRole.user,
         time: DateTime.now(),
         image: kReleaseMode ? null : image,
+        topicChanged: body["debug"]["topic_changed"],
       ));
 
       response.add(NoaMessage(
@@ -297,7 +300,7 @@ class NoaApi {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.brilliant.xyz/noa/wildcard'),
+        Uri.parse('https://api.brilliant.xyz/dev/noa/wildcard'),
       );
 
       request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});

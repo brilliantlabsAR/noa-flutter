@@ -151,7 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: WebViewWidget(
                   controller: WebViewController()
                     ..loadRequest(
-                        Uri.parse("https://api.brilliant.xyz/noa/login?app=1"))
+                        Uri.parse("https://api.brilliant.xyz/dev/noa/login?app=1"))
                     ..setJavaScriptMode(JavaScriptMode.unrestricted)
                     ..addJavaScriptChannel("userAuthToken",
                         onMessageReceived: (message) {
