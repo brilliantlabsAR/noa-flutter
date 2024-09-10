@@ -75,7 +75,7 @@ class AppLogicModel extends ChangeNotifier {
   StateMachine state = StateMachine(State.getUserSettings);
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
-  String deviceName = "";
+  String deviceName = "Device";
   List<NoaMessage> noaMessages = List.empty(growable: true);
 
   void setUserAuthToken(String token) {
