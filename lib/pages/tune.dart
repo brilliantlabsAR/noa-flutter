@@ -37,7 +37,7 @@ Widget _textBox(WidgetRef ref, int index) {
           ),
           child: TextFormField(
             initialValue: value,
-            minLines: 3,
+            minLines: 10,
             maxLines: null,
             onTapOutside: (event) => FocusScope.of(ref.context).unfocus(),
             onChanged: (value) {

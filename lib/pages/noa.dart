@@ -37,11 +37,13 @@ class NoaPage extends ConsumerWidget {
       Timer(const Duration(milliseconds: 100), () {
         if (context.mounted) {
           ref.watch(app.model.select((value) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 100),
-              curve: Curves.easeOut,
-            );
+            if (value.noaMessages.length > 6) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+              );
+            }
           }));
         }
       });

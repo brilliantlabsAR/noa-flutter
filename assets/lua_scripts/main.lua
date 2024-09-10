@@ -1,7 +1,7 @@
 require("graphics")
 require("state")
 
-SCRIPT_VERSION = "v1"
+SCRIPT_VERSION = "v1.0.0"
 
 local graphics = Graphics.new()
 local state = State.new()
