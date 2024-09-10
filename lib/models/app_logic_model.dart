@@ -23,7 +23,7 @@ enum State {
   found,
   connect,
   stopLuaApp,
-  checkVersion,
+  checkFirmwareVersion,
   uploadMainLua,
   uploadGraphicsLua,
   uploadStateLua,
@@ -32,7 +32,7 @@ enum State {
   requiresRepair,
   connected,
   disconnected,
-  checkFirmwareVersion,
+  recheckFirmwareVersion,
   checkScriptVersion,
   sendResponseToDevice,
   logout,
@@ -282,11 +282,11 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          state.changeOn(Event.done, State.checkVersion);
+          state.changeOn(Event.done, State.checkFirmwareVersion);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
-        case State.checkVersion:
+        case State.checkFirmwareVersion:
           state.onEntry(() async {
             try {
               final response = await _connectedDevice!
@@ -624,12 +624,12 @@ class AppLogicModel extends ChangeNotifier {
               }
             } catch (_) {}
           });
-          state.changeOn(Event.deviceConnected, State.checkFirmwareVersion);
+          state.changeOn(Event.deviceConnected, State.recheckFirmwareVersion);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
           break;
 
-        case State.checkFirmwareVersion:
+        case State.recheckFirmwareVersion:
           state.onEntry(() async {
             _dataResponseStream?.cancel();
             _dataResponseStream =
@@ -650,8 +650,8 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           state.changeOn(Event.deviceUpToDate, State.checkScriptVersion);
-          state.changeOn(Event.deviceNeedsUpdate, State.logout); // Doesn't work
-          state.changeOn(Event.error, State.logout); // Doesn't work
+          state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
+          state.changeOn(Event.error, State.stopLuaApp);
           break;
 
         case State.checkScriptVersion:
@@ -675,8 +675,8 @@ class AppLogicModel extends ChangeNotifier {
             }
           });
           state.changeOn(Event.deviceUpToDate, State.connected);
-          state.changeOn(Event.deviceNeedsUpdate, State.logout); // Doesn't work
-          state.changeOn(Event.error, State.logout); // Doesn't work
+          state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
+          state.changeOn(Event.error, State.stopLuaApp);
           break;
 
         case State.logout:
