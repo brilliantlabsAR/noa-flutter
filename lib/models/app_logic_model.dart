@@ -12,6 +12,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final _log = Logger("App logic");
 
+// NOTE Update these when changing firmware or scripts
+const _firmwareVersion = "v24.248.0928";
+const _scriptVersion = "v1";
+
 enum State {
   getUserSettings,
   waitForLogin,
@@ -28,6 +32,8 @@ enum State {
   requiresRepair,
   connected,
   disconnected,
+  checkFirmwareVersion,
+  checkScriptVersion,
   sendResponseToDevice,
   logout,
   deleteAccount
@@ -286,7 +292,7 @@ class AppLogicModel extends ChangeNotifier {
               final response = await _connectedDevice!
                   .sendString("print(frame.FIRMWARE_VERSION)")
                   .timeout(const Duration(seconds: 1));
-              if (response == "v24.248.0928") {
+              if (response == _firmwareVersion) {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -443,7 +449,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             _connectedDevice!
-                .updateFirmware("assets/frame-firmware-v24.248.0928.zip")
+                .updateFirmware("assets/frame-firmware-$_firmwareVersion.zip")
                 .listen(
               (value) {
                 bluetoothUploadProgress = value;
@@ -618,9 +624,59 @@ class AppLogicModel extends ChangeNotifier {
               }
             } catch (_) {}
           });
-          state.changeOn(Event.deviceConnected, State.connected);
+          state.changeOn(Event.deviceConnected, State.checkFirmwareVersion);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
+          break;
+
+        case State.checkFirmwareVersion:
+          state.onEntry(() async {
+            _dataResponseStream?.cancel();
+            _dataResponseStream =
+                _connectedDevice!.dataResponse.listen((event) async {
+              _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
+              if (utf8.decode(event.sublist(1)) == _firmwareVersion) {
+                triggerEvent(Event.deviceUpToDate);
+              } else {
+                triggerEvent(Event.deviceNeedsUpdate);
+              }
+            });
+            try {
+              await _connectedDevice!
+                  .sendData(List<int>.filled(1, 0x16))
+                  .timeout(const Duration(seconds: 1));
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceUpToDate, State.checkScriptVersion);
+          state.changeOn(Event.deviceNeedsUpdate, State.logout); // Doesn't work
+          state.changeOn(Event.error, State.logout); // Doesn't work
+          break;
+
+        case State.checkScriptVersion:
+          state.onEntry(() async {
+            _dataResponseStream?.cancel();
+            _dataResponseStream =
+                _connectedDevice!.dataResponse.listen((event) async {
+              _log.info("Script version: ${utf8.decode(event.sublist(1))}");
+              if (utf8.decode(event.sublist(1)) == _scriptVersion) {
+                triggerEvent(Event.deviceUpToDate);
+              } else {
+                triggerEvent(Event.deviceNeedsUpdate);
+              }
+            });
+            try {
+              await _connectedDevice!
+                  .sendData(List<int>.filled(1, 0x17))
+                  .timeout(const Duration(seconds: 1));
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceUpToDate, State.connected);
+          state.changeOn(Event.deviceNeedsUpdate, State.logout); // Doesn't work
+          state.changeOn(Event.error, State.logout); // Doesn't work
           break;
 
         case State.logout:
