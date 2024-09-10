@@ -12,6 +12,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 final _log = Logger("App logic");
 
+// NOTE Update these when changing firmware or scripts
+const _firmwareVersion = "v24.248.0928";
+const _scriptVersion = "v1.0.0";
+
 enum State {
   getUserSettings,
   waitForLogin,
@@ -19,7 +23,7 @@ enum State {
   found,
   connect,
   stopLuaApp,
-  checkVersion,
+  checkFirmwareVersion,
   uploadMainLua,
   uploadGraphicsLua,
   uploadStateLua,
@@ -28,6 +32,8 @@ enum State {
   requiresRepair,
   connected,
   disconnected,
+  recheckFirmwareVersion,
+  checkScriptVersion,
   sendResponseToDevice,
   logout,
   deleteAccount
@@ -69,7 +75,7 @@ class AppLogicModel extends ChangeNotifier {
   StateMachine state = StateMachine(State.getUserSettings);
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
-  String deviceName = "";
+  String deviceName = "Device";
   List<NoaMessage> noaMessages = List.empty(growable: true);
 
   void setUserAuthToken(String token) {
@@ -175,6 +181,57 @@ class AppLogicModel extends ChangeNotifier {
     //   from: NoaRole.noa,
     //   time: DateTime.now().add(const Duration(seconds: 5)),
     // ));
+
+    () async {
+      noaMessages.add(NoaMessage(
+        message: "Hey I'm Noa! Let's show you around",
+        from: NoaRole.noa,
+        time: DateTime.now(),
+      ));
+
+      noaMessages.add(NoaMessage(
+          message: "Tap the side of your Frame to wake me up",
+          from: NoaRole.noa,
+          time: DateTime.now(),
+          image: (await rootBundle.load('assets/images/tutorial/wake_up.png'))
+              .buffer
+              .asUint8List()));
+
+      noaMessages.add(NoaMessage(
+          message: "Tap again and ask me anything",
+          from: NoaRole.noa,
+          time: DateTime.now(),
+          image: (await rootBundle.load('assets/images/tutorial/tap_start.png'))
+              .buffer
+              .asUint8List()));
+
+      noaMessages.add(NoaMessage(
+          message: "...and then a third time to finish",
+          from: NoaRole.noa,
+          time: DateTime.now(),
+          image:
+              (await rootBundle.load('assets/images/tutorial/tap_finish.png'))
+                  .buffer
+                  .asUint8List()));
+
+      noaMessages.add(NoaMessage(
+          message:
+              "The response just takes a few seconds. Tap again to ask a follow up question",
+          from: NoaRole.noa,
+          time: DateTime.now(),
+          image: (await rootBundle
+                  .load('assets/images/tutorial/tap_follow_up.png'))
+              .buffer
+              .asUint8List()));
+
+      noaMessages.add(NoaMessage(
+          message: "The follow up just takes a few more seconds",
+          from: NoaRole.noa,
+          time: DateTime.now(),
+          image: (await rootBundle.load('assets/images/tutorial/response.png'))
+              .buffer
+              .asUint8List()));
+    }();
   }
 
   void triggerEvent(Event event) {
@@ -188,12 +245,12 @@ class AppLogicModel extends ChangeNotifier {
               // Load the user's Tune settings or defaults if none are set
               final savedData = await SharedPreferences.getInstance();
               _tunePrompt = savedData.getString('tunePrompt') ??
-                  "You are Noa, a smart personal AI assistant inside the user's AR smart glasses that answers all user queries and questions";
+                  "You are Noa, a smart and whity personal AI assistant inside the user's AR smart glasses that answers all user queries and questions";
               _tuneTemperature = savedData.getInt('tuneTemperature') ?? 50;
               var len = savedData.getString('tuneLength') ?? 'standard';
               _tuneLength = TuneLength.values
                   .firstWhere((e) => e.toString() == 'TuneLength.$len');
-              _textToSpeech = savedData.getBool('textToSpeech') ?? false;
+              _textToSpeech = savedData.getBool('textToSpeech') ?? true;
 
               // Check if the auto token is loaded and if Frame is paired
               if (await _getUserAuthToken() != null &&
@@ -276,17 +333,17 @@ class AppLogicModel extends ChangeNotifier {
               triggerEvent(Event.error);
             }
           });
-          state.changeOn(Event.done, State.checkVersion);
+          state.changeOn(Event.done, State.checkFirmwareVersion);
           state.changeOn(Event.error, State.requiresRepair);
           break;
 
-        case State.checkVersion:
+        case State.checkFirmwareVersion:
           state.onEntry(() async {
             try {
               final response = await _connectedDevice!
                   .sendString("print(frame.FIRMWARE_VERSION)")
                   .timeout(const Duration(seconds: 1));
-              if (response == "v24.248.0928") {
+              if (response == _firmwareVersion) {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -343,72 +400,6 @@ class AppLogicModel extends ChangeNotifier {
               );
               await _connectedDevice!.sendResetSignal();
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
-
-              Timer(const Duration(seconds: 1), () {
-                noaMessages.add(NoaMessage(
-                  message: "Hey I'm Noa! Let's show you around",
-                  from: NoaRole.noa,
-                  time: DateTime.now(),
-                ));
-                notifyListeners();
-              });
-
-              Timer(const Duration(seconds: 3), () async {
-                ByteData image =
-                    await rootBundle.load('assets/images/tutorial/wake_up.png');
-                noaMessages.add(NoaMessage(
-                    message: "Tap the side of your Frame to wake me up",
-                    from: NoaRole.noa,
-                    time: DateTime.now(),
-                    image: image.buffer.asUint8List()));
-                notifyListeners();
-              });
-
-              Timer(const Duration(seconds: 5), () async {
-                ByteData image = await rootBundle
-                    .load('assets/images/tutorial/tap_start.png');
-                noaMessages.add(NoaMessage(
-                    message: "Tap again and ask me anything",
-                    from: NoaRole.noa,
-                    time: DateTime.now(),
-                    image: image.buffer.asUint8List()));
-                notifyListeners();
-              });
-
-              Timer(const Duration(seconds: 7), () async {
-                ByteData image = await rootBundle
-                    .load('assets/images/tutorial/tap_finish.png');
-                noaMessages.add(NoaMessage(
-                    message: "...and then a third time to finish",
-                    from: NoaRole.noa,
-                    time: DateTime.now(),
-                    image: image.buffer.asUint8List()));
-                notifyListeners();
-              });
-
-              Timer(const Duration(seconds: 9), () async {
-                ByteData image = await rootBundle
-                    .load('assets/images/tutorial/tap_follow_up.png');
-                noaMessages.add(NoaMessage(
-                    message:
-                        "The response just takes a few seconds. Tap again to ask a follow up question",
-                    from: NoaRole.noa,
-                    time: DateTime.now(),
-                    image: image.buffer.asUint8List()));
-                notifyListeners();
-              });
-
-              Timer(const Duration(seconds: 11), () async {
-                ByteData image = await rootBundle
-                    .load('assets/images/tutorial/response.png');
-                noaMessages.add(NoaMessage(
-                    message: "The follow up just takes a few more seconds",
-                    from: NoaRole.noa,
-                    time: DateTime.now(),
-                    image: image.buffer.asUint8List()));
-                notifyListeners();
-              });
-
               triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.error);
@@ -443,7 +434,7 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             _connectedDevice!
-                .updateFirmware("assets/frame-firmware-v24.248.0928.zip")
+                .updateFirmware("assets/frame-firmware-$_firmwareVersion.zip")
                 .listen(
               (value) {
                 bluetoothUploadProgress = value;
@@ -618,9 +609,59 @@ class AppLogicModel extends ChangeNotifier {
               }
             } catch (_) {}
           });
-          state.changeOn(Event.deviceConnected, State.connected);
+          state.changeOn(Event.deviceConnected, State.recheckFirmwareVersion);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
+          break;
+
+        case State.recheckFirmwareVersion:
+          state.onEntry(() async {
+            _dataResponseStream?.cancel();
+            _dataResponseStream =
+                _connectedDevice!.dataResponse.listen((event) async {
+              _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
+              if (utf8.decode(event.sublist(1)) == _firmwareVersion) {
+                triggerEvent(Event.deviceUpToDate);
+              } else {
+                triggerEvent(Event.deviceNeedsUpdate);
+              }
+            });
+            try {
+              await _connectedDevice!
+                  .sendData(List<int>.filled(1, 0x16))
+                  .timeout(const Duration(seconds: 1));
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceUpToDate, State.checkScriptVersion);
+          state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
+          state.changeOn(Event.error, State.stopLuaApp);
+          break;
+
+        case State.checkScriptVersion:
+          state.onEntry(() async {
+            _dataResponseStream?.cancel();
+            _dataResponseStream =
+                _connectedDevice!.dataResponse.listen((event) async {
+              _log.info("Script version: ${utf8.decode(event.sublist(1))}");
+              if (utf8.decode(event.sublist(1)) == _scriptVersion) {
+                triggerEvent(Event.deviceUpToDate);
+              } else {
+                triggerEvent(Event.deviceNeedsUpdate);
+              }
+            });
+            try {
+              await _connectedDevice!
+                  .sendData(List<int>.filled(1, 0x17))
+                  .timeout(const Duration(seconds: 1));
+            } catch (_) {
+              triggerEvent(Event.error);
+            }
+          });
+          state.changeOn(Event.deviceUpToDate, State.connected);
+          state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
+          state.changeOn(Event.error, State.stopLuaApp);
           break;
 
         case State.logout:

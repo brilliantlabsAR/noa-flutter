@@ -1,6 +1,8 @@
 require("graphics")
 require("state")
 
+SCRIPT_VERSION = "v1.0.0"
+
 local graphics = Graphics.new()
 local state = State.new()
 
@@ -16,10 +18,22 @@ WILDCARD_GEN_FLAG = "\x12"
 AUDIO_DATA_FLAG = "\x13"
 IMAGE_DATA_FLAG = "\x14"
 TRANSFER_DONE_FLAG = "\x15"
+CHECK_FW_VERSION_FLAG = "\x16"
+CHECK_SCRIPT_VERSION_FLAG = "\x17"
 
 -- Phone to Frame flags
 MESSAGE_RESPONSE_FLAG = "\x20"
 IMAGE_RESPONSE_FLAG = "\x21"
+
+local function send_data(data)
+    local try_until = frame.time.utc() + 2
+    while frame.time.utc() < try_until do
+        if pcall(frame.bluetooth.send, data) then
+            return
+        end
+    end
+    state:switch("NO_CONNECTION")
+end
 
 local function bluetooth_callback(message)
     if string.sub(message, 1, 1) == MESSAGE_RESPONSE_FLAG then
@@ -35,20 +49,11 @@ local function bluetooth_callback(message)
             graphics:clear()
             state:switch("PRINT_IMAGE")
         end
-        if state:is("PRINT_IMAGE") then
-            -- TODO
-        end
+    elseif string.sub(message, 1, 1) == CHECK_FW_VERSION_FLAG then
+        send_data(CHECK_FW_VERSION_FLAG .. frame.FIRMWARE_VERSION)
+    elseif string.sub(message, 1, 1) == CHECK_SCRIPT_VERSION_FLAG then
+        send_data(CHECK_SCRIPT_VERSION_FLAG .. SCRIPT_VERSION)
     end
-end
-
-local function send_data(data)
-    local try_until = frame.time.utc() + 2
-    while frame.time.utc() < try_until do
-        if pcall(frame.bluetooth.send, data) then
-            return
-        end
-    end
-    state:switch("NO_CONNECTION")
 end
 
 frame.bluetooth.receive_callback(bluetooth_callback)

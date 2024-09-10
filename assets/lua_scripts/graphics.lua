@@ -48,7 +48,7 @@ function Graphics.__print_layout(last_last_line, last_line, this_line, emoji)
     local LINE_SPACING = 58
     local EMOJI_MAX_WIDTH = 91
 
-    frame.display.text(emoji, 640 - EMOJI_MAX_WIDTH, TOP_MARGIN)
+    frame.display.text(emoji, 640 - EMOJI_MAX_WIDTH, TOP_MARGIN, { color = 'YELLOW' })
 
     if last_last_line == '' and last_line == '' then
         frame.display.text(this_line, 1, TOP_MARGIN)

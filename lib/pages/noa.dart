@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:noa/main.dart';
 import 'package:noa/models/app_logic_model.dart' as app;
 import 'package:noa/noa_api.dart';
+import 'package:noa/pages/pairing.dart';
 import 'package:noa/style.dart';
 import 'package:noa/util/show_toast.dart';
+import 'package:noa/util/switch_page.dart';
 import 'package:noa/widgets/bottom_nav_bar.dart';
 import 'package:noa/widgets/top_title_bar.dart';
 import 'package:saver_gallery/saver_gallery.dart';
@@ -20,14 +22,28 @@ class NoaPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      switch (ref.watch(app.model).state.current) {
+        case app.State.stopLuaApp:
+        case app.State.checkFirmwareVersion:
+        case app.State.uploadMainLua:
+        case app.State.uploadGraphicsLua:
+        case app.State.uploadStateLua:
+        case app.State.triggerUpdate:
+        case app.State.updateFirmware:
+          switchPage(context, const PairingPage());
+          break;
+        default:
+      }
       Timer(const Duration(milliseconds: 100), () {
         if (context.mounted) {
           ref.watch(app.model.select((value) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 100),
-              curve: Curves.easeOut,
-            );
+            if (value.noaMessages.length > 6) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+              );
+            }
           }));
         }
       });

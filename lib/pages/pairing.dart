@@ -39,7 +39,7 @@ class PairingPage extends ConsumerWidget {
         break;
       case app.State.connect:
       case app.State.stopLuaApp:
-      case app.State.checkVersion:
+      case app.State.checkFirmwareVersion:
       case app.State.triggerUpdate:
         pairingBoxText = "$deviceName found";
         pairingBoxButtonText = "Connecting";
