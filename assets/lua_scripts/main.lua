@@ -201,7 +201,7 @@ while true do
     end
 
     if frame.time.utc() - last_autoexp_time > 0.1 then
-        frame.camera.auto { metering = 'CENTER_WEIGHTED', exposure = -0.5, exposure_limit = 5500 }
+        frame.camera.auto {}
         last_autoexp_time = frame.time.utc()
     end
 
