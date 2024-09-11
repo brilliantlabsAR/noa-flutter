@@ -245,7 +245,7 @@ class AppLogicModel extends ChangeNotifier {
               // Load the user's Tune settings or defaults if none are set
               final savedData = await SharedPreferences.getInstance();
               _tunePrompt = savedData.getString('tunePrompt') ??
-                  "You are Noa, a smart and whity personal AI assistant inside the user's AR smart glasses that answers all user queries and questions";
+                  "You are Noa, a smart and witty personal AI assistant inside the user's AR smart glasses that answers all user queries and questions";
               _tuneTemperature = savedData.getInt('tuneTemperature') ?? 50;
               var len = savedData.getString('tuneLength') ?? 'standard';
               _tuneLength = TuneLength.values
