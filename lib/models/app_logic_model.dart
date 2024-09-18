@@ -187,6 +187,7 @@ class AppLogicModel extends ChangeNotifier {
         message: "Hey I'm Noa! Let's show you around",
         from: NoaRole.noa,
         time: DateTime.now(),
+        exclude: true,
       ));
 
       noaMessages.add(NoaMessage(
@@ -195,7 +196,8 @@ class AppLogicModel extends ChangeNotifier {
           time: DateTime.now(),
           image: (await rootBundle.load('assets/images/tutorial/wake_up.png'))
               .buffer
-              .asUint8List()));
+              .asUint8List(),
+          exclude: true));
 
       noaMessages.add(NoaMessage(
           message: "Tap again and ask me anything",
@@ -203,7 +205,8 @@ class AppLogicModel extends ChangeNotifier {
           time: DateTime.now(),
           image: (await rootBundle.load('assets/images/tutorial/tap_start.png'))
               .buffer
-              .asUint8List()));
+              .asUint8List(),
+          exclude: true));
 
       noaMessages.add(NoaMessage(
           message: "...and then a third time to finish",
@@ -212,7 +215,8 @@ class AppLogicModel extends ChangeNotifier {
           image:
               (await rootBundle.load('assets/images/tutorial/tap_finish.png'))
                   .buffer
-                  .asUint8List()));
+                  .asUint8List(),
+          exclude: true));
 
       noaMessages.add(NoaMessage(
           message:
@@ -222,7 +226,8 @@ class AppLogicModel extends ChangeNotifier {
           image: (await rootBundle
                   .load('assets/images/tutorial/tap_follow_up.png'))
               .buffer
-              .asUint8List()));
+              .asUint8List(),
+          exclude: true));
 
       noaMessages.add(NoaMessage(
           message: "The follow up just takes a few more seconds",
@@ -230,7 +235,8 @@ class AppLogicModel extends ChangeNotifier {
           time: DateTime.now(),
           image: (await rootBundle.load('assets/images/tutorial/response.png'))
               .buffer
-              .asUint8List()));
+              .asUint8List(),
+          exclude: true));
     }();
   }
 
@@ -542,7 +548,7 @@ class AppLogicModel extends ChangeNotifier {
                   _log.info(
                       "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
                   try {
-                    noaMessages += await NoaApi.getMessage(
+                    final newMessages = await NoaApi.getMessage(
                         (await _getUserAuthToken())!,
                         Uint8List.fromList(_audioData),
                         Uint8List.fromList(_imageData),
@@ -550,6 +556,13 @@ class AppLogicModel extends ChangeNotifier {
                         _tuneTemperature / 50,
                         noaMessages,
                         textToSpeech);
+                    final topicChanged = newMessages.where((msg) => msg.topicChanged).isNotEmpty;
+                    if (topicChanged) {
+                      for (var msg in noaMessages) {
+                        msg.exclude = true;
+                      }
+                    }
+                    noaMessages += newMessages;
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
                     triggerEvent(Event.noaResponse);

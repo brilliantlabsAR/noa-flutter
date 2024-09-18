@@ -70,12 +70,16 @@ class NoaMessage {
   NoaRole from;
   DateTime time;
   Uint8List? image;
+  bool exclude = false;
+  bool topicChanged = false;
 
   NoaMessage({
     required this.message,
     required this.from,
     required this.time,
     this.image,
+    this.exclude = false,
+    this.topicChanged = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -233,7 +237,7 @@ class NoaApi {
       } catch (error) {
         _log.warning(error);
       }
-
+      noaHistory = noaHistory.where((msg) => !msg.exclude).toList();
       request.fields['noa_system_prompt'] = systemRole;
       request.fields['messages'] = jsonEncode(noaHistory);
       request.fields['location'] = await Location.getAddress();
@@ -257,14 +261,15 @@ class NoaApi {
       await streamedResponse.stream
           .forEach((element) => serverResponse += element);
       var body = jsonDecode(utf8.decode(serverResponse));
-
       List<NoaMessage> response = List.empty(growable: true);
+      final topicChanged = body["debug"]['topic_changed']??false;
 
       response.add(NoaMessage(
         message: body['user_prompt'].toString().replaceAll(RegExp(r'—'), '-'),
         from: NoaRole.user,
         time: DateTime.now(),
         image: kReleaseMode ? null : image,
+        topicChanged: topicChanged
       ));
 
       response.add(NoaMessage(
