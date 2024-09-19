@@ -51,7 +51,7 @@ class NoaPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colorWhite,
-      appBar: topTitleBar(context, 'NOA', false, false),
+      appBar: topTitleBar(context, 'CHAT', false, false),
       body: PageStorage(
         bucket: globalPageStorageBucket,
         child: ListView.builder(
