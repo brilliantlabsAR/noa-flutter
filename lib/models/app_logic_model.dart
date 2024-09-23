@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
-const _firmwareVersion = "v24.255.0646";
+const _firmwareVersion = "v24.267.0914";
 const _scriptVersion = "v1.0.0";
 
 enum State {
@@ -556,7 +556,8 @@ class AppLogicModel extends ChangeNotifier {
                         _tuneTemperature / 50,
                         noaMessages,
                         textToSpeech);
-                    final topicChanged = newMessages.where((msg) => msg.topicChanged).isNotEmpty;
+                    final topicChanged =
+                        newMessages.where((msg) => msg.topicChanged).isNotEmpty;
                     if (topicChanged) {
                       for (var msg in noaMessages) {
                         msg.exclude = true;
