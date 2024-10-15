@@ -211,6 +211,7 @@ class NoaApi {
     double temperature,
     List<NoaMessage> noaHistory,
     bool textToSpeech,
+    bool promptless,
   ) async {
     try {
       var request = http.MultipartRequest(
@@ -244,6 +245,7 @@ class NoaApi {
       request.fields['time'] = DateTime.now().toString();
       request.fields['temperature'] = temperature.toString();
       request.fields['tts'] = textToSpeech ? "1" : "0";
+      request.fields['promptless'] = promptless ? "1" : "0";
 
       _log.info(
           "Sending message request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");

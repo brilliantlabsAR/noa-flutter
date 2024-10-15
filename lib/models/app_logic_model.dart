@@ -144,6 +144,15 @@ class AppLogicModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  late bool _promptless;
+  bool get promptless => _promptless;
+  set promptless(bool value) {
+    _promptless = value;
+    SharedPreferences.getInstance()
+        .then((sp) => sp.setBool("promptless", value));
+    notifyListeners();
+  }
+
   // Private state variables
   StreamSubscription? _scanStream;
   StreamSubscription? _connectionStream;
@@ -257,6 +266,7 @@ class AppLogicModel extends ChangeNotifier {
               _tuneLength = TuneLength.values
                   .firstWhere((e) => e.toString() == 'TuneLength.$len');
               _textToSpeech = savedData.getBool('textToSpeech') ?? true;
+              _promptless = savedData.getBool('promptless') ?? false;
 
               // Check if the auto token is loaded and if Frame is paired
               if (await _getUserAuthToken() != null &&
@@ -555,7 +565,8 @@ class AppLogicModel extends ChangeNotifier {
                         getTunePrompt(),
                         _tuneTemperature / 50,
                         noaMessages,
-                        textToSpeech);
+                        textToSpeech,
+                        promptless);
                     final topicChanged =
                         newMessages.where((msg) => msg.topicChanged).isNotEmpty;
                     if (topicChanged) {

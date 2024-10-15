@@ -12,7 +12,7 @@ Widget _textBox(WidgetRef ref, int index) {
   switch (index) {
     case 0:
       title = "System prompt";
-      value = ref.watch(app.model.select((v) => v.tunePrompt));
+      value = ref.watch(app.model.select((v) => v.tunePrompt)); 
       break;
   }
   return Padding(
@@ -150,6 +150,9 @@ Widget _checkBox(WidgetRef ref, int index) {
     case 0:
       title = "Text to speech";
       value = ref.watch(app.model.select((v) => v.textToSpeech));
+    case 1:
+      title = "Promptless";
+      value = ref.watch(app.model.select((v) => v.promptless));
   }
 
   return Padding(
@@ -173,8 +176,16 @@ Widget _checkBox(WidgetRef ref, int index) {
               activeColor: colorDark,
               inactiveTrackColor: colorWhite,
               inactiveThumbColor: colorLight,
-              onChanged: (value) =>
-                  ref.read(app.model.select((v) => v.textToSpeech = value)),
+              onChanged: (value) {
+                switch (index) {
+                  case 0:
+                    ref.read(app.model.select((v) => v.textToSpeech = value));
+                    break;
+                  case 1:
+                    ref.read(app.model.select((v) => v.promptless = value));
+                    break;
+                } 
+              }
             ),
             const Padding(
               padding: EdgeInsets.only(right: 8, left: 8),
@@ -204,6 +215,7 @@ class TunePage extends ConsumerWidget {
               _slider(ref, 0),
               _slider(ref, 1),
               _checkBox(ref, 0),
+              _checkBox(ref, 1),
             ],
           ),
         ),
