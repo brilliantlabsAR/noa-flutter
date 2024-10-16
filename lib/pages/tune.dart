@@ -14,7 +14,7 @@ Widget _textBox(WidgetRef ref, int index) {
     case 0:
       willShow = !isCustomServerEnabled;
       title = "System prompt";
-      value = ref.watch(app.model.select((v) => v.tunePrompt));
+      value = ref.watch(app.model.select((v) => v.tunePrompt)); 
       break;
   }
   if (!willShow) {
@@ -42,7 +42,7 @@ Widget _textBox(WidgetRef ref, int index) {
           ),
           child: TextFormField(
             initialValue: value,
-            minLines: 10,
+            minLines: 8,
             maxLines: null,
             onTapOutside: (event) => FocusScope.of(ref.context).unfocus(),
             onChanged: (value) {
@@ -233,8 +233,8 @@ Widget _slider(WidgetRef ref, int index) {
 Widget _checkBox(WidgetRef ref, int index) {
   late String title;
   late bool value;
-  late String disableOption;
-  late String enableOption;
+  late String disableOption = "Disabled";
+  late String enableOption = "Enabled";
   late bool isCustomServerEnabled = ref.watch(app.model.select((v) => v.customServer));
   late bool willShow = true;
 
@@ -245,8 +245,11 @@ Widget _checkBox(WidgetRef ref, int index) {
       value = ref.watch(app.model.select((v) => v.textToSpeech));
       disableOption = "Disabled";
       enableOption = "Enabled";
-
     case 1:
+      willShow = !isCustomServerEnabled;
+      title = "Promptless";
+      value = ref.watch(app.model.select((v) => v.promptless));
+    case 2:
       title = "Server";
       value = ref.watch(app.model.select((v) => v.customServer));
       disableOption = "Noa Server";
@@ -283,6 +286,9 @@ Widget _checkBox(WidgetRef ref, int index) {
                     ref.read(app.model.select((v) => v.textToSpeech = value));
                     break;
                   case 1:
+                    ref.read(app.model.select((v) => v.promptless = value));
+                    break;
+                  case 2:
                     ref.read(app.model.select((v) => v.customServer = value));
                     break;
                 }
@@ -312,7 +318,7 @@ class TunePage extends ConsumerWidget {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              _checkBox(ref, 1),
+              _checkBox(ref, 2),
               _textBox(ref, 0),
               _slider(ref, 0),
               _slider(ref, 1),
@@ -320,6 +326,7 @@ class TunePage extends ConsumerWidget {
               _inputBox(ref, 0),
               _inputBox(ref, 2),
               _inputBox(ref, 1),
+              _checkBox(ref, 1),
             ],
           ),
         ),

@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
-const _firmwareVersion = "v24.255.0646";
+const _firmwareVersion = "v24.282.1117";
 const _scriptVersion = "v1.0.0";
 
 enum State {
@@ -176,6 +176,15 @@ class AppLogicModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  late bool _promptless;
+  bool get promptless => _promptless;
+  set promptless(bool value) {
+    _promptless = value;
+    SharedPreferences.getInstance()
+        .then((sp) => sp.setBool("promptless", value));
+    notifyListeners();
+  }
+
   // Private state variables
   StreamSubscription? _scanStream;
   StreamSubscription? _connectionStream;
@@ -293,6 +302,7 @@ class AppLogicModel extends ChangeNotifier {
               _apiToken = savedData.getString('apiToken') ?? "";
               _apiHeader = savedData.getString('apiHeader') ?? "";
               _customServer = savedData.getBool('customServer') ?? false;
+              _promptless = savedData.getBool('promptless') ?? false;
 
               // Check if the auto token is loaded and if Frame is paired
               if (await _getUserAuthToken() != null &&
@@ -596,7 +606,9 @@ class AppLogicModel extends ChangeNotifier {
                         apiEndpoint,
                         apiHeader,
                         apiToken,
-                        customServer);
+                        customServer,
+                        promptless
+                        );
                     final topicChanged = newMessages.where((msg) => msg.topicChanged).isNotEmpty;
                     if (topicChanged) {
                       for (var msg in noaMessages) {

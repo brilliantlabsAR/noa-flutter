@@ -215,6 +215,7 @@ class NoaApi {
     String apiToken,
     String apiHeader,
     bool isCustomServerEnabled,
+    bool promptless,
   ) async {
     try {
       String endPoint = 'https://api.brilliant.xyz/noa';
@@ -262,6 +263,7 @@ class NoaApi {
         request.fields['noa_system_prompt'] = systemRole;
         request.fields['temperature'] = temperature.toString();
         request.fields['tts'] = textToSpeech ? "1" : "0";
+        request.fields['promptless'] = promptless ? "1" : "0";
       }
       request.fields['messages'] = jsonEncode(noaHistory);
       request.fields['location'] = await Location.getAddress();
