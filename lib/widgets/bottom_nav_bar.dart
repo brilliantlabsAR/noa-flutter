@@ -38,7 +38,7 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
               ),
               child: Center(
                 child: Text(
-                  "NOA",
+                  "CHAT",
                   style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
                 ),
               ),
@@ -64,7 +64,7 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
               ),
               child: Center(
                 child: Text(
-                  "TUNE",
+                  "HACK",
                   style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
                 ),
               ),
@@ -88,7 +88,7 @@ Widget bottomNavBar(BuildContext context, int selected, bool darkMode) {
               ),
               child: Center(
                 child: Text(
-                  "HACK",
+                  "LOG",
                   style: darkMode ? textStyleDarkWidget : textStyleWhiteWidget,
                 ),
               ),

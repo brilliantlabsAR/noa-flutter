@@ -66,7 +66,7 @@ class HackPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: colorDark,
-      appBar: topTitleBar(context, 'HACK', true, false),
+      appBar: topTitleBar(context, 'LOG', true, false),
       body: Padding(
         padding: const EdgeInsets.only(left: 42, right: 42),
         child: Column(

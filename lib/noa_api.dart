@@ -211,15 +211,35 @@ class NoaApi {
     double temperature,
     List<NoaMessage> noaHistory,
     bool textToSpeech,
+    String apiEndpoint,
+    String apiToken,
+    String apiHeader,
+    bool isCustomServerEnabled,
     bool promptless,
   ) async {
     try {
+      String endPoint = 'https://api.brilliant.xyz/noa';
+      String token = userAuthToken;
+      String header = "Authorization";
+
+      if (apiEndpoint.isEmpty && isCustomServerEnabled) {
+        throw NoaApiServerException(
+          reason: "Custom server enabled but no endpoint provided",
+          statusCode: 400,
+        );
+      }
+      if (isCustomServerEnabled) {
+        endPoint = apiEndpoint;
+        token = apiToken;
+        header = apiHeader;
+      }
+      
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.brilliant.xyz/noa'),
+        Uri.parse(endPoint),
       );
 
-      request.headers.addAll({HttpHeaders.authorizationHeader: userAuthToken});
+      request.headers.addAll({header: token});
 
       request.files.add(http.MultipartFile.fromBytes(
         'audio',
@@ -239,13 +259,15 @@ class NoaApi {
         _log.warning(error);
       }
       noaHistory = noaHistory.where((msg) => !msg.exclude).toList();
-      request.fields['noa_system_prompt'] = systemRole;
+      if (!isCustomServerEnabled) {
+        request.fields['noa_system_prompt'] = systemRole;
+        request.fields['temperature'] = temperature.toString();
+        request.fields['tts'] = textToSpeech ? "1" : "0";
+        request.fields['promptless'] = promptless ? "1" : "0";
+      }
       request.fields['messages'] = jsonEncode(noaHistory);
       request.fields['location'] = await Location.getAddress();
       request.fields['time'] = DateTime.now().toString();
-      request.fields['temperature'] = temperature.toString();
-      request.fields['tts'] = textToSpeech ? "1" : "0";
-      request.fields['promptless'] = promptless ? "1" : "0";
 
       _log.info(
           "Sending message request: audio[${audio.length}], image[${image.length}], ${request.fields.toString()}");

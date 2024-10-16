@@ -124,6 +124,38 @@ class AppLogicModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _customServer = false;
+  bool get customServer => _customServer;
+  set customServer(bool value) {
+    _customServer = value;
+    SharedPreferences.getInstance()
+        .then((sp) => sp.setBool("customServer", value));
+    notifyListeners();
+  }
+  String _apiEndpoint = "";
+  String get apiEndpoint => _apiEndpoint;
+  set apiEndpoint(String value) {
+    _apiEndpoint = value;
+    SharedPreferences.getInstance().then((sp) => sp.setString("apiEndpoint", value));
+    notifyListeners();
+  }
+
+  String _apiToken = "";
+  String get apiToken => _apiToken;
+  set apiToken(String value) {
+    _apiToken = value;
+    SharedPreferences.getInstance().then((sp) => sp.setString("apiToken", value));
+    notifyListeners();
+  }
+
+  String _apiHeader = "";
+  String get apiHeader => _apiHeader;
+  set apiHeader(String value) {
+    _apiHeader = value;
+    SharedPreferences.getInstance().then((sp) => sp.setString("apiHeader", value));
+    notifyListeners();
+  }
+
   TuneLength _tuneLength = TuneLength.standard;
   TuneLength get tuneLength => _tuneLength;
   set tuneLength(TuneLength value) {
@@ -216,7 +248,7 @@ class AppLogicModel extends ChangeNotifier {
               .buffer
               .asUint8List(),
           exclude: true));
-
+          
       noaMessages.add(NoaMessage(
           message: "...and then a third time to finish",
           from: NoaRole.noa,
@@ -266,6 +298,10 @@ class AppLogicModel extends ChangeNotifier {
               _tuneLength = TuneLength.values
                   .firstWhere((e) => e.toString() == 'TuneLength.$len');
               _textToSpeech = savedData.getBool('textToSpeech') ?? true;
+              _apiEndpoint = savedData.getString('apiEndpoint') ?? "";
+              _apiToken = savedData.getString('apiToken') ?? "";
+              _apiHeader = savedData.getString('apiHeader') ?? "";
+              _customServer = savedData.getBool('customServer') ?? false;
               _promptless = savedData.getBool('promptless') ?? false;
 
               // Check if the auto token is loaded and if Frame is paired
@@ -542,6 +578,7 @@ class AppLogicModel extends ChangeNotifier {
                       getTunePrompt(),
                       _tuneTemperature / 50,
                       textToSpeech,
+                      
                     );
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
@@ -566,9 +603,13 @@ class AppLogicModel extends ChangeNotifier {
                         _tuneTemperature / 50,
                         noaMessages,
                         textToSpeech,
-                        promptless);
-                    final topicChanged =
-                        newMessages.where((msg) => msg.topicChanged).isNotEmpty;
+                        apiEndpoint,
+                        apiHeader,
+                        apiToken,
+                        customServer,
+                        promptless
+                        );
+                    final topicChanged = newMessages.where((msg) => msg.topicChanged).isNotEmpty;
                     if (topicChanged) {
                       for (var msg in noaMessages) {
                         msg.exclude = true;
