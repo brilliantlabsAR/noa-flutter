@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
-const _firmwareVersion = "v24.282.1117";
+const _firmwareVersion = "v24.310.0800";
 const _scriptVersion = "v1.0.0";
 
 enum State {
@@ -132,11 +132,13 @@ class AppLogicModel extends ChangeNotifier {
         .then((sp) => sp.setBool("customServer", value));
     notifyListeners();
   }
+
   String _apiEndpoint = "";
   String get apiEndpoint => _apiEndpoint;
   set apiEndpoint(String value) {
     _apiEndpoint = value;
-    SharedPreferences.getInstance().then((sp) => sp.setString("apiEndpoint", value));
+    SharedPreferences.getInstance()
+        .then((sp) => sp.setString("apiEndpoint", value));
     notifyListeners();
   }
 
@@ -144,7 +146,8 @@ class AppLogicModel extends ChangeNotifier {
   String get apiToken => _apiToken;
   set apiToken(String value) {
     _apiToken = value;
-    SharedPreferences.getInstance().then((sp) => sp.setString("apiToken", value));
+    SharedPreferences.getInstance()
+        .then((sp) => sp.setString("apiToken", value));
     notifyListeners();
   }
 
@@ -152,7 +155,8 @@ class AppLogicModel extends ChangeNotifier {
   String get apiHeader => _apiHeader;
   set apiHeader(String value) {
     _apiHeader = value;
-    SharedPreferences.getInstance().then((sp) => sp.setString("apiHeader", value));
+    SharedPreferences.getInstance()
+        .then((sp) => sp.setString("apiHeader", value));
     notifyListeners();
   }
 
@@ -248,7 +252,7 @@ class AppLogicModel extends ChangeNotifier {
               .buffer
               .asUint8List(),
           exclude: true));
-          
+
       noaMessages.add(NoaMessage(
           message: "...and then a third time to finish",
           from: NoaRole.noa,
@@ -578,7 +582,6 @@ class AppLogicModel extends ChangeNotifier {
                       getTunePrompt(),
                       _tuneTemperature / 50,
                       textToSpeech,
-                      
                     );
                     noaUser =
                         await NoaApi.getUser((await _getUserAuthToken())!);
@@ -607,9 +610,9 @@ class AppLogicModel extends ChangeNotifier {
                         apiHeader,
                         apiToken,
                         customServer,
-                        promptless
-                        );
-                    final topicChanged = newMessages.where((msg) => msg.topicChanged).isNotEmpty;
+                        promptless);
+                    final topicChanged =
+                        newMessages.where((msg) => msg.topicChanged).isNotEmpty;
                     if (topicChanged) {
                       for (var msg in noaMessages) {
                         msg.exclude = true;
