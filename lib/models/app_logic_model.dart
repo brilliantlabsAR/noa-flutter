@@ -19,6 +19,10 @@ const _scriptVersion = "v1.0.0";
 enum State {
   getUserSettings,
   waitForLogin,
+  chargeFrame,
+  removeDock,
+  readyToPair,
+  already,
   scanning,
   found,
   connect,

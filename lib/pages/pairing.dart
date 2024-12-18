@@ -21,10 +21,25 @@ class PairingPage extends ConsumerWidget {
     String pairingBoxButtonText = "";
     Image pairingBoxImage = Image.asset('assets/images/charge.gif');
     bool pairingBoxButtonEnabled = false;
+    bool showPairingBox = true;
     int updateProgress = ref.watch(app.model).bluetoothUploadProgress.toInt();
     String deviceName = ref.watch(app.model).deviceName;
 
     switch (ref.watch(app.model).state.current) {
+      case app.State.chargeFrame:
+        pairingBoxText = "Charge Frame for 2 hours";
+        pairingBoxButtonText = "Next";
+        pairingBoxButtonEnabled = false;
+        showPairingBox = false;
+      case app.State.removeDock:
+        pairingBoxText = "Remove Dock from Frame";
+        pairingBoxButtonText = "Next";
+        pairingBoxButtonEnabled = true;
+      case app.State.readyToPair:
+        pairingBoxText = "Ready to pair your device";
+        pairingBoxButtonText = "Next";
+        pairingBoxButtonEnabled = true;
+        break;
       case app.State.scanning:
         pairingBoxText = "Bring your device close";
         pairingBoxButtonText = "Searching";
@@ -92,7 +107,7 @@ class PairingPage extends ConsumerWidget {
             ),
           ),
           AspectRatio(
-            aspectRatio: 1,
+            aspectRatio: 0.75,
             child: Container(
               margin: const EdgeInsets.only(bottom: 22, left: 11, right: 11),
               decoration: const BoxDecoration(
@@ -130,7 +145,64 @@ class PairingPage extends ConsumerWidget {
                   Expanded(
                     child: pairingBoxImage,
                   ),
-                  GestureDetector(
+                  // textbox
+                 const Padding(
+                    padding:  EdgeInsets.only(left: 20, right: 30),
+                    child:  
+                    Text(
+                    "1. To charge Frame, place Mister Power on \nthe bridge of Frame, ensuring a firm, even fit.",
+                    textAlign: TextAlign.justify,
+                    style:  TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      color: colorDark,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                  ),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 20, left: 20, bottom: 30),
+                            child: GestureDetector(
+                              onTap: () {
+                                ref
+                                    .read(app.model)
+                                    .triggerEvent(app.Event.cancelPressed);
+                              },
+                              child: const Icon(
+                                Icons.keyboard_arrow_left_rounded,
+                                color: colorDark,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 20, right: 20, bottom: 30),
+                            child: GestureDetector(
+                              onTap: () {
+                                ref
+                                    .read(app.model)
+                                    .triggerEvent(app.Event.cancelPressed);
+                              },
+                              child: const Icon(
+                                Icons.keyboard_arrow_right_rounded,
+                                color: colorDark,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                  ),
+                   
+                 if (showPairingBox) GestureDetector(
                     onTap: () {
                       ref.read(app.model).triggerEvent(app.Event.buttonPressed);
                     },
