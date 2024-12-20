@@ -20,6 +20,7 @@ enum State {
   getUserSettings,
   waitForLogin,
   chargeFrame,
+  chargeFrame2,
   removeDock,
   readyToPair,
   already,
@@ -34,6 +35,8 @@ enum State {
   triggerUpdate,
   updateFirmware,
   requiresRepair,
+  resetFrame,
+  retryPairing,
   connected,
   disconnected,
   recheckFirmwareVersion,
@@ -330,9 +333,14 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.waitForLogin:
-          state.changeOn(Event.loggedIn, State.scanning,
+          state.changeOn(Event.loggedIn, State.chargeFrame,
               transitionTask: () async =>
                   noaUser = await NoaApi.getUser((await _getUserAuthToken())!));
+          break;
+
+        case State.readyToPair:
+          state.changeOn(Event.buttonPressed, State.scanning);
+          state.changeOn(Event.cancelPressed, State.disconnected);
           break;
 
         case State.scanning:
