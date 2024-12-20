@@ -57,7 +57,7 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = false;
         showPairingBox = false;
         pairingBoxImage = Image.asset('assets/images/part2.gif');
-        tutorialText = "3. Remove the Dock from Frame by gently pulling it away from the Frame.";
+        tutorialText = "3. Remove Mister Power from Frame by gently pulling it away from the Frame.";
         nextState = app.State.readyToPair;
         previousState = app.State.chargeFrame2;
         break;
@@ -134,7 +134,7 @@ class PairingPage extends ConsumerWidget {
         nextState = app.State.retryPairing;
         break;
       case app.State.retryPairing:
-        pairingBoxText = "Reset Frame";
+        pairingBoxText = "Reset frame";
         pairingBoxButtonText = "Try again";
         pairingBoxImage = Image.asset('assets/images/part5.gif');
         tutorialText = "3. Hold the button on the back of Mister Power for 5 seconds.";
