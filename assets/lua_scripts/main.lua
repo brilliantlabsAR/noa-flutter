@@ -1,7 +1,7 @@
 require("graphics")
 require("state")
 
-SCRIPT_VERSION = "v1.0.0"
+SCRIPT_VERSION = "v1.0.1"
 
 local graphics = Graphics.new()
 local state = State.new()
@@ -97,6 +97,7 @@ while true do
             graphics:clear()
             graphics:append_text("tap to finish", "\u{F0010}")
             send_data(MESSAGE_GEN_FLAG)
+            frame.camera.power_save(false)
             frame.microphone.start {}
             image_taken = false
             image_data_sent = false
@@ -110,6 +111,7 @@ while true do
 
         if state:has_been() > 1.4 and image_data_sent == false then
             while true do
+                frame.camera.power_save(true)
                 local image_data = frame.camera.read(frame.bluetooth.max_length() - 1)
                 if (image_data == nil) then
                     break
