@@ -38,7 +38,7 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = false;
         showPairingBox = false;
         pairingBoxImage = Image.asset('assets/images/part1.gif');
-        tutorialText = "1. To charge Frame, place Mister Power on the bridge of Frame, ensuring a firm, even fit.";
+        tutorialText = "1. To charge Frame, place Mister Power on the bridge of Frame, ensuring a firm, even fit.\n\n";
         nextState = app.State.chargeFrame2;
         previousState = app.State.chargeFrame;
         break;
@@ -57,7 +57,7 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = false;
         showPairingBox = false;
         pairingBoxImage = Image.asset('assets/images/part2.gif');
-        tutorialText = "3. Remove Mister Power from Frame by gently pulling it away from the Frame.";
+        tutorialText = "3. Remove Mister Power from Frame by gently pulling it away from the Frame.\n\n";
         nextState = app.State.readyToPair;
         previousState = app.State.chargeFrame2;
         break;
@@ -120,14 +120,14 @@ class PairingPage extends ConsumerWidget {
         pairingBoxImage = Image.asset('assets/images/part3.gif');
         pairingBoxButtonEnabled = true;
         showPairingBox = false;
-        tutorialText = "1. Make sure Frame is removed from your phone's Bluetooth settings.";
+        tutorialText = "1. Make sure Frame is removed from your phone's Bluetooth settings.\n\n";
         nextState = app.State.resetFrame;
         previousState = app.State.readyToPair;
         break;
       case app.State.resetFrame:
         pairingBoxText = "Reset Frame";
         pairingBoxImage = Image.asset('assets/images/part4.gif');
-        tutorialText = "2. Attach mister power and a usb-c power cable to the frame.";
+        tutorialText = "2. Attach mister power and a usb-c power cable to the frame.\n\n";
         showPairingBox = false;
         pairingBoxButtonEnabled = false;
         previousState = app.State.requiresRepair;
@@ -137,7 +137,7 @@ class PairingPage extends ConsumerWidget {
         pairingBoxText = "Reset frame";
         pairingBoxButtonText = "Try again";
         pairingBoxImage = Image.asset('assets/images/part5.gif');
-        tutorialText = "3. Hold the button on the back of Mister Power for 5 seconds.";
+        tutorialText = "3. Hold the button on the back of Mister Power for 5 seconds.\n\n";
         pairingBoxButtonEnabled = true;
         break;
     }
