@@ -1,7 +1,7 @@
 require("graphics")
 require("state")
 
-SCRIPT_VERSION = "v1.0.0"
+SCRIPT_VERSION = "v1.0.1"
 
 local graphics = Graphics.new()
 local state = State.new()
@@ -108,7 +108,7 @@ while true do
             image_taken = true
         end
 
-        if state:has_been() > 1.4 and image_data_sent == false then
+        if state:has_been() > 1.4 and frame.camera.image_ready() and image_data_sent == false then
             while true do
                 local image_data = frame.camera.read(frame.bluetooth.max_length() - 1)
                 if (image_data == nil) then
