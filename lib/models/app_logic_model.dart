@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
-const _firmwareVersion = "v25.008.1013";
+const _firmwareVersion = "v25.031.0924";
 const _scriptVersion = "v1.0.1";
 
 enum State {
