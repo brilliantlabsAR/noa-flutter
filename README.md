@@ -27,6 +27,21 @@ Welcome to the Noa app repository! Built using Flutter, this repository also ser
 
 1. Rename `.env.template` to `.env` and populate it with your own Google O-auth client IDs if desired
 
+1. Create a keystore
+
+    ```sh
+    keytool -genkey -v -keystore ~/my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key-alias
+    ```
+
+1. Create `key.properties` file. Run this command from the project root (`noa-flutter`), replacing the `storePassword`, `keyPassword`, and `storeFile` values with your own
+
+    ```sh
+    echo 'storePassword=brilliantlabs
+keyPassword=brilliantlabs
+keyAlias=my-key-alias
+storeFile=/home/user/my-release-key.jks' > key.properties
+    ```
+
 1. Connect your phone and run the app in release mode
 
     ```sh
