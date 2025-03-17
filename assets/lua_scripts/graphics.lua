@@ -38,6 +38,11 @@ end
 -- function Graphics:set_color(index, red, green, blue)
 --     frame.display.assign_color(index, red, green, blue)
 -- end
+function Graphics:show_flash()
+    frame.display.bitmap(241, 191, 160, 2, 0, string.rep("\xFF", 400))
+    frame.display.bitmap(311, 121, 20, 2, 0, string.rep("\xFF", 400))
+    frame.display.show()
+end
 
 function Graphics:on_complete(func)
     self.__done_function = func

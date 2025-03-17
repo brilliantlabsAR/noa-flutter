@@ -14,7 +14,7 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.031.0924";
-const _scriptVersion = "v1.0.1";
+const _scriptVersion = "v1.0.2";
 
 enum State {
   getUserSettings,
