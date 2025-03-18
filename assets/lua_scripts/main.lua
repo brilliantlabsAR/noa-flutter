@@ -1,7 +1,7 @@
 require("graphics")
 require("state")
 
-SCRIPT_VERSION = "v1.0.2"
+SCRIPT_VERSION = "v1.0.3"
 
 local graphics = Graphics.new()
 local state = State.new()
@@ -96,6 +96,8 @@ while true do
         state:on_entry(function()
             graphics:clear()
             graphics:append_text("tap to finish", "\u{F0010}")
+            graphics:print()
+            graphics:show_flash()
             send_data(MESSAGE_GEN_FLAG)
             frame.microphone.start {}
             image_taken = false
@@ -104,7 +106,6 @@ while true do
         end)
 
         if state:has_been() > 0.2 and image_taken == false then
-            graphics:show_flash()
             frame.camera.capture {}
             image_taken = true
         end
@@ -215,7 +216,9 @@ while true do
     end
 
     if frame.time.utc() - last_print_time > 0.07 then
-        graphics:print()
+        if not(state:is("LISTEN") and image_data_sent == false) then
+            graphics:print()
+        end
         last_print_time = frame.time.utc()
     end
 
