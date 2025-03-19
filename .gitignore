@@ -44,3 +44,4 @@ app.*.map.json
 
 # VSCode user settings
 .vscode/settings.json
+.cxx/

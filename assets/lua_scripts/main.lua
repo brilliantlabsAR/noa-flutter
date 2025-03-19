@@ -11,6 +11,8 @@ local image_data_sent = false
 local audio_data_sent = false
 local last_autoexp_time = 0
 local last_print_time = 0
+local auto_exposure_number = 0
+EXPOSURE_NUMBER = 10
 
 -- Frame to phone flags
 MESSAGE_GEN_FLAG = "\x10"
@@ -24,6 +26,7 @@ CHECK_SCRIPT_VERSION_FLAG = "\x17"
 -- Phone to Frame flags
 MESSAGE_RESPONSE_FLAG = "\x20"
 IMAGE_RESPONSE_FLAG = "\x21"
+
 
 local function send_data(data)
     local try_until = frame.time.utc() + 2
@@ -95,22 +98,21 @@ while true do
     elseif state:is("LISTEN") then
         state:on_entry(function()
             graphics:clear()
-            graphics:append_text("tap to finish", "\u{F0010}")
-            graphics:print()
             graphics:show_flash()
             send_data(MESSAGE_GEN_FLAG)
             frame.microphone.start {}
             image_taken = false
             image_data_sent = false
             audio_data_sent = false
+            auto_exposure_number = 0
         end)
 
-        if state:has_been() > 0.2 and image_taken == false then
+        if auto_exposure_number > EXPOSURE_NUMBER and image_taken == false then
             frame.camera.capture {}
             image_taken = true
         end
 
-        if state:has_been() > 1.4 and frame.camera.image_ready() and image_data_sent == false then
+        if auto_exposure_number > (EXPOSURE_NUMBER + 2 ) and frame.camera.image_ready() and image_data_sent == false then
             while true do
                 local image_data = frame.camera.read(frame.bluetooth.max_length() - 1)
                 if (image_data == nil) then
@@ -130,11 +132,11 @@ while true do
             send_data(AUDIO_DATA_FLAG .. audio_data)
         end
 
-        if state:has_been() > 2 then
+        if auto_exposure_number > (EXPOSURE_NUMBER+20) then
             state:switch_on_tap("ON_IT")
             state:switch_on_double_tap("TAP_ME_IN")
         end
-        state:switch_after(10, "TAP_ME_IN")
+        state:switch_after(EXPOSURE_NUMBER%10+8, "TAP_ME_IN")
     elseif state:is("ON_IT") then
         state:on_entry(function()
             frame.microphone.stop()
@@ -207,6 +209,7 @@ while true do
     if frame.time.utc() - last_autoexp_time > 0.1 then
         frame.camera.auto {}
         last_autoexp_time = frame.time.utc()
+        auto_exposure_number = auto_exposure_number + 1
     end
 
     if frame.bluetooth.is_connected() == false then
