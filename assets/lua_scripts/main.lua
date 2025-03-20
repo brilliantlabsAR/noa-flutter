@@ -1,7 +1,7 @@
 require("graphics")
 require("state")
 
-SCRIPT_VERSION = "v1.0.3"
+SCRIPT_VERSION = "v1.0.4"
 
 local graphics = Graphics.new()
 local state = State.new()
@@ -75,7 +75,8 @@ while true do
     elseif state:is('TAP_ME_IN') then
         state:on_entry(function()
             graphics:clear()
-            graphics:append_text("tap me in", "\u{F0000}")
+            graphics:append_text("tap to ask", "\u{F0000}")
+            graphics.__rad = "A"
         end)
         state:switch_after(10, "PRE_SLEEP")
         state:switch_on_tap("LISTEN")
@@ -97,22 +98,23 @@ while true do
         end)
     elseif state:is("LISTEN") then
         state:on_entry(function()
-            graphics:clear()
-            graphics:show_flash()
-            send_data(MESSAGE_GEN_FLAG)
-            frame.microphone.start {}
             image_taken = false
+            graphics:clear()
+            graphics.__rad = "A"
             image_data_sent = false
             audio_data_sent = false
+            send_data(MESSAGE_GEN_FLAG)
+            frame.microphone.start {}
             auto_exposure_number = 0
         end)
 
         if auto_exposure_number > EXPOSURE_NUMBER and image_taken == false then
             frame.camera.capture {}
             image_taken = true
+            graphics.__rad = "C"
         end
 
-        if auto_exposure_number > (EXPOSURE_NUMBER + 2 ) and frame.camera.image_ready() and image_data_sent == false then
+        if auto_exposure_number > (EXPOSURE_NUMBER + 3 ) and frame.camera.image_ready() and image_data_sent == false then
             while true do
                 local image_data = frame.camera.read(frame.bluetooth.max_length() - 1)
                 if (image_data == nil) then
@@ -219,9 +221,7 @@ while true do
     end
 
     if frame.time.utc() - last_print_time > 0.07 then
-        if not(state:is("LISTEN") and image_data_sent == false) then
-            graphics:print()
-        end
+        graphics:print()
         last_print_time = frame.time.utc()
     end
 

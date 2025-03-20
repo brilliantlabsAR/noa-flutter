@@ -14,7 +14,7 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.077.0348";
-const _scriptVersion = "v1.0.3";
+const _scriptVersion = "v1.0.4";
 
 enum State {
   getUserSettings,
@@ -706,6 +706,7 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.deviceUpToDate, State.checkScriptVersion);
           state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
           state.changeOn(Event.error, State.stopLuaApp);
+          state.changeOn(Event.logoutPressed, State.logout);
           break;
 
         case State.checkScriptVersion:
@@ -731,14 +732,15 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.deviceUpToDate, State.connected);
           state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
           state.changeOn(Event.error, State.stopLuaApp);
+          state.changeOn(Event.logoutPressed, State.logout);
           break;
 
         case State.logout:
           state.onEntry(() async {
             try {
+              await SharedPreferences.getInstance().then((sp) => sp.clear());
               await _connectedDevice?.disconnect();
               await NoaApi.signOut((await _getUserAuthToken())!);
-              await SharedPreferences.getInstance().then((sp) => sp.clear());
               noaMessages.clear();
               triggerEvent(Event.done);
             } catch (error) {
