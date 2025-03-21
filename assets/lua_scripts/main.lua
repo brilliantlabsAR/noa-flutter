@@ -1,7 +1,7 @@
 require("graphics")
 require("state")
 
-SCRIPT_VERSION = "v1.0.4"
+SCRIPT_VERSION = "v1.0.5"
 
 local graphics = Graphics.new()
 local state = State.new()
@@ -75,8 +75,8 @@ while true do
     elseif state:is('TAP_ME_IN') then
         state:on_entry(function()
             graphics:clear()
-            graphics:append_text("tap to ask", "\u{F0000}")
-            graphics.__rad = "A"
+            graphics:append_text("tap me in", "\u{F0000}")
+            -- graphics.__rad = "A"
         end)
         state:switch_after(10, "PRE_SLEEP")
         state:switch_on_tap("LISTEN")
@@ -100,7 +100,8 @@ while true do
         state:on_entry(function()
             image_taken = false
             graphics:clear()
-            graphics.__rad = "A"
+            -- graphics.__rad = "A"
+            graphics:append_text("tap to finish", "\u{F0010}")
             image_data_sent = false
             audio_data_sent = false
             send_data(MESSAGE_GEN_FLAG)
@@ -109,17 +110,15 @@ while true do
         end)
 
         if auto_exposure_number > EXPOSURE_NUMBER and image_taken == false then
-            frame.camera.capture {}
+            frame.camera.capture { quality = "HIGH" , resolution = 720}
             image_taken = true
-            graphics.__rad = "C"
+            -- graphics.__rad = "C"
         end
 
         if auto_exposure_number > (EXPOSURE_NUMBER + 3 ) and frame.camera.image_ready() and image_data_sent == false then
             while true do
                 local image_data = frame.camera.read(frame.bluetooth.max_length() - 1)
                 if (image_data == nil) then
-                    graphics:clear()
-                    graphics:append_text("tap to finish", "\u{F0010}")
                     break
                 end
                 send_data(IMAGE_DATA_FLAG .. image_data)
