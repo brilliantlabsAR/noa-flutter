@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:frame_ble/brilliant_bluetooth.dart';
+import 'package:frame_ble/brilliant_connection_state.dart';
+import 'package:frame_ble/brilliant_device.dart';
+import 'package:frame_ble/brilliant_scanned_device.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
@@ -196,6 +201,7 @@ class AppLogicModel extends ChangeNotifier {
   StreamSubscription? _dataResponseStream;
   BrilliantScannedDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
+  BrilliantDfuDevice? _updatableDevice;
   List<int> _audioData = List.empty(growable: true);
   List<int> _imageData = List.empty(growable: true);
 
@@ -335,10 +341,10 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             await _scanStream?.cancel();
             _scanStream = BrilliantBluetooth.scan()
-                .timeout(const Duration(seconds: 2), onTimeout: (sink) {
-              _nearbyDevice = null;
-              triggerEvent(Event.deviceLost);
-            }).listen((device) {
+              //   .timeout(const Duration(seconds: 2), onTimeout: (sink) {
+              // _nearbyDevice = null;
+              // triggerEvent(Event.deviceLost);  })
+              .listen((device) {
               _nearbyDevice = device;
               deviceName = device.device.advName;
               triggerEvent(Event.deviceFound);
@@ -359,19 +365,27 @@ class AppLogicModel extends ChangeNotifier {
         case State.connect:
           state.onEntry(() async {
             try {
+              if (_nearbyDevice!.device.advName == "Frame Update") {
+               
+                triggerEvent(Event.updatableDeviceConnected);
+                return;
+              }
               _connectedDevice =
                   await BrilliantBluetooth.connect(_nearbyDevice!);
+                  // if device is "Frame Update" then create a new updatable device
+              
               switch (_connectedDevice!.state) {
                 case BrilliantConnectionState.connected:
                   triggerEvent(Event.deviceConnected);
                   break;
-                case BrilliantConnectionState.dfuConnected:
-                  triggerEvent(Event.updatableDeviceConnected);
-                  break;
+                // case BrilliantConnectionState.dfuConnected:
+                //   triggerEvent(Event.updatableDeviceConnected);
+                  // break;
                 default:
                   throw ();
               }
             } catch (_) {
+              
               triggerEvent(Event.deviceInvalid);
             }
           });
@@ -489,7 +503,16 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.updateFirmware:
           state.onEntry(() async {
-            _connectedDevice!
+            
+                _updatableDevice = BrilliantDfuDevice(
+                    state: BrilliantConnectionState.disconnected,
+                    device: _nearbyDevice!.device,
+                );
+                 _nearbyDevice!.device.connect(
+                  autoConnect: Platform.isIOS ? true : false,
+                  mtu: null,
+                );
+            _updatableDevice!
                 .updateFirmware("assets/frame-firmware-$_firmwareVersion.zip")
                 .listen(
               (value) {
@@ -528,8 +551,8 @@ class AppLogicModel extends ChangeNotifier {
             _connectionStream?.cancel();
             _connectionStream =
                 _connectedDevice!.connectionState.listen((event) {
-              _connectedDevice = event;
-              if (event.state == BrilliantConnectionState.disconnected) {
+              // _connectedDevice = 
+              if (event == BrilliantConnectionState.disconnected) {
                 triggerEvent(Event.deviceDisconnected);
               }
             });
@@ -662,8 +685,8 @@ class AppLogicModel extends ChangeNotifier {
             _connectionStream?.cancel();
             _connectionStream =
                 _connectedDevice?.connectionState.listen((event) {
-              _connectedDevice = event;
-              if (event.state == BrilliantConnectionState.connected) {
+              // _connectedDevice = _connectedDevice;
+              if (event == BrilliantConnectionState.connected) {
                 triggerEvent(Event.deviceConnected);
               }
             });
@@ -685,11 +708,11 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.recheckFirmwareVersion:
           state.onEntry(() async {
-            _dataResponseStream?.cancel();
-            _dataResponseStream =
-                _connectedDevice!.dataResponse.listen((event) async {
-              _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
-              if (utf8.decode(event.sublist(1)) == _firmwareVersion) {
+            _luaResponseStream?.cancel();
+            _luaResponseStream =
+                _connectedDevice!.stringResponse.listen((event) async {
+              _log.info("Firmware version: $event");
+              if (event == _firmwareVersion) {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -697,9 +720,11 @@ class AppLogicModel extends ChangeNotifier {
             });
             try {
               await _connectedDevice!
-                  .sendData(List<int>.filled(1, 0x16))
+                  .sendString("print(frame.FIRMWARE_VERSION)")
                   .timeout(const Duration(seconds: 1));
-            } catch (_) {
+            } catch (ex) {
+              print(ex);
+              _log.warning("Error checking firmware version. $ex");
               triggerEvent(Event.error);
             }
           });
@@ -711,11 +736,11 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.checkScriptVersion:
           state.onEntry(() async {
-            _dataResponseStream?.cancel();
-            _dataResponseStream =
-                _connectedDevice!.dataResponse.listen((event) async {
-              _log.info("Script version: ${utf8.decode(event.sublist(1))}");
-              if (utf8.decode(event.sublist(1)) == _scriptVersion) {
+            _luaResponseStream?.cancel();
+            _luaResponseStream =
+                _connectedDevice!.stringResponse.listen((event) async {
+              _log.info("Script version: $event");
+              if (event == _scriptVersion) {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -723,9 +748,10 @@ class AppLogicModel extends ChangeNotifier {
             });
             try {
               await _connectedDevice!
-                  .sendData(List<int>.filled(1, 0x17))
+                  .sendString("print(SCRIPT_VERSION)")
                   .timeout(const Duration(seconds: 1));
             } catch (_) {
+              _log.warning("Error checking script version.");
               triggerEvent(Event.error);
             }
           });
