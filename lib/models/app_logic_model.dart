@@ -334,7 +334,8 @@ class AppLogicModel extends ChangeNotifier {
         case State.waitForLogin:
           state.changeOn(Event.loggedIn, State.scanning,
               transitionTask: () async =>
-                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!));
+                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!)
+                  );
           break;
 
         case State.scanning:
@@ -366,12 +367,24 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             try {
               if (_nearbyDevice!.device.advName == "Frame Update") {
-               
+               _updatableDevice = BrilliantDfuDevice(
+                    state: BrilliantConnectionState.disconnected,
+                    device: _nearbyDevice!.device,
+                );
+                _updatableDevice!.connectionState.listen((event) {
+                  if (event.state == BrilliantConnectionState.connected) {
+                  }
+                });
+                await _updatableDevice!.connect();
                 triggerEvent(Event.updatableDeviceConnected);
+
                 return;
               }
               _connectedDevice =
                   await BrilliantBluetooth.connect(_nearbyDevice!);
+            //   _connectedDevice!.stringResponse.listen((event) {
+            //     _log.info("Connected to device: $event");
+            // });
                   // if device is "Frame Update" then create a new updatable device
               
               switch (_connectedDevice!.state) {
@@ -430,9 +443,10 @@ class AppLogicModel extends ChangeNotifier {
         case State.uploadMainLua:
           state.onEntry(() async {
             try {
+              String file = await rootBundle.loadString('assets/lua_scripts/main.lua');
               await _connectedDevice!.uploadScript(
                 'main.lua',
-                'assets/lua_scripts/main.lua',
+                file,
               );
               triggerEvent(Event.done);
             } catch (_) {
@@ -447,9 +461,10 @@ class AppLogicModel extends ChangeNotifier {
         case State.uploadGraphicsLua:
           state.onEntry(() async {
             try {
+               String file = await rootBundle.loadString('assets/lua_scripts/graphics.lua');
               await _connectedDevice!.uploadScript(
                 'graphics.lua',
-                'assets/lua_scripts/graphics.lua',
+                file,
               );
               triggerEvent(Event.done);
             } catch (_) {
@@ -464,9 +479,10 @@ class AppLogicModel extends ChangeNotifier {
         case State.uploadStateLua:
           state.onEntry(() async {
             try {
+              String file = await rootBundle.loadString('assets/lua_scripts/state.lua');
               await _connectedDevice!.uploadScript(
                 'state.lua',
-                'assets/lua_scripts/state.lua',
+                file,
               );
               await _connectedDevice!.sendResetSignal();
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
@@ -504,14 +520,6 @@ class AppLogicModel extends ChangeNotifier {
         case State.updateFirmware:
           state.onEntry(() async {
             
-                _updatableDevice = BrilliantDfuDevice(
-                    state: BrilliantConnectionState.disconnected,
-                    device: _nearbyDevice!.device,
-                );
-                 _nearbyDevice!.device.connect(
-                  autoConnect: Platform.isIOS ? true : false,
-                  mtu: null,
-                );
             _updatableDevice!
                 .updateFirmware("assets/frame-firmware-$_firmwareVersion.zip")
                 .listen(

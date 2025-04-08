@@ -10,6 +10,7 @@ import 'package:frame_ble/brilliant_bluetooth.dart';
 import 'package:frame_ble/brilliant_bluetooth_exception.dart';
 import 'package:frame_ble/brilliant_connection_state.dart';
 import 'package:frame_ble/brilliant_device.dart';
+import 'package:frame_ble/brilliant_scanned_device.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger("Bluetooth");
@@ -233,6 +234,33 @@ class BrilliantDfuDevice {
 //     }
 //   }
 
+   Future<BrilliantDfuDevice> connect(
+    ) async {
+    try {
+      _log.info("Connecting");
+
+      await FlutterBluePlus.stopScan();
+
+      await device.connect(
+        autoConnect: Platform.isIOS ? true : false,
+        mtu: null,
+      );
+
+      final connectionState = await device.connectionState
+          .firstWhere((event) => event == BluetoothConnectionState.connected)
+          .timeout(const Duration(seconds: 3));
+
+      if (connectionState == BluetoothConnectionState.connected) {
+        return await _enableServices();
+      }
+
+      throw ("${device.disconnectReason?.description}");
+    } catch (error) {
+      await device.disconnect();
+      _log.warning("Couldn't connect. $error");
+      return Future.error(BrilliantBluetoothException(error.toString()));
+    }
+  }
   Stream<double> updateFirmware(String filePath) async* {
     try {
       yield 0;
