@@ -1,6 +1,11 @@
 require("graphics")
 require("state")
-
+local data = require('data.min')
+local battery = require('battery.min')
+local plain_text = require('plain_text.min')
+local image_sprite_block = require('image_sprite_block.min')
+local code = require('code.min')
+TEXT_FLAG = 0x0a
 SCRIPT_VERSION = "v1.0.5"
 
 local graphics = Graphics.new()
@@ -20,12 +25,13 @@ WILDCARD_GEN_FLAG = "\x12"
 AUDIO_DATA_FLAG = "\x13"
 IMAGE_DATA_FLAG = "\x14"
 TRANSFER_DONE_FLAG = "\x15"
-CHECK_FW_VERSION_FLAG = "\x16"
-CHECK_SCRIPT_VERSION_FLAG = "\x17"
+CHECK_FW_VERSION_FLAG = 0x16
+CHECK_SCRIPT_VERSION_FLAG = 0x17
 
 -- Phone to Frame flags
-MESSAGE_RESPONSE_FLAG = "\x20"
-IMAGE_RESPONSE_FLAG = "\x21"
+MESSAGE_RESPONSE_FLAG = 0x20
+IMAGE_RESPONSE_FLAG = 0x21
+DATA_FLAG=0x22
 
 
 local function send_data(data)
@@ -38,30 +44,45 @@ local function send_data(data)
     state:switch("NO_CONNECTION")
 end
 
-local function bluetooth_callback(message)
-    if string.sub(message, 1, 1) == MESSAGE_RESPONSE_FLAG then
+data.parsers[MESSAGE_RESPONSE_FLAG] = plain_text.parse_plain_text
+data.parsers[IMAGE_RESPONSE_FLAG] = image_sprite_block.parse_image_sprite_block
+data.parsers[DATA_FLAG] = code.parse_code
+
+local function bluetooth_callback()
+    -- for data access from frame
+    if data.app_data[DATA_FLAG] ~= nil then
+        local code = data.app_data[DATA_FLAG]
+        if code == CHECK_FW_VERSION_FLAG then
+            send_data(frame.FIRMWARE_VERSION)
+        elseif code == CHECK_SCRIPT_VERSION_FLAG then
+            send_data(SCRIPT_VERSION)
+        end
+    end
+    -- To print response on Frame
+    if (data.app_data[MESSAGE_RESPONSE_FLAG] ~= nil and data.app_data[MESSAGE_RESPONSE_FLAG].string ~= nil) then
         if state:is("ON_IT") or state:is("WILDCARD") then
             graphics:clear()
             state:switch("PRINT_REPLY")
         end
         if state:is("PRINT_REPLY") then
-            graphics:append_text(string.sub(message, 2), "\u{F0003}")
+            graphics:append_text(data.app_data[MESSAGE_RESPONSE_FLAG].string, "\u{F0003}")
         end
-    elseif string.sub(message, 1, 1) == IMAGE_RESPONSE_FLAG then
+    end
+    -- To print image on Frame
+    if (data.app_data[IMAGE_RESPONSE_FLAG] ~= nil and data.app_data[IMAGE_RESPONSE_FLAG].string ~= nil) then
         if state:is("ON_IT") then
             graphics:clear()
             state:switch("PRINT_IMAGE")
         end
-    elseif string.sub(message, 1, 1) == CHECK_FW_VERSION_FLAG then
-        send_data(CHECK_FW_VERSION_FLAG .. frame.FIRMWARE_VERSION)
-    elseif string.sub(message, 1, 1) == CHECK_SCRIPT_VERSION_FLAG then
-        send_data(CHECK_SCRIPT_VERSION_FLAG .. SCRIPT_VERSION)
     end
 end
 
-frame.bluetooth.receive_callback(bluetooth_callback)
-
+-- frame.bluetooth.receive_callback(bluetooth_callback)
 while true do
+    local items_ready = data.process_raw_items()
+    if items_ready > 0 then
+        bluetooth_callback()
+    end
     if state:is("START") then
         state:on_entry(function()
             graphics:clear()

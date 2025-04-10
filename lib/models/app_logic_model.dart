@@ -9,6 +9,8 @@ import 'package:frame_ble/brilliant_bluetooth.dart';
 import 'package:frame_ble/brilliant_connection_state.dart';
 import 'package:frame_ble/brilliant_device.dart';
 import 'package:frame_ble/brilliant_scanned_device.dart';
+import 'package:frame_msg/frame_msg.dart';
+import 'package:frame_msg/tx/plain_text.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
@@ -20,6 +22,13 @@ final _log = Logger("App logic");
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.080.0838";
 const _scriptVersion = "v1.0.5";
+
+const checkFwVersionFlag = 0x16;
+const checkScriptVersionFlag = 0x17;
+// from phone to frame
+const messageResponseFlag = 0x20;
+const imageResponseFlag  = 0x21;
+const singleDataFlag = 0x22;
 
 enum State {
   getUserSettings,
@@ -106,7 +115,9 @@ class AppLogicModel extends ChangeNotifier {
     return await SharedPreferences.getInstance()
         .then((value) => value.getString('PairedDevice'));
   }
-
+   List<String> _filterLuaFiles(List<String> files) {
+    return files.where((name)=>name.endsWith('.lua')).toList();
+  }
   // User's tune preferences
   String _tunePrompt = "";
   String get tunePrompt => _tunePrompt;
@@ -290,7 +301,7 @@ class AppLogicModel extends ChangeNotifier {
           exclude: true));
     }();
   }
-
+  
   void triggerEvent(Event event) {
     state.event(event);
 
@@ -382,18 +393,11 @@ class AppLogicModel extends ChangeNotifier {
               }
               _connectedDevice =
                   await BrilliantBluetooth.connect(_nearbyDevice!);
-            //   _connectedDevice!.stringResponse.listen((event) {
-            //     _log.info("Connected to device: $event");
-            // });
-                  // if device is "Frame Update" then create a new updatable device
-              
+  
               switch (_connectedDevice!.state) {
                 case BrilliantConnectionState.connected:
                   triggerEvent(Event.deviceConnected);
                   break;
-                // case BrilliantConnectionState.dfuConnected:
-                //   triggerEvent(Event.updatableDeviceConnected);
-                  // break;
                 default:
                   throw ();
               }
@@ -441,51 +445,23 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.uploadMainLua:
+        
           state.onEntry(() async {
             try {
-              String file = await rootBundle.loadString('assets/lua_scripts/main.lua');
-              await _connectedDevice!.uploadScript(
-                'main.lua',
-                file,
-              );
-              triggerEvent(Event.done);
-            } catch (_) {
-              triggerEvent(Event.error);
-            }
-          });
+              List<String> luaFiles = _filterLuaFiles(
+                (await AssetManifest.loadFromAssetBundle(rootBundle)).listAssets());
 
-          state.changeOn(Event.done, State.uploadGraphicsLua);
-          state.changeOn(Event.error, State.requiresRepair);
-          break;
-
-        case State.uploadGraphicsLua:
-          state.onEntry(() async {
-            try {
-               String file = await rootBundle.loadString('assets/lua_scripts/graphics.lua');
-              await _connectedDevice!.uploadScript(
-                'graphics.lua',
-                file,
-              );
-              triggerEvent(Event.done);
-            } catch (_) {
-              triggerEvent(Event.error);
-            }
-          });
-
-          state.changeOn(Event.done, State.uploadStateLua);
-          state.changeOn(Event.error, State.requiresRepair);
-          break;
-
-        case State.uploadStateLua:
-          state.onEntry(() async {
-            try {
-              String file = await rootBundle.loadString('assets/lua_scripts/state.lua');
-              await _connectedDevice!.uploadScript(
-                'state.lua',
-                file,
-              );
-              await _connectedDevice!.sendResetSignal();
+              if (luaFiles.isNotEmpty) {
+                for (var pathFile in luaFiles) {
+                  String fileName = pathFile.split('/').last;
+                  _log.info("Uploading $fileName");
+                  // send the lua script to the Frame
+                  await _connectedDevice!.uploadScript(fileName, await rootBundle.loadString(pathFile));
+                }
+              }
+               await _connectedDevice!.sendResetSignal();
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
+
               triggerEvent(Event.done);
             } catch (_) {
               triggerEvent(Event.error);
@@ -668,16 +644,17 @@ class AppLogicModel extends ChangeNotifier {
         case State.sendResponseToDevice:
           state.onEntry(() async {
             try {
-              final splitString = utf8
-                  .encode(noaMessages.last.message)
-                  .slices(_connectedDevice!.maxDataLength! - 1);
-              for (var slice in splitString) {
-                List<int> data = slice.toList()..insert(0, 0x20);
-                await _connectedDevice!
-                    .sendData(data)
-                    .timeout(const Duration(seconds: 1));
-                await Future.delayed(const Duration(milliseconds: 50));
-              }
+              // final splitString = utf8
+              //     .encode(noaMessages.last.message)
+              //     .slices(_connectedDevice!.maxDataLength! - 1);
+              // for (var slice in splitString) {
+              //   List<int> data = slice.toList()..insert(0, 0x20);
+              //   await _connectedDevice!
+              //       .sendData(data)
+              //       .timeout(const Duration(seconds: 1));
+              //   await Future.delayed(const Duration(milliseconds: 50));
+              // }
+              await _connectedDevice!.sendMessage(messageResponseFlag, TxPlainText(text: noaMessages.last.message).pack());
               await Future.delayed(const Duration(milliseconds: 300));
             } catch (_) {}
             triggerEvent(Event.done);
@@ -707,7 +684,9 @@ class AppLogicModel extends ChangeNotifier {
                   BrilliantConnectionState.connected) {
                 triggerEvent(Event.deviceConnected);
               }
-            } catch (_) {}
+            } catch (error) {
+              _log.warning("Error reconnecting to device. $error");
+            }
           });
           state.changeOn(Event.deviceConnected, State.recheckFirmwareVersion);
           state.changeOn(Event.logoutPressed, State.logout);
@@ -716,11 +695,11 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.recheckFirmwareVersion:
           state.onEntry(() async {
-            _luaResponseStream?.cancel();
-            _luaResponseStream =
-                _connectedDevice!.stringResponse.listen((event) async {
-              _log.info("Firmware version: $event");
-              if (event == _firmwareVersion) {
+            _dataResponseStream?.cancel();
+            _dataResponseStream =
+                _connectedDevice!.dataResponse.listen((event) async {
+              _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
+              if (utf8.decode(event.sublist(1)) == _firmwareVersion) {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -728,10 +707,9 @@ class AppLogicModel extends ChangeNotifier {
             });
             try {
               await _connectedDevice!
-                  .sendString("print(frame.FIRMWARE_VERSION)")
+                  .sendMessage(singleDataFlag, TxCode(value: checkFwVersionFlag).pack())
                   .timeout(const Duration(seconds: 1));
             } catch (ex) {
-              print(ex);
               _log.warning("Error checking firmware version. $ex");
               triggerEvent(Event.error);
             }
@@ -744,11 +722,11 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.checkScriptVersion:
           state.onEntry(() async {
-            _luaResponseStream?.cancel();
-            _luaResponseStream =
-                _connectedDevice!.stringResponse.listen((event) async {
-              _log.info("Script version: $event");
-              if (event == _scriptVersion) {
+            _dataResponseStream?.cancel();
+            _dataResponseStream =
+                _connectedDevice!.dataResponse.listen((event) async {
+              _log.info("Script version: ${utf8.decode(event.sublist(1))}");
+              if (utf8.decode(event.sublist(1)) == _scriptVersion) {
                 triggerEvent(Event.deviceUpToDate);
               } else {
                 triggerEvent(Event.deviceNeedsUpdate);
@@ -756,7 +734,7 @@ class AppLogicModel extends ChangeNotifier {
             });
             try {
               await _connectedDevice!
-                  .sendString("print(SCRIPT_VERSION)")
+                  .sendMessage(singleDataFlag, TxCode(value: checkScriptVersionFlag).pack())
                   .timeout(const Duration(seconds: 1));
             } catch (_) {
               _log.warning("Error checking script version.");

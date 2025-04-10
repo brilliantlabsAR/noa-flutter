@@ -244,18 +244,18 @@ packages:
     dependency: "direct main"
     description:
       name: frame_ble
-      sha256: "28ce9f6ae28b190b856867c4dd90df4e87a44c9157a3ff991b5a00dc25b8e533"
+      sha256: d0c3964739085972fd7be8515abfee353202353eb81f1e9bb9ad2a0846f6f877
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1"
+    version: "1.0.2"
   frame_msg:
     dependency: "direct main"
     description:
       name: frame_msg
-      sha256: bcb3ee3fa88b582e891580e26dbab70c7f976cf209d8046bce91f20c0ceaea8d
+      sha256: "70a775c113233764e896dd9f143adc43dd08b12b82b73d56f34b10703338d28b"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.1"
+    version: "2.0.0"
   geocoding:
     dependency: "direct main"
     description:

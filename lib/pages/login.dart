@@ -82,10 +82,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Location.requestPermission(context);
-      // if (ref.watch(app.model).state.current != app.State.waitForLogin) {
-      ref.read(app.model).triggerEvent(app.Event.loggedIn);
+      if (ref.watch(app.model).state.current != app.State.waitForLogin) {
+      // ref.read(app.model).triggerEvent(app.Event.loggedIn);
         switchPage(context, const PairingPage());
-      // }
+      }
     });
 
     return Scaffold(
