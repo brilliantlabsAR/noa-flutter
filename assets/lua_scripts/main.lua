@@ -5,7 +5,7 @@ local plain_text = require('plain_text.min')
 local image_sprite_block = require('image_sprite_block.min')
 local code = require('code.min')
 TEXT_FLAG = 0x0a
-SCRIPT_VERSION = "v1.0.6"
+SCRIPT_VERSION = "v1.0.7"
 
 local graphics = Graphics.new()
 local state = State.new()
@@ -31,7 +31,7 @@ CHECK_SCRIPT_VERSION_FLAG = 0x17
 MESSAGE_RESPONSE_FLAG = 0x20
 IMAGE_RESPONSE_FLAG = 0x21
 DATA_FLAG=0x22
-
+IMAGE_PRINTING = false
 
 local function send_data(data)
     local try_until = frame.time.utc() + 2
@@ -55,6 +55,12 @@ local function handle_messages()
             send_data(string.char(CHECK_FW_VERSION_FLAG)..frame.FIRMWARE_VERSION)
         elseif code_byte == CHECK_SCRIPT_VERSION_FLAG then
             send_data(string.char(CHECK_SCRIPT_VERSION_FLAG)..SCRIPT_VERSION)
+        elseif code_byte == IMAGE_RESPONSE_FLAG then
+            IMAGE_PRINTING = true
+            state:switch("PRINT_IMAGE")
+            graphics:clear()
+            graphics:append_text("Loading Image", "\u{F0003}")
+            graphics:print()
         end
     end
     -- To print response on Frame
@@ -68,14 +74,42 @@ local function handle_messages()
         end
     end
     -- To print image on Frame
-    if (data.app_data[IMAGE_RESPONSE_FLAG] ~= nil and data.app_data[IMAGE_RESPONSE_FLAG].string ~= nil) then
-        if state:is("ON_IT") then
-            graphics:clear()
-            state:switch("PRINT_IMAGE")
+    if (data.app_data[IMAGE_RESPONSE_FLAG] ~= nil) then
+        print("Image response received")
+        graphics:clear()
+        graphics:print()
+        IMAGE_PRINTING = true
+        -- show the image sprite block
+        local isb = data.app_data[IMAGE_RESPONSE_FLAG]
+
+        -- it can be that we haven't got any sprites yet, so only proceed if we have a sprite
+        if isb.current_sprite_index > 0 then
+            -- either we have all the sprites, or we want to do progressive/incremental rendering
+            if isb.progressive_render or (isb.active_sprites == isb.total_sprites) then
+
+                for index = 1, isb.active_sprites do
+                    local spr = isb.sprites[index]
+                    local y_offset = isb.sprite_line_height * (index - 1)
+
+                    -- set the palette the first time, all the sprites should have the same palette
+                    if index == 1 then
+                        image_sprite_block.set_palette(spr.num_colors, spr.palette_data)
+                    end
+                    frame.display.bitmap(401, y_offset + 1, spr.width, 2^spr.bpp, 0, spr.pixel_data)
+                end
+
+                frame.display.show()
+            end
+        end
+        if isb.current_sprite_index == isb.total_sprites then
+            state:switch_after(5, "TAP_ME_IN")
         end
     end
 end
-
+local function clean_display()
+    frame.display.text(" ", 1, 1)
+    frame.display.show()
+end
 -- frame.bluetooth.receive_callback(bluetooth_callback)
 while true do
     local items_ready = data.process_raw_items()
@@ -94,6 +128,10 @@ while true do
         state:switch_after(10, "SLEEP")
     elseif state:is('TAP_ME_IN') then
         state:on_entry(function()
+            if IMAGE_PRINTING then
+                IMAGE_PRINTING = false
+                clean_display()
+            end
             graphics:clear()
             graphics:append_text("tap me in", "\u{F0000}")
             -- graphics.__rad = "A"
@@ -118,6 +156,10 @@ while true do
         end)
     elseif state:is("LISTEN") then
         state:on_entry(function()
+            if IMAGE_PRINTING then
+                IMAGE_PRINTING = false
+                clean_display()
+            end
             image_taken = false
             graphics:clear()
             -- graphics.__rad = "A"
@@ -157,7 +199,7 @@ while true do
             state:switch_on_tap("ON_IT")
             state:switch_on_double_tap("TAP_ME_IN")
         end
-        state:switch_after(EXPOSURE_NUMBER%10+8, "TAP_ME_IN")
+        state:switch_after(EXPOSURE_NUMBER%10+50, "TAP_ME_IN")
     elseif state:is("ON_IT") then
         state:on_entry(function()
             frame.microphone.stop()
@@ -179,7 +221,7 @@ while true do
             audio_data_sent = true
             send_data(TRANSFER_DONE_FLAG)
         end
-        state:switch_after(20, "CANCEL")
+        state:switch_after(50, "CANCEL")
     elseif state:is("CANCEL") then
         state:on_entry(function()
             graphics:clear()
@@ -239,7 +281,7 @@ while true do
         end
     end
 
-    if frame.time.utc() - last_print_time > 0.07 then
+    if frame.time.utc() - last_print_time > 0.07 and not IMAGE_PRINTING then
         graphics:print()
         last_print_time = frame.time.utc()
     end

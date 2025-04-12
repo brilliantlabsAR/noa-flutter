@@ -20,7 +20,7 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.080.0838";
-const _scriptVersion = "v1.0.6";
+const _scriptVersion = "v1.0.7";
 
 const checkFwVersionFlag = 0x16;
 const checkScriptVersionFlag = 0x17;
@@ -641,7 +641,30 @@ class AppLogicModel extends ChangeNotifier {
         case State.sendResponseToDevice:
           state.onEntry(() async {
             try {
-              await _connectedDevice!.sendMessage(messageResponseFlag, TxPlainText(text: noaMessages.last.message).pack());
+              var lastMessage = noaMessages.last;
+              if(lastMessage.image != null) {
+                _log.info("Sending image to device");
+                await _connectedDevice!.sendMessage(
+                    singleDataFlag,
+                    TxCode(value: imageResponseFlag).pack());
+                var sprite = TxSprite.fromImageBytes(imageBytes: lastMessage.image!);
+                TxImageSpriteBlock isb = TxImageSpriteBlock(
+                  image: sprite,
+                  spriteLineHeight: 20,
+                  progressiveRender: true);
+
+                // and send the block header then the sprite lines to Frame
+                await _connectedDevice!.sendMessage(imageResponseFlag, isb.pack());
+
+                for (var sprite in isb.spriteLines) {
+                  await _connectedDevice!.sendMessage(imageResponseFlag, sprite.pack());
+                }
+              }else{
+                await _connectedDevice!.sendMessage(
+                    messageResponseFlag,
+                    TxPlainText(text: lastMessage.message).pack());
+              }
+              // if
               await Future.delayed(const Duration(milliseconds: 300));
             } catch (_) {}
             triggerEvent(Event.done);
