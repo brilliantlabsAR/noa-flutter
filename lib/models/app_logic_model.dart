@@ -10,7 +10,6 @@ import 'package:frame_ble/brilliant_connection_state.dart';
 import 'package:frame_ble/brilliant_device.dart';
 import 'package:frame_ble/brilliant_scanned_device.dart';
 import 'package:frame_msg/frame_msg.dart';
-import 'package:frame_msg/tx/plain_text.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
@@ -21,7 +20,7 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.080.0838";
-const _scriptVersion = "v1.0.5";
+const _scriptVersion = "v1.0.6";
 
 const checkFwVersionFlag = 0x16;
 const checkScriptVersionFlag = 0x17;
@@ -89,6 +88,7 @@ class AppLogicModel extends ChangeNotifier {
   StateMachine state = StateMachine(State.getUserSettings);
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
+  double scriptProgress = 0;
   String deviceName = "Device";
   List<NoaMessage> noaMessages = List.empty(growable: true);
 
@@ -353,9 +353,6 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             await _scanStream?.cancel();
             _scanStream = BrilliantBluetooth.scan()
-              //   .timeout(const Duration(seconds: 2), onTimeout: (sink) {
-              // _nearbyDevice = null;
-              // triggerEvent(Event.deviceLost);  })
               .listen((device) {
               _nearbyDevice = device;
               deviceName = device.device.advName;
@@ -382,10 +379,6 @@ class AppLogicModel extends ChangeNotifier {
                     state: BrilliantConnectionState.disconnected,
                     device: _nearbyDevice!.device,
                 );
-                _updatableDevice!.connectionState.listen((event) {
-                  if (event.state == BrilliantConnectionState.connected) {
-                  }
-                });
                 await _updatableDevice!.connect();
                 triggerEvent(Event.updatableDeviceConnected);
 
@@ -452,11 +445,15 @@ class AppLogicModel extends ChangeNotifier {
                 (await AssetManifest.loadFromAssetBundle(rootBundle)).listAssets());
 
               if (luaFiles.isNotEmpty) {
+                scriptProgress = 0;
                 for (var pathFile in luaFiles) {
                   String fileName = pathFile.split('/').last;
                   _log.info("Uploading $fileName");
                   // send the lua script to the Frame
                   await _connectedDevice!.uploadScript(fileName, await rootBundle.loadString(pathFile));
+                  // set the progress
+                  scriptProgress += (100 / luaFiles.length);
+                  notifyListeners();
                 }
               }
                await _connectedDevice!.sendResetSignal();
@@ -535,8 +532,8 @@ class AppLogicModel extends ChangeNotifier {
             _connectionStream?.cancel();
             _connectionStream =
                 _connectedDevice!.connectionState.listen((event) {
-              // _connectedDevice = 
-              if (event == BrilliantConnectionState.disconnected) {
+              _connectedDevice = event;
+              if (event.state == BrilliantConnectionState.disconnected) {
                 triggerEvent(Event.deviceDisconnected);
               }
             });
@@ -644,16 +641,6 @@ class AppLogicModel extends ChangeNotifier {
         case State.sendResponseToDevice:
           state.onEntry(() async {
             try {
-              // final splitString = utf8
-              //     .encode(noaMessages.last.message)
-              //     .slices(_connectedDevice!.maxDataLength! - 1);
-              // for (var slice in splitString) {
-              //   List<int> data = slice.toList()..insert(0, 0x20);
-              //   await _connectedDevice!
-              //       .sendData(data)
-              //       .timeout(const Duration(seconds: 1));
-              //   await Future.delayed(const Duration(milliseconds: 50));
-              // }
               await _connectedDevice!.sendMessage(messageResponseFlag, TxPlainText(text: noaMessages.last.message).pack());
               await Future.delayed(const Duration(milliseconds: 300));
             } catch (_) {}
@@ -669,24 +656,26 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             _connectionStream?.cancel();
             _connectionStream =
-                _connectedDevice?.connectionState.listen((event) {
-              // _connectedDevice = _connectedDevice;
-              if (event == BrilliantConnectionState.connected) {
+                _connectedDevice?.connectionState.listen( (event) async {
+              _connectedDevice = event;
+              if (event.state == BrilliantConnectionState.connected) {
                 triggerEvent(Event.deviceConnected);
               }
             });
+
             _connectionStream?.onError((_) {});
 
             try {
               _connectedDevice ??= await BrilliantBluetooth.reconnect(
                   (await _getPairedDevice())!);
-              if (_connectedDevice?.state ==
-                  BrilliantConnectionState.connected) {
-                triggerEvent(Event.deviceConnected);
-              }
+            
             } catch (error) {
               _log.warning("Error reconnecting to device. $error");
             }
+             if (_connectedDevice?.state ==
+                  BrilliantConnectionState.connected) {
+                triggerEvent(Event.deviceConnected);
+              }
           });
           state.changeOn(Event.deviceConnected, State.recheckFirmwareVersion);
           state.changeOn(Event.logoutPressed, State.logout);

@@ -22,6 +22,7 @@ class PairingPage extends ConsumerWidget {
     Image pairingBoxImage = Image.asset('assets/images/charge.gif');
     bool pairingBoxButtonEnabled = false;
     int updateProgress = ref.watch(app.model).bluetoothUploadProgress.toInt();
+    int scriptProgress = ref.watch(app.model).scriptProgress.toInt();
     String deviceName = ref.watch(app.model).deviceName;
 
     switch (ref.watch(app.model).state.current) {
@@ -53,7 +54,7 @@ class PairingPage extends ConsumerWidget {
         pairingBoxButtonEnabled = false;
         break;
       case app.State.uploadMainLua:
-        pairingBoxText = "Setting up Noa 50%";
+        pairingBoxText = "Setting up Noa $scriptProgress%";
         pairingBoxButtonText = "Keep your device close";
         pairingBoxImage = Image.asset('assets/images/charge.gif');
         pairingBoxButtonEnabled = false;

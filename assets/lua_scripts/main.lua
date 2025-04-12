@@ -1,12 +1,11 @@
 require("graphics")
 require("state")
 local data = require('data.min')
-local battery = require('battery.min')
 local plain_text = require('plain_text.min')
 local image_sprite_block = require('image_sprite_block.min')
 local code = require('code.min')
 TEXT_FLAG = 0x0a
-SCRIPT_VERSION = "v1.0.5"
+SCRIPT_VERSION = "v1.0.6"
 
 local graphics = Graphics.new()
 local state = State.new()
@@ -48,14 +47,14 @@ data.parsers[MESSAGE_RESPONSE_FLAG] = plain_text.parse_plain_text
 data.parsers[IMAGE_RESPONSE_FLAG] = image_sprite_block.parse_image_sprite_block
 data.parsers[DATA_FLAG] = code.parse_code
 
-local function bluetooth_callback()
+local function handle_messages()
     -- for data access from frame
     if data.app_data[DATA_FLAG] ~= nil then
-        local code = data.app_data[DATA_FLAG]
-        if code == CHECK_FW_VERSION_FLAG then
-            send_data(frame.FIRMWARE_VERSION)
-        elseif code == CHECK_SCRIPT_VERSION_FLAG then
-            send_data(SCRIPT_VERSION)
+        local code_byte = data.app_data[DATA_FLAG].value
+        if code_byte == CHECK_FW_VERSION_FLAG then
+            send_data(string.char(CHECK_FW_VERSION_FLAG)..frame.FIRMWARE_VERSION)
+        elseif code_byte == CHECK_SCRIPT_VERSION_FLAG then
+            send_data(string.char(CHECK_SCRIPT_VERSION_FLAG)..SCRIPT_VERSION)
         end
     end
     -- To print response on Frame
@@ -81,7 +80,7 @@ end
 while true do
     local items_ready = data.process_raw_items()
     if items_ready > 0 then
-        bluetooth_callback()
+        handle_messages()
     end
     if state:is("START") then
         state:on_entry(function()

@@ -243,10 +243,9 @@ packages:
   frame_ble:
     dependency: "direct main"
     description:
-      name: frame_ble
-      sha256: d0c3964739085972fd7be8515abfee353202353eb81f1e9bb9ad2a0846f6f877
-      url: "https://pub.dev"
-    source: hosted
+      path: "/Users/technoexponent/frame_ble"
+      relative: false
+    source: path
     version: "1.0.2"
   frame_msg:
     dependency: "direct main"

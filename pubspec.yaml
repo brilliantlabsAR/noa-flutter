@@ -32,7 +32,7 @@ dependencies:
   audio_session: ^0.1.19
   flutter_foreground_task: ^6.5.0
   frame_msg: ^2.0.0
-  frame_ble: ^1.0.2
+  frame_ble: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -54,7 +54,6 @@ flutter:
     - assets/images/2x/
     - assets/images/tutorial/
     - assets/lua_scripts/
-    - packages/frame_msg/lua/battery.min.lua
     - packages/frame_msg/lua/code.min.lua
     - packages/frame_msg/lua/data.min.lua
     - packages/frame_msg/lua/plain_text.min.lua
