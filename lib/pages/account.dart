@@ -74,6 +74,9 @@ class AccountPage extends ConsumerWidget {
                       switchPage(context, const SplashPage());
                     }
                   }),
+                  _linkedFooterText("Fix scripts", false, () async {
+                    ref.read(app.model).triggerEvent(app.Event.deviceConnected);
+                  }),
                   _linkedFooterText("Privacy Policy", false, () async {
                     try {
                       await launchUrl(Uri.parse(

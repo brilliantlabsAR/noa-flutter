@@ -56,5 +56,6 @@ flutter:
     - assets/lua_scripts/
     - packages/frame_msg/lua/code.min.lua
     - packages/frame_msg/lua/data.min.lua
+    - packages/frame_msg/lua/camera.min.lua
     - packages/frame_msg/lua/plain_text.min.lua
     - packages/frame_msg/lua/image_sprite_block.min.lua

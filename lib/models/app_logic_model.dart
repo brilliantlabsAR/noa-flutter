@@ -13,6 +13,7 @@ import 'package:frame_msg/frame_msg.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
+import 'package:noa/util/frame_msg_util.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,7 +21,7 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.080.0838";
-const _scriptVersion = "v1.0.6";
+const _scriptVersion = "v1.0.7";
 
 const checkFwVersionFlag = 0x16;
 const checkScriptVersionFlag = 0x17;
@@ -28,6 +29,9 @@ const checkScriptVersionFlag = 0x17;
 const messageResponseFlag = 0x20;
 const imageResponseFlag  = 0x21;
 const singleDataFlag = 0x22;
+const tapFLag = 0x10;
+const startListeningFlag = 0x11;
+const stopListeningFlag = 0x12;
 
 enum State {
   getUserSettings,
@@ -72,6 +76,14 @@ enum Event {
   noaResponse,
 }
 
+enum FrameState {
+    disconnected,
+    tapMeIn,
+    listening,
+    onit,
+    printReply,
+}
+
 enum TuneLength {
   shortest('shortest'),
   short('short'),
@@ -86,6 +98,7 @@ enum TuneLength {
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
   StateMachine state = StateMachine(State.getUserSettings);
+  FrameState frameState = FrameState.disconnected;
   NoaUser noaUser = NoaUser();
   double bluetoothUploadProgress = 0;
   double scriptProgress = 0;
@@ -213,9 +226,18 @@ class AppLogicModel extends ChangeNotifier {
   BrilliantScannedDevice? _nearbyDevice;
   BrilliantDevice? _connectedDevice;
   BrilliantDfuDevice? _updatableDevice;
-  List<int> _audioData = List.empty(growable: true);
-  List<int> _imageData = List.empty(growable: true);
+  StreamSubscription<int>? _tapSubs;
+  // List<int> _audioData = List.empty(growable: true);
+  // List<int> _imageData = List.empty(growable: true);
+// Photos: 720px VERY_HIGH quality JPEGs
+  static const resolution = 720;
+  static const qualityIndex = 4;
+  static const qualityLevel = 'HIGH';
+  final RxPhoto _rxPhoto = RxPhoto(quality: qualityLevel, resolution: resolution);
+  Future<Uint8List>? _image;
 
+  final RxAudio _rxAudio = RxAudio(streaming: false);
+  Future<Uint8List>? _audio;
   AppLogicModel() {
     // Uncomment to create AppStore images
     // noaMessages.add(NoaMessage(
@@ -538,6 +560,55 @@ class AppLogicModel extends ChangeNotifier {
               }
             });
             _connectionStream?.onError((_) {});
+            // wait for the device to be ready
+            await Future.delayed(const Duration(seconds: 1));
+            _tapSubs?.cancel();
+            _tapSubs = RxTap(tapFlag: tapFLag).attach(_connectedDevice!.dataResponse)
+              .listen((taps) async {
+                if (taps == 1) {
+                    if (frameState == FrameState.tapMeIn) {
+                      // STEP 2: LISTENING
+                      frameState = FrameState.listening;
+                      _log.info("Listening");
+                      await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "tap to finish", emoji: "\u{F0010}").pack());
+                      _image =  _rxPhoto.attach(_connectedDevice!.dataResponse).first;
+                      _audio = _rxAudio.attach(_connectedDevice!.dataResponse).first;
+                      await _connectedDevice!.sendMessage(startListeningFlag, TxCaptureSettings(resolution: resolution, qualityIndex: qualityIndex).pack());
+
+                    }else if (frameState == FrameState.listening) {
+
+                      // STEP 3: ON IT
+                      frameState = FrameState.onit;
+                      _log.info("On it");
+                       _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: stopListeningFlag).pack());
+                      await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "..................... ..................... .....................").pack());
+                       
+                      var image = await _image;
+                      var audio = await _audio;
+                      _log.info("Image: ${image?.length} bytes,  Audio: ${audio?.length} bytes");
+                       noaMessages.add(NoaMessage(
+                        message: "Tap again to finish",
+                        from: NoaRole.noa,
+                        time: DateTime.now(),
+                        image: image,
+                      ));
+                      image = null;
+                      _image = null;
+                      // _audio = null;
+                    }
+
+                }else if (taps == 2) {
+                  _log.info("Cancelled");
+                    await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "Tap me in", emoji: "\u{F0000}").pack());
+                    _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: stopListeningFlag).pack());
+                    frameState = FrameState.tapMeIn;
+                  
+                }
+              });
+              _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: tapFLag).pack());
+              frameState = FrameState.tapMeIn;
+              // STEP 1: TAP ME IN
+            await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "Tap me in", emoji: "\u{F0000}").pack());
 
             _luaResponseStream?.cancel();
             _luaResponseStream =
@@ -572,63 +643,63 @@ class AppLogicModel extends ChangeNotifier {
                 return prompt;
               }
 
-              switch (event[0]) {
-                case 0x10:
-                  _log.info("Received user generation request from device");
-                  _audioData.clear();
-                  _imageData.clear();
-                  break;
-                case 0x12:
-                  _log.info("Received wildcard request from device");
-                  try {
-                    noaMessages += await NoaApi.getWildcardMessage(
-                      (await _getUserAuthToken())!,
-                      getTunePrompt(),
-                      _tuneTemperature / 50,
-                      textToSpeech,
-                    );
-                    noaUser =
-                        await NoaApi.getUser((await _getUserAuthToken())!);
-                    triggerEvent(Event.noaResponse);
-                  } catch (_) {}
-                  break;
-                case 0x13:
-                  _audioData += event.sublist(1);
-                  break;
-                case 0x14:
-                  _imageData += event.sublist(1);
-                  break;
-                case 0x15:
-                  _log.info(
-                      "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
-                  try {
-                    final newMessages = await NoaApi.getMessage(
-                        (await _getUserAuthToken())!,
-                        Uint8List.fromList(_audioData),
-                        Uint8List.fromList(_imageData),
-                        getTunePrompt(),
-                        _tuneTemperature / 50,
-                        noaMessages,
-                        textToSpeech,
-                        apiEndpoint,
-                        apiHeader,
-                        apiToken,
-                        customServer,
-                        promptless);
-                    final topicChanged =
-                        newMessages.where((msg) => msg.topicChanged).isNotEmpty;
-                    if (topicChanged) {
-                      for (var msg in noaMessages) {
-                        msg.exclude = true;
-                      }
-                    }
-                    noaMessages += newMessages;
-                    noaUser =
-                        await NoaApi.getUser((await _getUserAuthToken())!);
-                    triggerEvent(Event.noaResponse);
-                  } catch (_) {}
-                  break;
-              }
+              // switch (event[0]) {
+              //   case 0x10:
+              //     _log.info("Received user generation request from device");
+              //     _audioData.clear();
+              //     _imageData.clear();
+              //     break;
+              //   case 0x12:
+              //     _log.info("Received wildcard request from device");
+              //     try {
+              //       noaMessages += await NoaApi.getWildcardMessage(
+              //         (await _getUserAuthToken())!,
+              //         getTunePrompt(),
+              //         _tuneTemperature / 50,
+              //         textToSpeech,
+              //       );
+              //       noaUser =
+              //           await NoaApi.getUser((await _getUserAuthToken())!);
+              //       triggerEvent(Event.noaResponse);
+              //     } catch (_) {}
+              //     break;
+              //   case 0x13:
+              //     _audioData += event.sublist(1);
+              //     break;
+              //   case 0x14:
+              //     _imageData += event.sublist(1);
+              //     break;
+              //   case 0x15:
+              //     _log.info(
+              //         "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
+              //     try {
+              //       final newMessages = await NoaApi.getMessage(
+              //           (await _getUserAuthToken())!,
+              //           Uint8List.fromList(_audioData),
+              //           Uint8List.fromList(_imageData),
+              //           getTunePrompt(),
+              //           _tuneTemperature / 50,
+              //           noaMessages,
+              //           textToSpeech,
+              //           apiEndpoint,
+              //           apiHeader,
+              //           apiToken,
+              //           customServer,
+              //           promptless);
+              //       final topicChanged =
+              //           newMessages.where((msg) => msg.topicChanged).isNotEmpty;
+              //       if (topicChanged) {
+              //         for (var msg in noaMessages) {
+              //           msg.exclude = true;
+              //         }
+              //       }
+              //       noaMessages += newMessages;
+              //       noaUser =
+              //           await NoaApi.getUser((await _getUserAuthToken())!);
+              //       triggerEvent(Event.noaResponse);
+              //     } catch (_) {}
+              //     break;
+              // }
             });
           });
 
@@ -687,14 +758,19 @@ class AppLogicModel extends ChangeNotifier {
             _dataResponseStream?.cancel();
             _dataResponseStream =
                 _connectedDevice!.dataResponse.listen((event) async {
-              _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
-              if (utf8.decode(event.sublist(1)) == _firmwareVersion) {
-                triggerEvent(Event.deviceUpToDate);
-              } else {
-                triggerEvent(Event.deviceNeedsUpdate);
+                  final flag = event[0];
+              if (flag == checkFwVersionFlag) {
+                _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
+                if (utf8.decode(event.sublist(1)) == _firmwareVersion) {
+                  triggerEvent(Event.deviceUpToDate);
+                } else {
+                  triggerEvent(Event.deviceNeedsUpdate);
+                }
               }
             });
             try {
+              // send break signal to stop any running lua scripts
+              await _connectedDevice!.sendResetSignal();
               await _connectedDevice!
                   .sendMessage(singleDataFlag, TxCode(value: checkFwVersionFlag).pack())
                   .timeout(const Duration(seconds: 1));
@@ -714,12 +790,16 @@ class AppLogicModel extends ChangeNotifier {
             _dataResponseStream?.cancel();
             _dataResponseStream =
                 _connectedDevice!.dataResponse.listen((event) async {
-              _log.info("Script version: ${utf8.decode(event.sublist(1))}");
-              if (utf8.decode(event.sublist(1)) == _scriptVersion) {
-                triggerEvent(Event.deviceUpToDate);
-              } else {
-                triggerEvent(Event.deviceNeedsUpdate);
-              }
+                  final flag = event[0];
+              if (flag == checkScriptVersionFlag) {
+                _log.info("Script version: ${utf8.decode(event.sublist(1))}");
+                if (utf8.decode(event.sublist(1)) == _scriptVersion) {
+                  triggerEvent(Event.deviceUpToDate);
+                } else {
+                  triggerEvent(Event.deviceNeedsUpdate);
+                }
+              } 
+              
             });
             try {
               await _connectedDevice!
@@ -741,7 +821,7 @@ class AppLogicModel extends ChangeNotifier {
             try {
               await SharedPreferences.getInstance().then((sp) => sp.clear());
               await _connectedDevice?.disconnect();
-              await NoaApi.signOut((await _getUserAuthToken())!);
+              // await NoaApi.signOut((await _getUserAuthToken())!);
               noaMessages.clear();
               triggerEvent(Event.done);
             } catch (error) {
