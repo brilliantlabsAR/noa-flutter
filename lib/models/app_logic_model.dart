@@ -589,6 +589,9 @@ class AppLogicModel extends ChangeNotifier {
               }
             });
             _connectionStream?.onError((_) {});
+            _luaResponseStream?.cancel();
+            _luaResponseStream =
+                _connectedDevice!.stringResponse.listen((event) async {});
             // wait for the device to be ready
             await Future.delayed(const Duration(seconds: 1));
             _connectedDevice!
