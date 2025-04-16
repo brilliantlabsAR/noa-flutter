@@ -60,7 +60,8 @@ local function handle_messages()
         if code_byte == TAP_SUBS_FLAG then
             frame.imu.tap_callback(handle_tap)
         elseif code_byte == STOP_LISTENING_FLAG then
-            listening = false
+            -- stop the microphone but don't set listening to false:
+            -- it will be set to false when the audio data is finished sending
             frame.microphone.stop()
             print("STOP_LISTENING")
 
@@ -109,6 +110,8 @@ local function transfer_audio_data()
         end
     end
 end
+
+collectgarbage("collect")
 graphics:append_text("Diconnected", "\u{F000D}")
 
 while true do
@@ -123,7 +126,7 @@ while true do
     if listening then
         transfer_audio_data()
     end
-    
-    frame.sleep(0.001)
-    collectgarbage("collect")
+
+    frame.sleep(0.005)
+    --collectgarbage("collect")
 end
