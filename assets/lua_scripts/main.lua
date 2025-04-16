@@ -120,7 +120,9 @@ local function transfer_audio_data()
         end
     end
 end
-graphics:append_text("Booting Up", "\u{F000D}")
+
+collectgarbage("collect")
+graphics:append_text("Diconnected", "\u{F000D}")
 
 while true do
     local items_ready = data.process_raw_items()
@@ -155,5 +157,5 @@ while true do
         frame.sleep()
     end
     last_auto_exp = run_auto_exp(last_auto_exp, 0.1)
-    frame.sleep(0.001)
+    frame.sleep(0.005)
 end
