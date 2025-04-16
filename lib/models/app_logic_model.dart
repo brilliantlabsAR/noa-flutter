@@ -21,15 +21,15 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.080.0838";
-const _scriptVersion = "v1.0.7";
+const _scriptVersion = "v1.0.6";
 
 const checkFwVersionFlag = 0x16;
 const checkScriptVersionFlag = 0x17;
-// from phone to frame
 const messageResponseFlag = 0x20;
-const imageResponseFlag  = 0x21;
+const imageResponseFlag = 0x21;
 const singleDataFlag = 0x22;
 const tapFLag = 0x10;
+const stopTapFlag = 0x13;
 const startListeningFlag = 0x11;
 const stopListeningFlag = 0x12;
 
@@ -53,7 +53,7 @@ enum State {
   checkScriptVersion,
   sendResponseToDevice,
   logout,
-  deleteAccount
+  deleteAccount,
 }
 
 enum Event {
@@ -74,14 +74,16 @@ enum Event {
   deviceUpToDate,
   deviceNeedsUpdate,
   noaResponse,
+  resetScriptsPressed,
 }
 
 enum FrameState {
-    disconnected,
-    tapMeIn,
-    listening,
-    onit,
-    printReply,
+  disconnected,
+  tapMeIn,
+  listening,
+  onit,
+  presleep,
+  sleep,
 }
 
 enum TuneLength {
@@ -128,9 +130,11 @@ class AppLogicModel extends ChangeNotifier {
     return await SharedPreferences.getInstance()
         .then((value) => value.getString('PairedDevice'));
   }
-   List<String> _filterLuaFiles(List<String> files) {
-    return files.where((name)=>name.endsWith('.lua')).toList();
+
+  List<String> _filterLuaFiles(List<String> files) {
+    return files.where((name) => name.endsWith('.lua')).toList();
   }
+
   // User's tune preferences
   String _tunePrompt = "";
   String get tunePrompt => _tunePrompt;
@@ -227,17 +231,45 @@ class AppLogicModel extends ChangeNotifier {
   BrilliantDevice? _connectedDevice;
   BrilliantDfuDevice? _updatableDevice;
   StreamSubscription<int>? _tapSubs;
+  bool _cancelled = false;
   // List<int> _audioData = List.empty(growable: true);
   // List<int> _imageData = List.empty(growable: true);
 // Photos: 720px VERY_HIGH quality JPEGs
   static const resolution = 720;
   static const qualityIndex = 4;
-  static const qualityLevel = 'HIGH';
-  final RxPhoto _rxPhoto = RxPhoto(quality: qualityLevel, resolution: resolution);
+  static const qualityLevel = 'MEDIUM';
+  final RxPhoto _rxPhoto =
+      RxPhoto(quality: qualityLevel, resolution: resolution);
   Future<Uint8List>? _image;
 
   final RxAudio _rxAudio = RxAudio(streaming: false);
   Future<Uint8List>? _audio;
+  String getTunePrompt() {
+    String prompt = "";
+    if (_tunePrompt != "") {
+      prompt += "$_tunePrompt. ";
+    }
+
+    switch (_tuneLength) {
+      case TuneLength.shortest:
+        prompt += "Limit responses to 1 to 3 words. ";
+        break;
+      case TuneLength.short:
+        prompt += "Limit responses to 1 sentence. ";
+        break;
+      case TuneLength.standard:
+        prompt += "Limit responses to 1 to 2 sentences. ";
+        break;
+      case TuneLength.long:
+        prompt += "Limit responses to 1 short paragraph. ";
+        break;
+      case TuneLength.longest:
+        prompt += "Limit responses to 2 paragraphs. ";
+        break;
+    }
+    return prompt;
+  }
+
   AppLogicModel() {
     // Uncomment to create AppStore images
     // noaMessages.add(NoaMessage(
@@ -323,7 +355,7 @@ class AppLogicModel extends ChangeNotifier {
           exclude: true));
     }();
   }
-  
+
   void triggerEvent(Event event) {
     state.event(event);
 
@@ -367,15 +399,13 @@ class AppLogicModel extends ChangeNotifier {
         case State.waitForLogin:
           state.changeOn(Event.loggedIn, State.scanning,
               transitionTask: () async =>
-                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!)
-                  );
+                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!));
           break;
 
         case State.scanning:
           state.onEntry(() async {
             await _scanStream?.cancel();
-            _scanStream = BrilliantBluetooth.scan()
-              .listen((device) {
+            _scanStream = BrilliantBluetooth.scan().listen((device) {
               _nearbyDevice = device;
               deviceName = device.device.advName;
               triggerEvent(Event.deviceFound);
@@ -397,9 +427,9 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             try {
               if (_nearbyDevice!.device.advName == "Frame Update") {
-               _updatableDevice = BrilliantDfuDevice(
-                    state: BrilliantConnectionState.disconnected,
-                    device: _nearbyDevice!.device,
+                _updatableDevice = BrilliantDfuDevice(
+                  state: BrilliantConnectionState.disconnected,
+                  device: _nearbyDevice!.device,
                 );
                 await _updatableDevice!.connect();
                 triggerEvent(Event.updatableDeviceConnected);
@@ -408,7 +438,7 @@ class AppLogicModel extends ChangeNotifier {
               }
               _connectedDevice =
                   await BrilliantBluetooth.connect(_nearbyDevice!);
-  
+
               switch (_connectedDevice!.state) {
                 case BrilliantConnectionState.connected:
                   triggerEvent(Event.deviceConnected);
@@ -417,7 +447,6 @@ class AppLogicModel extends ChangeNotifier {
                   throw ();
               }
             } catch (_) {
-              
               triggerEvent(Event.deviceInvalid);
             }
           });
@@ -460,11 +489,11 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.uploadMainLua:
-        
           state.onEntry(() async {
             try {
               List<String> luaFiles = _filterLuaFiles(
-                (await AssetManifest.loadFromAssetBundle(rootBundle)).listAssets());
+                  (await AssetManifest.loadFromAssetBundle(rootBundle))
+                      .listAssets());
 
               if (luaFiles.isNotEmpty) {
                 scriptProgress = 0;
@@ -472,13 +501,14 @@ class AppLogicModel extends ChangeNotifier {
                   String fileName = pathFile.split('/').last;
                   _log.info("Uploading $fileName");
                   // send the lua script to the Frame
-                  await _connectedDevice!.uploadScript(fileName, await rootBundle.loadString(pathFile));
+                  await _connectedDevice!.uploadScript(
+                      fileName, await rootBundle.loadString(pathFile));
                   // set the progress
                   scriptProgress += (100 / luaFiles.length);
                   notifyListeners();
                 }
               }
-               await _connectedDevice!.sendResetSignal();
+              await _connectedDevice!.sendResetSignal();
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
 
               triggerEvent(Event.done);
@@ -514,7 +544,6 @@ class AppLogicModel extends ChangeNotifier {
 
         case State.updateFirmware:
           state.onEntry(() async {
-            
             _updatableDevice!
                 .updateFirmware("assets/frame-firmware-$_firmwareVersion.zip")
                 .listen(
@@ -562,158 +591,119 @@ class AppLogicModel extends ChangeNotifier {
             _connectionStream?.onError((_) {});
             // wait for the device to be ready
             await Future.delayed(const Duration(seconds: 1));
+            _connectedDevice!
+                .sendMessage(singleDataFlag, TxCode(value: stopTapFlag).pack());
             _tapSubs?.cancel();
-            _tapSubs = RxTap(tapFlag: tapFLag).attach(_connectedDevice!.dataResponse)
-              .listen((taps) async {
-                if (taps == 1) {
-                    if (frameState == FrameState.tapMeIn) {
-                      // STEP 2: LISTENING
-                      frameState = FrameState.listening;
-                      _log.info("Listening");
-                      await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "tap to finish", emoji: "\u{F0010}").pack());
-                      _image =  _rxPhoto.attach(_connectedDevice!.dataResponse).first;
-                      _audio = _rxAudio.attach(_connectedDevice!.dataResponse).first;
-                      await _connectedDevice!.sendMessage(startListeningFlag, TxCaptureSettings(resolution: resolution, qualityIndex: qualityIndex).pack());
+            _tapSubs = RxTap(tapFlag: tapFLag)
+                .attach(_connectedDevice!.dataResponse)
+                .listen((taps) async {
+              if (taps == 1) {
+                if (frameState == FrameState.tapMeIn) {
+                  // STEP 2: LISTENING
+                  frameState = FrameState.listening;
+                  _log.info("Listening");
+                  await _connectedDevice!.sendMessage(
+                      messageResponseFlag,
+                      TxRichText(text: "tap to finish", emoji: "\u{F0010}")
+                          .pack());
+                  _cancelled = false;
+                  _image = _rxPhoto.attach(_connectedDevice!.dataResponse).first;
+                  _audio = _rxAudio.attach(_connectedDevice!.dataResponse).first;
+                  await _connectedDevice!.sendMessage(
+                      startListeningFlag,
+                      TxCaptureSettings(
+                              resolution: resolution,
+                              qualityIndex: qualityIndex)
+                          .pack());
+                } else if (frameState == FrameState.listening && !_cancelled) {
+                  // STEP 3: ON IT
+                  frameState = FrameState.onit;
+                  _log.info("On it");
+                  _connectedDevice!.sendMessage(
+                      singleDataFlag, TxCode(value: stopListeningFlag).pack());
+                  await _connectedDevice!.sendMessage(
+                      messageResponseFlag,
+                      TxRichText(
+                              text:
+                                  "..................... ..................... .....................")
+                          .pack());
+                  if (_cancelled) return;
+                  var image = await _image;
+                  var audio = await _audio;
+                  _log.info(
+                      "Image: ${image?.length} bytes,  Audio: ${audio?.length} bytes");
 
-                    }else if (frameState == FrameState.listening) {
-
-                      // STEP 3: ON IT
-                      frameState = FrameState.onit;
-                      _log.info("On it");
-                       _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: stopListeningFlag).pack());
-                      await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "..................... ..................... .....................").pack());
-                       
-                      var image = await _image;
-                      var audio = await _audio;
-                      _log.info("Image: ${image?.length} bytes,  Audio: ${audio?.length} bytes");
-                       noaMessages.add(NoaMessage(
-                        message: "Tap again to finish",
-                        from: NoaRole.noa,
-                        time: DateTime.now(),
-                        image: image,
-                      ));
-                      image = null;
-                      _image = null;
-                      // _audio = null;
+                  if (_cancelled) return;
+                  final newMessages = await NoaApi.getMessage(
+                      (await _getUserAuthToken())!,
+                      audio!,
+                      image!,
+                      getTunePrompt(),
+                      _tuneTemperature / 50,
+                      noaMessages,
+                      textToSpeech,
+                      apiEndpoint,
+                      apiHeader,
+                      apiToken,
+                      customServer,
+                      promptless);
+                  final topicChanged =
+                      newMessages.where((msg) => msg.topicChanged).isNotEmpty;
+                  if (topicChanged) {
+                    for (var msg in noaMessages) {
+                      msg.exclude = true;
                     }
+                  }
+                  if (_cancelled) return;
+                  noaMessages += newMessages;
+                  noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
 
-                }else if (taps == 2) {
-                  _log.info("Cancelled");
-                    await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "Tap me in", emoji: "\u{F0000}").pack());
-                    _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: stopListeningFlag).pack());
-                    frameState = FrameState.tapMeIn;
-                  
+                  if (_cancelled) return;
+                  // await _connectedDevice!.sendMessage(
+                  //     messageResponseFlag,
+                  //     TxRichText(
+                  //             text: noaMessages.last.message,
+                  //             emoji: "\u{F0003}")
+                  //         .pack());
+                  triggerEvent(Event.noaResponse);
+                  image = null;
+                  _image = null;
+                  _audio = null;
                 }
-              });
-              _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: tapFLag).pack());
-              frameState = FrameState.tapMeIn;
-              // STEP 1: TAP ME IN
-            await _connectedDevice!.sendMessage(messageResponseFlag, TxRichText( text: "Tap me in", emoji: "\u{F0000}").pack());
-
-            _luaResponseStream?.cancel();
-            _luaResponseStream =
-                _connectedDevice!.stringResponse.listen((event) {});
-
-            _dataResponseStream?.cancel();
-            _dataResponseStream =
-                _connectedDevice!.dataResponse.listen((event) async {
-              String getTunePrompt() {
-                String prompt = "";
-                if (_tunePrompt != "") {
-                  prompt += "$_tunePrompt. ";
-                }
-
-                switch (_tuneLength) {
-                  case TuneLength.shortest:
-                    prompt += "Limit responses to 1 to 3 words. ";
-                    break;
-                  case TuneLength.short:
-                    prompt += "Limit responses to 1 sentence. ";
-                    break;
-                  case TuneLength.standard:
-                    prompt += "Limit responses to 1 to 2 sentences. ";
-                    break;
-                  case TuneLength.long:
-                    prompt += "Limit responses to 1 short paragraph. ";
-                    break;
-                  case TuneLength.longest:
-                    prompt += "Limit responses to 2 paragraphs. ";
-                    break;
-                }
-                return prompt;
+              } else if (taps == 2) {
+                _log.info("Cancelled");
+                await _connectedDevice!.sendMessage(messageResponseFlag,
+                    TxRichText(text: "Tap me in", emoji: "\u{F0000}").pack());
+                _connectedDevice!.sendMessage(
+                    singleDataFlag, TxCode(value: stopListeningFlag).pack());
+                _cancelled = true;
+                frameState = FrameState.tapMeIn;
               }
-
-              // switch (event[0]) {
-              //   case 0x10:
-              //     _log.info("Received user generation request from device");
-              //     _audioData.clear();
-              //     _imageData.clear();
-              //     break;
-              //   case 0x12:
-              //     _log.info("Received wildcard request from device");
-              //     try {
-              //       noaMessages += await NoaApi.getWildcardMessage(
-              //         (await _getUserAuthToken())!,
-              //         getTunePrompt(),
-              //         _tuneTemperature / 50,
-              //         textToSpeech,
-              //       );
-              //       noaUser =
-              //           await NoaApi.getUser((await _getUserAuthToken())!);
-              //       triggerEvent(Event.noaResponse);
-              //     } catch (_) {}
-              //     break;
-              //   case 0x13:
-              //     _audioData += event.sublist(1);
-              //     break;
-              //   case 0x14:
-              //     _imageData += event.sublist(1);
-              //     break;
-              //   case 0x15:
-              //     _log.info(
-              //         "Received all data from device. ${_audioData.length} bytes of audio, ${_imageData.length} bytes of image");
-              //     try {
-              //       final newMessages = await NoaApi.getMessage(
-              //           (await _getUserAuthToken())!,
-              //           Uint8List.fromList(_audioData),
-              //           Uint8List.fromList(_imageData),
-              //           getTunePrompt(),
-              //           _tuneTemperature / 50,
-              //           noaMessages,
-              //           textToSpeech,
-              //           apiEndpoint,
-              //           apiHeader,
-              //           apiToken,
-              //           customServer,
-              //           promptless);
-              //       final topicChanged =
-              //           newMessages.where((msg) => msg.topicChanged).isNotEmpty;
-              //       if (topicChanged) {
-              //         for (var msg in noaMessages) {
-              //           msg.exclude = true;
-              //         }
-              //       }
-              //       noaMessages += newMessages;
-              //       noaUser =
-              //           await NoaApi.getUser((await _getUserAuthToken())!);
-              //       triggerEvent(Event.noaResponse);
-              //     } catch (_) {}
-              //     break;
-              // }
             });
+            _connectedDevice!
+                .sendMessage(singleDataFlag, TxCode(value: tapFLag).pack());
+            frameState = FrameState.tapMeIn;
+            // STEP 1: TAP ME IN
+            await _connectedDevice!.sendMessage(messageResponseFlag,
+                TxRichText(text: "Tap me in", emoji: "\u{F0000}").pack());
+            // after 10 put the device to sleep if not tapped
           });
-
           state.changeOn(Event.noaResponse, State.sendResponseToDevice);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
+          state.changeOn(Event.resetScriptsPressed, State.stopLuaApp);
           break;
 
         case State.sendResponseToDevice:
           state.onEntry(() async {
             try {
-              await _connectedDevice!.sendMessage(messageResponseFlag, TxPlainText(text: noaMessages.last.message).pack());
-              await Future.delayed(const Duration(milliseconds: 300));
+              await _connectedDevice!.sendMessage(
+                  messageResponseFlag,
+                  TxRichText(text: noaMessages.last.message, emoji: "\u{F0003}")
+                      .pack());
+              // hold reply for 5 seconds
+              await Future.delayed(const Duration(seconds: 8));
             } catch (_) {}
             triggerEvent(Event.done);
           });
@@ -721,13 +711,14 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.done, State.connected);
           state.changeOn(Event.logoutPressed, State.logout);
           state.changeOn(Event.deletePressed, State.deleteAccount);
+          state.changeOn(Event.resetScriptsPressed, State.stopLuaApp);
           break;
 
         case State.disconnected:
           state.onEntry(() async {
             _connectionStream?.cancel();
             _connectionStream =
-                _connectedDevice?.connectionState.listen( (event) async {
+                _connectedDevice?.connectionState.listen((event) async {
               _connectedDevice = event;
               if (event.state == BrilliantConnectionState.connected) {
                 triggerEvent(Event.deviceConnected);
@@ -739,14 +730,12 @@ class AppLogicModel extends ChangeNotifier {
             try {
               _connectedDevice ??= await BrilliantBluetooth.reconnect(
                   (await _getPairedDevice())!);
-            
             } catch (error) {
               _log.warning("Error reconnecting to device. $error");
             }
-             if (_connectedDevice?.state ==
-                  BrilliantConnectionState.connected) {
-                triggerEvent(Event.deviceConnected);
-              }
+            if (_connectedDevice?.state == BrilliantConnectionState.connected) {
+              triggerEvent(Event.deviceConnected);
+            }
           });
           state.changeOn(Event.deviceConnected, State.recheckFirmwareVersion);
           state.changeOn(Event.logoutPressed, State.logout);
@@ -758,7 +747,7 @@ class AppLogicModel extends ChangeNotifier {
             _dataResponseStream?.cancel();
             _dataResponseStream =
                 _connectedDevice!.dataResponse.listen((event) async {
-                  final flag = event[0];
+              final flag = event[0];
               if (flag == checkFwVersionFlag) {
                 _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
                 if (utf8.decode(event.sublist(1)) == _firmwareVersion) {
@@ -769,10 +758,9 @@ class AppLogicModel extends ChangeNotifier {
               }
             });
             try {
-              // send break signal to stop any running lua scripts
-              await _connectedDevice!.sendResetSignal();
               await _connectedDevice!
-                  .sendMessage(singleDataFlag, TxCode(value: checkFwVersionFlag).pack())
+                  .sendMessage(
+                      singleDataFlag, TxCode(value: checkFwVersionFlag).pack())
                   .timeout(const Duration(seconds: 1));
             } catch (ex) {
               _log.warning("Error checking firmware version. $ex");
@@ -790,7 +778,7 @@ class AppLogicModel extends ChangeNotifier {
             _dataResponseStream?.cancel();
             _dataResponseStream =
                 _connectedDevice!.dataResponse.listen((event) async {
-                  final flag = event[0];
+              final flag = event[0];
               if (flag == checkScriptVersionFlag) {
                 _log.info("Script version: ${utf8.decode(event.sublist(1))}");
                 if (utf8.decode(event.sublist(1)) == _scriptVersion) {
@@ -798,12 +786,12 @@ class AppLogicModel extends ChangeNotifier {
                 } else {
                   triggerEvent(Event.deviceNeedsUpdate);
                 }
-              } 
-              
+              }
             });
             try {
               await _connectedDevice!
-                  .sendMessage(singleDataFlag, TxCode(value: checkScriptVersionFlag).pack())
+                  .sendMessage(singleDataFlag,
+                      TxCode(value: checkScriptVersionFlag).pack())
                   .timeout(const Duration(seconds: 1));
             } catch (_) {
               _log.warning("Error checking script version.");
@@ -821,7 +809,7 @@ class AppLogicModel extends ChangeNotifier {
             try {
               await SharedPreferences.getInstance().then((sp) => sp.clear());
               await _connectedDevice?.disconnect();
-              // await NoaApi.signOut((await _getUserAuthToken())!);
+              await NoaApi.signOut((await _getUserAuthToken())!);
               noaMessages.clear();
               triggerEvent(Event.done);
             } catch (error) {
@@ -856,6 +844,12 @@ class AppLogicModel extends ChangeNotifier {
   @override
   void dispose() {
     BrilliantBluetooth.stopScan();
+    _scanStream?.cancel();
+    _connectionStream?.cancel();
+    _luaResponseStream?.cancel();
+    _dataResponseStream?.cancel();
+    _tapSubs?.cancel();
+    
     super.dispose();
   }
 }

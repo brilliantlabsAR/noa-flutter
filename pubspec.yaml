@@ -1,10 +1,10 @@
 name: noa
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 1.6.3
 
 environment:
-  sdk: '>=3.3.1 <4.0.0'
+  sdk: ">=3.3.1 <4.0.0"
 
 dependencies:
   flutter:
@@ -57,5 +57,4 @@ flutter:
     - packages/frame_msg/lua/code.min.lua
     - packages/frame_msg/lua/data.min.lua
     - packages/frame_msg/lua/camera.min.lua
-    - packages/frame_msg/lua/plain_text.min.lua
     - packages/frame_msg/lua/image_sprite_block.min.lua

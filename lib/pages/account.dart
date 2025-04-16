@@ -75,7 +75,7 @@ class AccountPage extends ConsumerWidget {
                     }
                   }),
                   _linkedFooterText("Fix scripts", false, () async {
-                    ref.read(app.model).triggerEvent(app.Event.deviceConnected);
+                    ref.read(app.model).triggerEvent(app.Event.resetScriptsPressed);
                   }),
                   _linkedFooterText("Privacy Policy", false, () async {
                     try {

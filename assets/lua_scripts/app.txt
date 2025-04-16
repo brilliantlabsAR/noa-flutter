@@ -87,9 +87,12 @@ local function handle_messages()
     end
     if (data.app_data[LISTENING_FLAG] ~= nil) then
         print("LISTENING")
-        audio_data = ''
-        camera.capture_and_send(data.app_data[LISTENING_FLAG])
         listening = true
+        audio_data = ''
+        rc, err = pcall(camera.capture_and_send, data.app_data[LISTENING_FLAG])
+        if rc == false then
+            print(err)
+        end
         frame.microphone.start {}
         data.app_data[CAPTURE_SETTINGS_MSG] = nil
         data.app_data[LISTENING_FLAG] = nil

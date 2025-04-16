@@ -248,7 +248,7 @@ class NoaApi {
       ));
 
       try {
-        image = encodeJpg(copyRotate(decodeJpg(image)!, angle: -90));
+        image = encodeJpg(copyRotate(decodeJpg(image)!, angle: 0));
 
         request.files.add(http.MultipartFile.fromBytes(
           'image',
