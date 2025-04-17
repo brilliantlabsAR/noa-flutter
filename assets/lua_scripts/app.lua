@@ -95,7 +95,7 @@ end
 
 local function transfer_audio_data()
     for i=1,20 do
-        local audio_data = frame.microphone.read((math.floor(mtu - 1) / 2) * 2)
+        local audio_data = frame.microphone.read(math.floor((mtu - 1) / 2) * 2)
         if audio_data == nil then
             print("STOPPED LISTENING")
             pcall(send_data, string.char(AUDIO_DATA_FINAL_MSG))
