@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
@@ -13,7 +11,7 @@ import 'package:frame_msg/frame_msg.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
-import 'package:noa/util/frame_msg_util.dart';
+import 'package:noa/util/tx_rich_text.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

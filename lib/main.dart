@@ -4,7 +4,6 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:frame_ble/brilliant_bluetooth.dart';
-import 'package:noa/bluetooth.dart';
 import 'package:noa/pages/splash.dart';
 import 'package:noa/util/app_log.dart';
 import 'package:noa/util/foreground_service.dart';
@@ -28,7 +27,7 @@ void main() async {
 
   // Start location stream
   Location.startLocationStream();
-  
+
   _setupAudioSession();
 
   runApp(UncontrolledProviderScope(
