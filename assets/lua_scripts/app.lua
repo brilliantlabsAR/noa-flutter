@@ -4,26 +4,23 @@ local rich_text = require('rich_text.min')
 local camera = require('camera.min')
 local code = require('code.min')
 
-SCRIPT_VERSION = "v1.0.7"
+SCRIPT_VERSION = "v1.0.8"
 
 local graphics = Graphics.new()
 
-EXPOSURE_NUMBER = 5
+EXPOSURE_NUMBER = 10
 local last_print_time = 0
 local last_msg_time = 0
 local listening = false
 local sleep_started = false
 local disconnected = false
 local last_auto_exp = 0
--- Frame to phone flags
-MESSAGE_GEN_FLAG = "\x10"
-WILDCARD_GEN_FLAG = "\x12"
-AUDIO_DATA_FLAG = "\x13"
-TRANSFER_DONE_FLAG = "\x15"
-
+local photo_taken = false
+local capture_settings = nil
+local num_exposures = 0
+local looking_ahead = true
 
 -- Phone to Frame flags
-CAPTURE_SETTINGS_MSG = 0x0d
 MESSAGE_RESPONSE_FLAG = 0x20
 HOLD_RESPONSE_FLAG = 0x23
 DATA_MSG = 0x22
@@ -32,9 +29,12 @@ CHECK_FW_VERSION_FLAG = 0x16
 CHECK_SCRIPT_VERSION_FLAG = 0x17
 LISTENING_FLAG = 0x11
 STOP_LISTENING_FLAG = 0x12
+STOP_TAP_FLAG = 0x13
+LOOK_AHEAD_FLAG = 0x14
+
+-- Frame to Phone flags
 AUDIO_DATA_NON_FINAL_MSG = 0x05
 AUDIO_DATA_FINAL_MSG = 0x06
-STOP_TAP_FLAG = 0x13
 
 local function send_data(data)
     local try_until = frame.time.utc() + 2
@@ -45,7 +45,28 @@ local function send_data(data)
     end
 end
 
-
+function run_auto_exp(prev, interval)
+    local t = frame.time.utc()
+    if ((prev == 0) or ((t - prev) > interval)) then
+        camera.run_auto_exposure()
+        num_exposures = num_exposures + 1
+        return t
+    else
+        return prev
+    end
+end
+local function check_look_ahead(_print)
+    local pos = frame.imu.direction()
+    if not (pos['roll'] > -20 and pos['roll'] < 20 and pos['pitch'] > -60 and pos['pitch'] < 40) then
+        if _print then
+            graphics:clear()
+            graphics:append_text("look ahead", "\u{F0000}")
+        end
+    else
+        print("LOOKING AHEAD")
+        looking_ahead = true
+    end
+end
 local function handle_tap()
     pcall(frame.bluetooth.send, string.char(TAP_SUBS_FLAG))
 end
@@ -67,26 +88,26 @@ local function handle_messages()
             send_data(string.char(CHECK_FW_VERSION_FLAG) .. frame.FIRMWARE_VERSION)
         elseif code_byte == CHECK_SCRIPT_VERSION_FLAG then
             send_data(string.char(CHECK_SCRIPT_VERSION_FLAG) .. SCRIPT_VERSION)
+        elseif code_byte == LOOK_AHEAD_FLAG then
+            looking_ahead = false
+            check_look_ahead(true)
         elseif code_byte == HOLD_RESPONSE_FLAG then
             print("HOLD FOR RESPONSE")
             -- Do nothing, just keep awake
         end
         data.app_data[DATA_MSG] = nil
     end
-    if (data.app_data[LISTENING_FLAG] ~= nil) then
+    if (data.app_data[LISTENING_FLAG] ~= nil) and looking_ahead then
         print("LISTENING")
         listening = true
+        num_exposures = 0
+        photo_taken = false
+        capture_settings = data.app_data[LISTENING_FLAG]
         frame.microphone.start {}
-        -- run auto exposure 10 times for every 100ms
-        for i = 1, EXPOSURE_NUMBER do
-            camera.run_auto_exposure()
-            frame.sleep(0.1)
-        end
-        camera.capture_and_send(data.app_data[LISTENING_FLAG])
         data.app_data[LISTENING_FLAG] = nil
     end
     -- To print response on Frame
-    if (data.app_data[MESSAGE_RESPONSE_FLAG] ~= nil and data.app_data[MESSAGE_RESPONSE_FLAG].string ~= nil) then
+    if (data.app_data[MESSAGE_RESPONSE_FLAG] ~= nil and data.app_data[MESSAGE_RESPONSE_FLAG].string ~= nil) and looking_ahead then
         graphics:clear()
         graphics:append_text(data.app_data[MESSAGE_RESPONSE_FLAG].string, data.app_data[MESSAGE_RESPONSE_FLAG].emoji)
         data.app_data[MESSAGE_RESPONSE_FLAG] = nil
@@ -127,7 +148,9 @@ while true do
         end
         last_msg_time = frame.time.utc()
     end
-
+    if not looking_ahead then
+        check_look_ahead(false)
+    end
     if frame.bluetooth.is_connected() == false and not disconnected then
         disconnected = true
         graphics:clear()
@@ -151,7 +174,14 @@ while true do
     end
     if listening then
         transfer_audio_data()
+        if not photo_taken and (num_exposures > 10 or not listening) then
+            print("CAPTURE")
+            camera.capture_and_send(capture_settings)
+            photo_taken = true
+            capture_settings = nil
+        end
     end
+    last_auto_exp = run_auto_exp(last_auto_exp, 0.1)
     frame.sleep(0.001)
     collectgarbage("collect")
 end

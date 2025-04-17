@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:frame_ble/brilliant_bluetooth.dart';
@@ -19,7 +20,7 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.080.0838";
-const _scriptVersion = "v1.0.7";
+const _scriptVersion = "v1.0.8";
 
 const checkFwVersionFlag = 0x16;
 const checkScriptVersionFlag = 0x17;
@@ -31,6 +32,7 @@ const tapFLag = 0x10;
 const stopTapFlag = 0x13;
 const startListeningFlag = 0x11;
 const stopListeningFlag = 0x12;
+const loopAheadFlag = 0x14;
 
 enum State {
   getUserSettings,
@@ -444,7 +446,10 @@ class AppLogicModel extends ChangeNotifier {
                 default:
                   throw ();
               }
-            } catch (_) {
+            } catch (error) {
+              var list_of_devices = FlutterBluePlus.connectedDevices;
+              _log.warning(
+                  "Error connecting to device. $error. List of devices: $list_of_devices");
               triggerEvent(Event.deviceInvalid);
             }
           });
@@ -458,7 +463,9 @@ class AppLogicModel extends ChangeNotifier {
             try {
               await _connectedDevice!.sendBreakSignal();
               triggerEvent(Event.done);
-            } catch (_) {
+            } catch (error) {
+              _log.warning("Error stopping lua app. $error");
+              await _connectedDevice?.disconnect();
               triggerEvent(Event.error);
             }
           });
@@ -510,13 +517,15 @@ class AppLogicModel extends ChangeNotifier {
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
 
               triggerEvent(Event.done);
-            } catch (_) {
+            } catch (error) {
+              await _connectedDevice?.disconnect();
+              _log.warning("Error uploading lua scripts. $error.");
               triggerEvent(Event.error);
             }
           });
 
           state.changeOn(Event.done, State.connected);
-          state.changeOn(Event.error, State.requiresRepair);
+          state.changeOn(Event.error, State.disconnected);
           break;
 
         case State.triggerUpdate:
@@ -526,7 +535,9 @@ class AppLogicModel extends ChangeNotifier {
                 "frame.update()",
                 awaitResponse: false,
               );
-            } catch (_) {
+            } catch (error) {
+              _log.warning("Error triggering update. $error");
+              await _connectedDevice?.disconnect();
               triggerEvent(Event.error);
             }
             await _scanStream?.cancel();
@@ -537,7 +548,7 @@ class AppLogicModel extends ChangeNotifier {
           });
           state.changeOn(Event.deviceFound, State.connect,
               transitionTask: () async => await BrilliantBluetooth.stopScan());
-          state.changeOn(Event.error, State.requiresRepair);
+          state.changeOn(Event.error, State.disconnected);
           break;
 
         case State.updateFirmware:
@@ -568,7 +579,7 @@ class AppLogicModel extends ChangeNotifier {
             );
           });
           state.changeOn(Event.deviceFound, State.connect);
-          state.changeOn(Event.error, State.requiresRepair);
+          state.changeOn(Event.error, State.disconnected);
           break;
 
         case State.requiresRepair:
@@ -591,11 +602,12 @@ class AppLogicModel extends ChangeNotifier {
             _luaResponseStream =
                 _connectedDevice!.stringResponse.listen((event) async {});
             // wait for the device to be ready
-            await Future.delayed(const Duration(seconds: 1));
+            await Future.delayed(const Duration(milliseconds: 800));
+            _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: loopAheadFlag).pack());
             _connectedDevice!
                 .sendMessage(singleDataFlag, TxCode(value: stopTapFlag).pack());
             _tapSubs?.cancel();
-            _tapSubs = RxTap(tapFlag: tapFLag)
+            _tapSubs = RxTap(tapFlag: tapFLag, threshold: const Duration(milliseconds: 200))
                 .attach(_connectedDevice!.dataResponse)
                 .listen((taps) async {
               if (taps == 1) {
@@ -608,8 +620,6 @@ class AppLogicModel extends ChangeNotifier {
                       TxRichText(text: "tap to finish", emoji: "\u{F0010}")
                           .pack());
                   _cancelled = false;
-                  // hold for 100ms
-                  await Future.delayed(const Duration(milliseconds: 900));
                   if (_cancelled) return;
                   _image = _rxPhoto.attach(_connectedDevice!.dataResponse).first;
                   _audio = _rxAudio.attach(_connectedDevice!.dataResponse).first;
@@ -787,6 +797,7 @@ class AppLogicModel extends ChangeNotifier {
           state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
           state.changeOn(Event.error, State.stopLuaApp);
           state.changeOn(Event.logoutPressed, State.logout);
+          state.changeOn(Event.resetScriptsPressed, State.stopLuaApp);
           break;
 
         case State.checkScriptVersion:
