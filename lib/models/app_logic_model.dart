@@ -609,7 +609,8 @@ class AppLogicModel extends ChangeNotifier {
                           .pack());
                   _cancelled = false;
                   // hold for 100ms
-                  await Future.delayed(const Duration(milliseconds: 100));
+                  await Future.delayed(const Duration(milliseconds: 900));
+                  if (_cancelled) return;
                   _image = _rxPhoto.attach(_connectedDevice!.dataResponse).first;
                   _audio = _rxAudio.attach(_connectedDevice!.dataResponse).first;
                   await _connectedDevice!.sendMessage(

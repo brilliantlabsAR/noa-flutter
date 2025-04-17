@@ -8,7 +8,7 @@ SCRIPT_VERSION = "v1.0.7"
 
 local graphics = Graphics.new()
 
-EXPOSURE_NUMBER = 10
+EXPOSURE_NUMBER = 5
 local last_print_time = 0
 local last_msg_time = 0
 local listening = false
