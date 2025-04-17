@@ -15,20 +15,17 @@ local listening = false
 local sleep_started = false
 local disconnected = false
 local last_auto_exp = 0
-local audio_data = ''
 local mtu = frame.bluetooth.max_length()
 -- Frame to phone flags
 MESSAGE_GEN_FLAG = "\x10"
 WILDCARD_GEN_FLAG = "\x12"
 AUDIO_DATA_FLAG = "\x13"
-IMAGE_DATA_FLAG = "\x14"
 TRANSFER_DONE_FLAG = "\x15"
 
 
 -- Phone to Frame flags
 CAPTURE_SETTINGS_MSG = 0x0d
 MESSAGE_RESPONSE_FLAG = 0x20
-IMAGE_RESPONSE_FLAG = 0x21
 DATA_MSG = 0x22
 TAP_SUBS_FLAG = 0x10
 CHECK_FW_VERSION_FLAG = 0x16
@@ -46,7 +43,6 @@ local function send_data(data)
             return
         end
     end
-    graphics:append_text("", "\u{F000D}")
 end
 
 function run_auto_exp(prev, interval)
@@ -84,27 +80,22 @@ local function handle_messages()
     end
     if (data.app_data[LISTENING_FLAG] ~= nil) then
         print("LISTENING")
-        audio_data = ''
-        camera.capture_and_send(data.app_data[LISTENING_FLAG])
-        data.app_data[LISTENING_FLAG] = nil
-        frame.microphone.start {}
         listening = true
+        frame.microphone.start {}
+        camera.capture_and_send(data.app_data[LISTENING_FLAG])
         data.app_data[LISTENING_FLAG] = nil
     end
     -- To print response on Frame
     if (data.app_data[MESSAGE_RESPONSE_FLAG] ~= nil and data.app_data[MESSAGE_RESPONSE_FLAG].string ~= nil) then
         graphics:clear()
         graphics:append_text(data.app_data[MESSAGE_RESPONSE_FLAG].string, data.app_data[MESSAGE_RESPONSE_FLAG].emoji)
-    end
-    -- To print image on Frame
-    if (data.app_data[IMAGE_RESPONSE_FLAG] ~= nil and data.app_data[IMAGE_RESPONSE_FLAG].string ~= nil) then
-        graphics:clear()
+        data.app_data[MESSAGE_RESPONSE_FLAG] = nil
     end
 end
 
 local function transfer_audio_data()
     for i=1,20 do
-        audio_data = frame.microphone.read((math.floor(mtu - 1) / 2) * 2)
+        local audio_data = frame.microphone.read((math.floor(mtu - 1) / 2) * 2)
         if audio_data == nil then
             print("STOPPED LISTENING")
             pcall(send_data, string.char(AUDIO_DATA_FINAL_MSG))
@@ -148,7 +139,8 @@ while true do
     end
     if frame.time.utc() - last_msg_time > 18 and sleep_started then
         frame.microphone.stop()
-        frame.display.show(' ',1,1)
+        frame.display.text(' ',1,1)
+        frame.display.show()
         frame.sleep(0.05)
         frame.sleep()
     end

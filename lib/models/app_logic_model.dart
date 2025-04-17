@@ -784,7 +784,7 @@ class AppLogicModel extends ChangeNotifier {
               final flag = event[0];
               if (flag == checkScriptVersionFlag) {
                 _log.info("Script version: ${utf8.decode(event.sublist(1))}");
-                if (utf8.decode(event.sublist(1)) == _scriptVersion) {
+                if (utf8.decode(event.sublist(1)) == _scriptVersion && false) { // TODO remove when not debugging: always upload scripts
                   triggerEvent(Event.deviceUpToDate);
                 } else {
                   triggerEvent(Event.deviceNeedsUpdate);
@@ -852,7 +852,7 @@ class AppLogicModel extends ChangeNotifier {
     _luaResponseStream?.cancel();
     _dataResponseStream?.cancel();
     _tapSubs?.cancel();
-    
+
     super.dispose();
   }
 }
