@@ -14,13 +14,24 @@ import 'package:noa/widgets/top_title_bar.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:uuid/uuid.dart';
 
-final ScrollController _scrollController = ScrollController();
-
-class NoaPage extends ConsumerWidget {
+class NoaPage extends ConsumerStatefulWidget {
   const NoaPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NoaPage> createState() => _NoaPageState();
+}
+
+class _NoaPageState extends ConsumerState<NoaPage> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       switch (ref.watch(app.model).state.current) {
         case app.State.stopLuaApp:
