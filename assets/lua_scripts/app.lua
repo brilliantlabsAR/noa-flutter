@@ -57,7 +57,7 @@ end
 local function handle_tap()
     pcall(frame.bluetooth.send, string.char(TAP_SUBS_FLAG))
 end
-data.parsers[MESSAGE_RESPONSE_FLAG] = rich_text.parse_reach_text
+data.parsers[MESSAGE_RESPONSE_FLAG] = rich_text.parse_rich_text
 data.parsers[DATA_MSG] = code.parse_code
 data.parsers[LISTENING_FLAG] = camera.parse_capture_settings
 

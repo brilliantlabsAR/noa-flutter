@@ -1,10 +1,10 @@
--- Module to parse text strings sent from phoneside app as TxPlainText messages
+-- Module to parse text strings sent from phoneside app as TxRichText messages
 local _M = {}
 
 local colors = {'VOID', 'WHITE', 'GREY', 'RED', 'PINK', 'DARKBROWN','BROWN', 'ORANGE', 'YELLOW', 'DARKGREEN', 'GREEN', 'LIGHTGREEN', 'NIGHTBLUE', 'SEABLUE', 'SKYBLUE', 'CLOUDBLUE'}
 
--- Parse the TxRichText message raw data, which is a string
-function _M.parse_reach_text(data)
+-- Parse the TxRichText message raw data, which is a string and an emoji with position and color information
+function _M.parse_rich_text(data)
 	local rich_text = {}
 
 	rich_text.x = string.byte(data, 1) << 8 | string.byte(data, 2)
