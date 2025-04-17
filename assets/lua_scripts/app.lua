@@ -4,7 +4,7 @@ local rich_text = require('rich_text.min')
 local camera = require('camera.min')
 local code = require('code.min')
 
-SCRIPT_VERSION = "v1.0.6"
+SCRIPT_VERSION = "v1.0.7"
 
 local graphics = Graphics.new()
 
@@ -15,7 +15,6 @@ local listening = false
 local sleep_started = false
 local disconnected = false
 local last_auto_exp = 0
-local mtu = frame.bluetooth.max_length()
 -- Frame to phone flags
 MESSAGE_GEN_FLAG = "\x10"
 WILDCARD_GEN_FLAG = "\x12"
@@ -94,22 +93,27 @@ local function handle_messages()
 end
 
 local function transfer_audio_data()
+    local mtu = frame.bluetooth.max_length()
+    local audio_data_size = math.floor((mtu - 1) / 2) * 2
+    local audio_data = nil
+
     for i=1,20 do
-        local audio_data = frame.microphone.read(math.floor((mtu - 1) / 2) * 2)
+        audio_data = frame.microphone.read(audio_data_size)
         if audio_data == nil then
             print("STOPPED LISTENING")
             pcall(send_data, string.char(AUDIO_DATA_FINAL_MSG))
-            -- frame.sleep(0.0025)
             listening = false
             break
         elseif audio_data ~= '' then
             pcall(send_data, string.char(AUDIO_DATA_NON_FINAL_MSG) .. audio_data)
-            -- frame.sleep(0.0025)
+        else
+            break;
         end
     end
 end
 
-graphics:append_text("Diconnected", "\u{F000D}")
+graphics:append_text("Disconnected", "\u{F000D}")
+collectgarbage("collect")
 
 while true do
     local items_ready = data.process_raw_items()

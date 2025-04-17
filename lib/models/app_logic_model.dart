@@ -21,7 +21,7 @@ final _log = Logger("App logic");
 
 // NOTE Update these when changing firmware or scripts
 const _firmwareVersion = "v25.080.0838";
-const _scriptVersion = "v1.0.6";
+const _scriptVersion = "v1.0.7";
 
 const checkFwVersionFlag = 0x16;
 const checkScriptVersionFlag = 0x17;
