@@ -82,8 +82,7 @@ enum FrameState {
   tapMeIn,
   listening,
   onit,
-  presleep,
-  sleep,
+  printReply,
 }
 
 enum TuneLength {
@@ -662,12 +661,6 @@ class AppLogicModel extends ChangeNotifier {
                   noaUser = await NoaApi.getUser((await _getUserAuthToken())!);
 
                   if (_cancelled) return;
-                  // await _connectedDevice!.sendMessage(
-                  //     messageResponseFlag,
-                  //     TxRichText(
-                  //             text: noaMessages.last.message,
-                  //             emoji: "\u{F0003}")
-                  //         .pack());
                   triggerEvent(Event.noaResponse);
                   image = null;
                   _image = null;
@@ -685,11 +678,22 @@ class AppLogicModel extends ChangeNotifier {
             });
             _connectedDevice!
                 .sendMessage(singleDataFlag, TxCode(value: tapFLag).pack());
-            frameState = FrameState.tapMeIn;
             // STEP 1: TAP ME IN
+            // if its coming from disconnected state immediately show tap me in, if its coming from print reply wait for 5 seconds
+            if (frameState == FrameState.printReply) {
+              Future.delayed(const Duration(seconds: 5), () async {
+                await _connectedDevice!.sendMessage(
+                    messageResponseFlag,
+                    TxRichText(text: "Tap me in", emoji: "\u{F0000}").pack());
+                frameState = FrameState.tapMeIn;
+              });
+            }else{
+
             await _connectedDevice!.sendMessage(messageResponseFlag,
                 TxRichText(text: "Tap me in", emoji: "\u{F0000}").pack());
-            // after 10 put the device to sleep if not tapped
+                frameState = FrameState.tapMeIn;
+            }
+
           });
           state.changeOn(Event.noaResponse, State.sendResponseToDevice);
           state.changeOn(Event.deviceDisconnected, State.disconnected);
@@ -706,7 +710,8 @@ class AppLogicModel extends ChangeNotifier {
                   TxRichText(text: noaMessages.last.message, emoji: "\u{F0003}")
                       .pack());
               // hold reply for 5 seconds
-              await Future.delayed(const Duration(seconds: 8));
+              frameState = FrameState.printReply;
+              await Future.delayed(const Duration(milliseconds: 1000));
             } catch (_) {}
             triggerEvent(Event.done);
           });
@@ -718,6 +723,7 @@ class AppLogicModel extends ChangeNotifier {
           break;
 
         case State.disconnected:
+          frameState = FrameState.disconnected;
           state.onEntry(() async {
             _connectionStream?.cancel();
             _connectionStream =
