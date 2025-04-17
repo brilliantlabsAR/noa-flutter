@@ -2,8 +2,6 @@ require("graphics.min")
 local data = require('data.min')
 local rich_text = require('rich_text.min')
 local camera = require('camera.min')
--- local rich_text = require('plain_text.min')
--- local image_sprite_block = require('image_sprite_block.min')
 local code = require('code.min')
 
 SCRIPT_VERSION = "v1.0.6"
@@ -65,7 +63,6 @@ local function handle_tap()
     pcall(frame.bluetooth.send, string.char(TAP_SUBS_FLAG))
 end
 data.parsers[MESSAGE_RESPONSE_FLAG] = rich_text.parse_reach_text
--- data.parsers[IMAGE_RESPONSE_FLAG] = image_sprite_block.parse_image_sprite_block
 data.parsers[DATA_MSG] = code.parse_code
 data.parsers[LISTENING_FLAG] = camera.parse_capture_settings
 
@@ -134,7 +131,7 @@ while true do
         end
         last_msg_time = frame.time.utc()
     end
- 
+
     if frame.bluetooth.is_connected() == false and not disconnected then
         disconnected = true
         graphics:clear()

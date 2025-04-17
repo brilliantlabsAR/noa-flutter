@@ -1,1 +1,1 @@
-require("app.min")
+require("app")

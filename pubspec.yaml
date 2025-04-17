@@ -53,8 +53,10 @@ flutter:
     - assets/images/
     - assets/images/2x/
     - assets/images/tutorial/
-    - assets/lua_scripts/
+    - assets/lua_scripts/main.lua
+    - assets/lua_scripts/app.lua
+    - assets/lua_scripts/graphics.min.lua
+    - assets/lua_scripts/rich_text.min.lua
     - packages/frame_msg/lua/code.min.lua
     - packages/frame_msg/lua/data.min.lua
     - packages/frame_msg/lua/camera.min.lua
-    - packages/frame_msg/lua/image_sprite_block.min.lua
