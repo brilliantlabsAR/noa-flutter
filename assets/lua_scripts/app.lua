@@ -25,6 +25,7 @@ TRANSFER_DONE_FLAG = "\x15"
 -- Phone to Frame flags
 CAPTURE_SETTINGS_MSG = 0x0d
 MESSAGE_RESPONSE_FLAG = 0x20
+HOLD_RESPONSE_FLAG = 0x23
 DATA_MSG = 0x22
 TAP_SUBS_FLAG = 0x10
 CHECK_FW_VERSION_FLAG = 0x16
@@ -44,15 +45,6 @@ local function send_data(data)
     end
 end
 
-function run_auto_exp(prev, interval)
-    local t = frame.time.utc()
-    if ((prev == 0) or ((t - prev) > interval)) then
-        camera.run_auto_exposure()
-        return t
-    else
-        return prev
-    end
-end
 
 local function handle_tap()
     pcall(frame.bluetooth.send, string.char(TAP_SUBS_FLAG))
@@ -75,12 +67,20 @@ local function handle_messages()
             send_data(string.char(CHECK_FW_VERSION_FLAG) .. frame.FIRMWARE_VERSION)
         elseif code_byte == CHECK_SCRIPT_VERSION_FLAG then
             send_data(string.char(CHECK_SCRIPT_VERSION_FLAG) .. SCRIPT_VERSION)
+        elseif code_byte == HOLD_RESPONSE_FLAG then
+            print("HOLD FOR RESPONSE")
+            -- Do nothing, just keep awake
         end
+        data.app_data[DATA_MSG] = nil
     end
     if (data.app_data[LISTENING_FLAG] ~= nil) then
         print("LISTENING")
         listening = true
         frame.microphone.start {}
+        -- run auto exposure 10 times
+        for i = 1, EXPOSURE_NUMBER do
+            camera.run_auto_exposure()
+        end
         camera.capture_and_send(data.app_data[LISTENING_FLAG])
         data.app_data[LISTENING_FLAG] = nil
     end
@@ -112,7 +112,7 @@ local function transfer_audio_data()
     end
 end
 
-graphics:append_text("Disconnected", "\u{F000D}")
+graphics:append_text("", "\u{F000D}")
 collectgarbage("collect")
 
 while true do
@@ -130,7 +130,7 @@ while true do
     if frame.bluetooth.is_connected() == false and not disconnected then
         disconnected = true
         graphics:clear()
-        graphics:append_text("Disconnected", "\u{F000D}")
+        graphics:append_text("", "\u{F000D}")
     end
     if frame.time.utc() - last_msg_time > 15 and not sleep_started and not listening then
         sleep_started = true
@@ -151,7 +151,6 @@ while true do
     if listening then
         transfer_audio_data()
     end
-    last_auto_exp = run_auto_exp(last_auto_exp, 0.1)
     frame.sleep(0.001)
     collectgarbage("collect")
 end

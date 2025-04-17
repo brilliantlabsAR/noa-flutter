@@ -26,6 +26,7 @@ const checkScriptVersionFlag = 0x17;
 const messageResponseFlag = 0x20;
 const imageResponseFlag = 0x21;
 const singleDataFlag = 0x22;
+const holdResponseFlag = 0x23;
 const tapFLag = 0x10;
 const stopTapFlag = 0x13;
 const startListeningFlag = 0x11;
@@ -234,7 +235,7 @@ class AppLogicModel extends ChangeNotifier {
 // Photos: 720px VERY_HIGH quality JPEGs
   static const resolution = 720;
   static const qualityIndex = 4;
-  static const qualityLevel = 'MEDIUM';
+  static const qualityLevel = 'HIGH';
   final RxPhoto _rxPhoto =
       RxPhoto(quality: qualityLevel, resolution: resolution);
   Future<Uint8List>? _image;
@@ -607,6 +608,8 @@ class AppLogicModel extends ChangeNotifier {
                       TxRichText(text: "tap to finish", emoji: "\u{F0010}")
                           .pack());
                   _cancelled = false;
+                  // hold for 100ms
+                  await Future.delayed(const Duration(milliseconds: 100));
                   _image = _rxPhoto.attach(_connectedDevice!.dataResponse).first;
                   _audio = _rxAudio.attach(_connectedDevice!.dataResponse).first;
                   await _connectedDevice!.sendMessage(
@@ -634,6 +637,12 @@ class AppLogicModel extends ChangeNotifier {
                       "Image: ${image?.length} bytes,  Audio: ${audio?.length} bytes");
 
                   if (_cancelled) return;
+                  // to avoid fram being sleep while waiting for the response
+                  Future.delayed(const Duration(seconds: 5), () async {
+                    await _connectedDevice!.sendMessage(
+                        singleDataFlag,
+                        TxCode(value: holdResponseFlag).pack());
+                  });
                   final newMessages = await NoaApi.getMessage(
                       (await _getUserAuthToken())!,
                       audio!,
@@ -667,7 +676,7 @@ class AppLogicModel extends ChangeNotifier {
               } else if (taps == 2) {
                 _log.info("Cancelled");
                 await _connectedDevice!.sendMessage(messageResponseFlag,
-                    TxRichText(text: "Tap me in", emoji: "\u{F0000}").pack());
+                    TxRichText(text: "tap me in", emoji: "\u{F0000}").pack());
                 _connectedDevice!.sendMessage(
                     singleDataFlag, TxCode(value: stopListeningFlag).pack());
                 _cancelled = true;
@@ -679,16 +688,16 @@ class AppLogicModel extends ChangeNotifier {
             // STEP 1: TAP ME IN
             // if its coming from disconnected state immediately show tap me in, if its coming from print reply wait for 5 seconds
             if (frameState == FrameState.printReply) {
-              Future.delayed(const Duration(seconds: 5), () async {
+              Future.delayed(const Duration(seconds: 10), () async {
                 await _connectedDevice!.sendMessage(
                     messageResponseFlag,
-                    TxRichText(text: "Tap me in", emoji: "\u{F0000}").pack());
+                    TxRichText(text: "tap me in", emoji: "\u{F0000}").pack());
                 frameState = FrameState.tapMeIn;
               });
             }else{
 
             await _connectedDevice!.sendMessage(messageResponseFlag,
-                TxRichText(text: "Tap me in", emoji: "\u{F0000}").pack());
+                TxRichText(text: "tap me in", emoji: "\u{F0000}").pack());
                 frameState = FrameState.tapMeIn;
             }
 
@@ -707,7 +716,6 @@ class AppLogicModel extends ChangeNotifier {
                   messageResponseFlag,
                   TxRichText(text: noaMessages.last.message, emoji: "\u{F0003}")
                       .pack());
-              // hold reply for 5 seconds
               frameState = FrameState.printReply;
               await Future.delayed(const Duration(milliseconds: 1000));
             } catch (_) {}
