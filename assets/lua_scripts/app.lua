@@ -77,9 +77,10 @@ local function handle_messages()
         print("LISTENING")
         listening = true
         frame.microphone.start {}
-        -- run auto exposure 10 times
+        -- run auto exposure 10 times for every 100ms
         for i = 1, EXPOSURE_NUMBER do
             camera.run_auto_exposure()
+            frame.sleep(0.1)
         end
         camera.capture_and_send(data.app_data[LISTENING_FLAG])
         data.app_data[LISTENING_FLAG] = nil
