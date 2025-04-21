@@ -63,6 +63,8 @@ local function check_look_ahead(_print)
             graphics:append_text("look ahead", "\u{F0000}")
         end
     else
+        graphics:clear()
+        graphics:append_text("tap me in", "\u{F0000}")
         print("LOOKING AHEAD")
         looking_ahead = true
     end

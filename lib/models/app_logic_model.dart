@@ -515,7 +515,8 @@ class AppLogicModel extends ChangeNotifier {
               }
               await _connectedDevice!.sendResetSignal();
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
-
+              await Future.delayed(const Duration(milliseconds: 800));
+              _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: loopAheadFlag).pack());
               triggerEvent(Event.done);
             } catch (error) {
               await _connectedDevice?.disconnect();
@@ -602,8 +603,7 @@ class AppLogicModel extends ChangeNotifier {
             _luaResponseStream =
                 _connectedDevice!.stringResponse.listen((event) async {});
             // wait for the device to be ready
-            await Future.delayed(const Duration(milliseconds: 800));
-            _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: loopAheadFlag).pack());
+            await Future.delayed(const Duration(milliseconds: 100));
             _connectedDevice!
                 .sendMessage(singleDataFlag, TxCode(value: stopTapFlag).pack());
             _tapSubs?.cancel();
@@ -728,7 +728,7 @@ class AppLogicModel extends ChangeNotifier {
                   TxRichText(text: noaMessages.last.message, emoji: "\u{F0003}")
                       .pack());
               frameState = FrameState.printReply;
-              await Future.delayed(const Duration(milliseconds: 1000));
+              await Future.delayed(const Duration(milliseconds: 800));
             } catch (_) {}
             triggerEvent(Event.done);
           });
@@ -810,6 +810,8 @@ class AppLogicModel extends ChangeNotifier {
                 _log.info("Script version: ${utf8.decode(event.sublist(1))}");
                 if (utf8.decode(event.sublist(1)) == _scriptVersion) {
                   triggerEvent(Event.deviceUpToDate);
+                  await Future.delayed(const Duration(milliseconds: 800));
+                  _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: loopAheadFlag).pack());
                 } else {
                   triggerEvent(Event.deviceNeedsUpdate);
                 }
