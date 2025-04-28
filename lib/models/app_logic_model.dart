@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:frame_ble/brilliant_bluetooth.dart';
 import 'package:frame_ble/brilliant_connection_state.dart';
 import 'package:frame_ble/brilliant_device.dart';
+import 'package:frame_ble/brilliant_dfu_device.dart';
 import 'package:frame_ble/brilliant_scanned_device.dart';
 import 'package:frame_msg/frame_msg.dart';
 import 'package:logging/logging.dart';
@@ -426,22 +427,18 @@ class AppLogicModel extends ChangeNotifier {
         case State.connect:
           state.onEntry(() async {
             try {
-              if (_nearbyDevice!.device.advName == "Frame Update") {
-                _updatableDevice = BrilliantDfuDevice(
-                  state: BrilliantConnectionState.disconnected,
-                  device: _nearbyDevice!.device,
-                );
-                await _updatableDevice!.connect();
-                triggerEvent(Event.updatableDeviceConnected);
-
-                return;
-              }
+  
               _connectedDevice =
                   await BrilliantBluetooth.connect(_nearbyDevice!);
 
               switch (_connectedDevice!.state) {
                 case BrilliantConnectionState.connected:
                   triggerEvent(Event.deviceConnected);
+                  break;
+                case BrilliantConnectionState.dfuConnected:
+                  _updatableDevice = BrilliantDfuDevice(device: _connectedDevice!.device, state: BrilliantConnectionState.dfuConnected);
+                  await _updatableDevice!.connect();
+                  triggerEvent(Event.updatableDeviceConnected);
                   break;
                 default:
                   throw ();
@@ -572,7 +569,8 @@ class AppLogicModel extends ChangeNotifier {
                   triggerEvent(Event.error);
                 }
               },
-              onError: (_) async {
+              onError: (error) async {
+                _log.warning("Error updating firmware. $error");
                 await _connectedDevice?.disconnect();
                 triggerEvent(Event.error);
               },
