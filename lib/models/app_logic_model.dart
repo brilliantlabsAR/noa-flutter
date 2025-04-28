@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:device_apps/device_apps.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
 import 'package:noa/util/tx_rich_text.dart';
 import 'package:noa/util/state_machine.dart';
+import 'package:notifications/notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final _log = Logger("App logic");
@@ -97,6 +99,16 @@ enum TuneLength {
   final String value;
 }
 
+Future<String> getAppNameFromPackage(String packageName) async {
+  Application? app = await DeviceApps.getApp(packageName, true);
+  if (app is ApplicationWithIcon) {
+    return app.appName;
+  } else if (app != null) {
+    return app.appName;
+  } else {
+    return 'Unknown App';
+  }
+}
 class AppLogicModel extends ChangeNotifier {
   // Public state variables
   StateMachine state = StateMachine(State.getUserSettings);
@@ -232,6 +244,22 @@ class AppLogicModel extends ChangeNotifier {
   BrilliantDfuDevice? _updatableDevice;
   StreamSubscription<int>? _tapSubs;
   bool _cancelled = false;
+  Notifications? _notifications;
+  StreamSubscription<NotificationEvent>? _subscription;
+  void onData(NotificationEvent event) {
+      _log.info("Notification event: ${event.toString()}");
+  }
+
+  void startListening() {
+      _notifications = new Notifications();
+      try {
+        _subscription = _notifications!.notificationStream!.listen(onData);
+      } on NotificationException catch (exception) {
+        _log.warning("Error starting notification stream: ${exception.message}");
+      } on Exception catch (exception) {
+        _log.warning("Error starting notification stream: ${exception.toString()}");
+      }
+  }
   // List<int> _audioData = List.empty(growable: true);
   // List<int> _imageData = List.empty(growable: true);
 // Photos: 720px VERY_HIGH quality JPEGs
@@ -299,6 +327,8 @@ class AppLogicModel extends ChangeNotifier {
     // ));
 
     () async {
+
+  startListening();
       noaMessages.add(NoaMessage(
         message: "Hey I'm Noa! Let's show you around",
         from: NoaRole.noa,
