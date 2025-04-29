@@ -32,8 +32,7 @@ dependencies:
   audio_session: ^0.1.19
   flutter_foreground_task: ^6.5.0
   frame_msg: ^2.0.0
-  frame_ble:
-    path: /Users/technoexponent/frame_ble
+  frame_ble: ^3.0.0
 
 dev_dependencies:
   flutter_test:
