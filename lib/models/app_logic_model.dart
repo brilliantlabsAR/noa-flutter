@@ -13,6 +13,7 @@ import 'package:frame_msg/frame_msg.dart';
 import 'package:logging/logging.dart';
 import 'package:noa/bluetooth.dart';
 import 'package:noa/noa_api.dart';
+import 'package:noa/util/text_sprites.dart';
 import 'package:noa/util/tx_rich_text.dart';
 import 'package:noa/util/state_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -601,7 +602,7 @@ class AppLogicModel extends ChangeNotifier {
             _luaResponseStream =
                 _connectedDevice!.stringResponse.listen((event) async {});
             // wait for the device to be ready
-            await Future.delayed(const Duration(milliseconds: 100));
+            await Future.delayed(const Duration(milliseconds: 800));
             _connectedDevice!
                 .sendMessage(singleDataFlag, TxCode(value: stopTapFlag).pack());
             _tapSubs?.cancel();
@@ -613,10 +614,7 @@ class AppLogicModel extends ChangeNotifier {
                   // STEP 2: LISTENING
                   frameState = FrameState.listening;
                   _log.info("Listening");
-                  await _connectedDevice!.sendMessage(
-                      messageResponseFlag,
-                      TxRichText(text: "tap to finish", emoji: "\u{F0010}")
-                          .pack());
+                  await sendSprites( _connectedDevice!, "tap to finish");
                   _cancelled = false;
                   if (_cancelled) return;
                   _image = _rxPhoto.attach(_connectedDevice!.dataResponse).first;
@@ -633,12 +631,7 @@ class AppLogicModel extends ChangeNotifier {
                   _log.info("On it");
                   _connectedDevice!.sendMessage(
                       singleDataFlag, TxCode(value: stopListeningFlag).pack());
-                  await _connectedDevice!.sendMessage(
-                      messageResponseFlag,
-                      TxRichText(
-                              text:
-                                  "..................... ..................... .....................")
-                          .pack());
+                  await sendSprites( _connectedDevice!, "..................... ..................... .....................");
                   if (_cancelled) return;
                   var image = await _image;
                   var audio = await _audio;
@@ -678,16 +671,13 @@ class AppLogicModel extends ChangeNotifier {
 
                   if (_cancelled) return;
                   triggerEvent(Event.noaResponse);
-                  image = null;
+                  image = null;        
                   _image = null;
                   _audio = null;
                 }
               } else if (taps == 2) {
                 _log.info("Cancelled");
-                await _connectedDevice!.sendMessage(messageResponseFlag,
-                    TxRichText(text: "tap me in", emoji: "\u{F0000}").pack());
-                _connectedDevice!.sendMessage(
-                    singleDataFlag, TxCode(value: stopListeningFlag).pack());
+                  await sendSprites( _connectedDevice!, "tap me in");
                 _cancelled = true;
                 frameState = FrameState.tapMeIn;
               }
@@ -698,16 +688,11 @@ class AppLogicModel extends ChangeNotifier {
             // if its coming from disconnected state immediately show tap me in, if its coming from print reply wait for 5 seconds
             if (frameState == FrameState.printReply) {
               Future.delayed(const Duration(seconds: 10), () async {
-                await _connectedDevice!.sendMessage(
-                    messageResponseFlag,
-                    TxRichText(text: "tap me in", emoji: "\u{F0000}").pack());
+                 await sendSprites( _connectedDevice!, "tap me in");
                 frameState = FrameState.tapMeIn;
               });
             }else{
-
-            await _connectedDevice!.sendMessage(messageResponseFlag,
-                TxRichText(text: "tap me in", emoji: "\u{F0000}").pack());
-                frameState = FrameState.tapMeIn;
+              await sendSprites( _connectedDevice!, "tap me in");
             }
 
           });
@@ -721,10 +706,8 @@ class AppLogicModel extends ChangeNotifier {
         case State.sendResponseToDevice:
           state.onEntry(() async {
             try {
-              await _connectedDevice!.sendMessage(
-                  messageResponseFlag,
-                  TxRichText(text: noaMessages.last.message, emoji: "\u{F0003}")
-                      .pack());
+              await sendSprites(
+                  _connectedDevice!, noaMessages.last.message);
               frameState = FrameState.printReply;
               await Future.delayed(const Duration(milliseconds: 800));
             } catch (_) {}

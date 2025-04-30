@@ -1,12 +1,10 @@
-require("graphics.min")
 local data = require('data.min')
 local rich_text = require('rich_text.min')
 local camera = require('camera.min')
 local code = require('code.min')
+local text_sprite_block = require('text_sprite_block.min')
 
 SCRIPT_VERSION = "v1.0.8"
-
-local graphics = Graphics.new()
 
 EXPOSURE_NUMBER = 10
 local last_print_time = 0
@@ -31,10 +29,15 @@ LISTENING_FLAG = 0x11
 STOP_LISTENING_FLAG = 0x12
 STOP_TAP_FLAG = 0x13
 LOOK_AHEAD_FLAG = 0x14
-
+TEXT_SPRITE_BLOCK = 0x24
 -- Frame to Phone flags
 AUDIO_DATA_NON_FINAL_MSG = 0x05
 AUDIO_DATA_FINAL_MSG = 0x06
+
+data.parsers[MESSAGE_RESPONSE_FLAG] = rich_text.parse_rich_text
+data.parsers[DATA_MSG] = code.parse_code
+data.parsers[LISTENING_FLAG] = camera.parse_capture_settings
+data.parsers[TEXT_SPRITE_BLOCK] = text_sprite_block.parse_text_sprite_block
 
 local function send_data(data)
     local try_until = frame.time.utc() + 2
@@ -59,12 +62,12 @@ local function check_look_ahead(_print)
     local pos = frame.imu.direction()
     if not (pos['roll'] > -20 and pos['roll'] < 20 and pos['pitch'] > -60 and pos['pitch'] < 40) then
         if _print then
-            graphics:clear()
-            graphics:append_text("look ahead", "\u{F0000}")
+            -- graphics:clear()
+            -- graphics:append_text("look ahead", "\u{F0000}")
         end
     else
-        graphics:clear()
-        graphics:append_text("tap me in", "\u{F0000}")
+        -- graphics:clear()
+        -- graphics:append_text("tap me in", "\u{F0000}")
         print("LOOKING AHEAD")
         looking_ahead = true
     end
@@ -72,9 +75,6 @@ end
 local function handle_tap()
     pcall(frame.bluetooth.send, string.char(TAP_SUBS_FLAG))
 end
-data.parsers[MESSAGE_RESPONSE_FLAG] = rich_text.parse_rich_text
-data.parsers[DATA_MSG] = code.parse_code
-data.parsers[LISTENING_FLAG] = camera.parse_capture_settings
 
 local function handle_messages()
     -- for data access from frame
@@ -114,6 +114,24 @@ local function handle_messages()
         graphics:append_text(data.app_data[MESSAGE_RESPONSE_FLAG].string, data.app_data[MESSAGE_RESPONSE_FLAG].emoji)
         data.app_data[MESSAGE_RESPONSE_FLAG] = nil
     end
+    if (data.app_data[TEXT_SPRITE_BLOCK] ~= nil) then
+
+        frame.display.show(' ',1, 1)
+        -- show the text sprite block
+        local tsb = data.app_data[TEXT_SPRITE_BLOCK]
+
+        -- it can be that we haven't got any sprites yet
+        local shift_y = 0
+        if tsb.first_sprite_index > 0 then
+            shift_y = tsb.offsets[tsb.first_sprite_index].y
+            for index = tsb.first_sprite_index, tsb.last_sprite_index do
+                local spr = tsb.sprites[index]
+                frame.display.bitmap(1, tsb.offsets[index].y + 1 - shift_y, spr.width, 2^spr.bpp, 0, spr.pixel_data)
+            end
+
+            frame.display.show()
+        end
+    end
 end
 
 local function transfer_audio_data()
@@ -136,7 +154,6 @@ local function transfer_audio_data()
     end
 end
 
-graphics:append_text("", "\u{F000D}")
 collectgarbage("collect")
 
 while true do
@@ -155,16 +172,12 @@ while true do
     end
     if frame.bluetooth.is_connected() == false and not disconnected then
         disconnected = true
-        graphics:clear()
-        graphics:append_text("", "\u{F000D}")
     end
     if frame.time.utc() - last_msg_time > 15 and not sleep_started and not listening then
         sleep_started = true
-        graphics:clear()
-        graphics:append_text("", "\u{F0008}")
     end
     if frame.time.utc() - last_print_time > 0.07 then
-        graphics:print()
+        -- graphics:print()
         last_print_time = frame.time.utc()
     end
     if frame.time.utc() - last_msg_time > 18 and sleep_started then
