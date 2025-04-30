@@ -110,8 +110,8 @@ local function handle_messages()
     end
     -- To print response on Frame
     if (data.app_data[MESSAGE_RESPONSE_FLAG] ~= nil and data.app_data[MESSAGE_RESPONSE_FLAG].string ~= nil) and looking_ahead then
-        graphics:clear()
-        graphics:append_text(data.app_data[MESSAGE_RESPONSE_FLAG].string, data.app_data[MESSAGE_RESPONSE_FLAG].emoji)
+        -- graphics:clear()
+        -- graphics:append_text(data.app_data[MESSAGE_RESPONSE_FLAG].string, data.app_data[MESSAGE_RESPONSE_FLAG].emoji)
         data.app_data[MESSAGE_RESPONSE_FLAG] = nil
     end
     if (data.app_data[TEXT_SPRITE_BLOCK] ~= nil) then
