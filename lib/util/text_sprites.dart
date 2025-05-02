@@ -5,6 +5,8 @@ import 'dart:ui';
 
 import 'package:frame_ble/frame_ble.dart';
 import 'package:frame_msg/tx/text_sprite_block.dart';
+import 'package:noa/models/app_logic_model.dart';
+import 'package:noa/util/tx_rich_text.dart';
 
 Future<TxTextSpriteBlock> textToSprites(String text, {
   int width = 620,
@@ -30,13 +32,20 @@ Future<TxTextSpriteBlock> textToSprites(String text, {
 
 // send textsprites to BrilliantDevice
 Future <void> sendSprites(BrilliantDevice device, String text, {
-  int width = 620,
+  int width = 420,
   int fontSize = 48,
   int maxDisplayRows = 10,
   TextDirection textDirection = TextDirection.ltr,
   TextAlign textAlign = TextAlign.start,
+  String? emoji = '',
 }) async {
   try{
+    if(emoji != null || emoji != '') {
+    await device.sendMessage(messageResponseFlag, TxRichText(text: "emoji", emoji: emoji!).pack());
+    }
+    if (text.isEmpty) {
+      return;
+    }
    // create a TxTextSpriteBlock object
    var tsb = await textToSprites(text, width: width, fontSize: fontSize, maxDisplayRows: maxDisplayRows, textDirection: textDirection, textAlign: textAlign);
    // send the sprites to the device
@@ -44,6 +53,7 @@ Future <void> sendSprites(BrilliantDevice device, String text, {
     for (var sprite in tsb.rasterizedSprites) {
       await device.sendMessage(0x24, sprite.pack());
     }
+
   } catch (e) {
     throw Exception('Error sending sprites: $e');
   }

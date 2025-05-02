@@ -614,7 +614,7 @@ class AppLogicModel extends ChangeNotifier {
                   // STEP 2: LISTENING
                   frameState = FrameState.listening;
                   _log.info("Listening");
-                  await sendSprites( _connectedDevice!, "tap to finish");
+                  await sendSprites( _connectedDevice!, "tap to finish",emoji: "\u{F0010}");
                   _cancelled = false;
                   if (_cancelled) return;
                   _image = _rxPhoto.attach(_connectedDevice!.dataResponse).first;
@@ -677,7 +677,8 @@ class AppLogicModel extends ChangeNotifier {
                 }
               } else if (taps == 2) {
                 _log.info("Cancelled");
-                  await sendSprites( _connectedDevice!, "tap me in");
+                // STEP 4: TAP ME IN
+                await sendSprites( _connectedDevice!, "tap me in", emoji: "\u{F0000}");
                 _cancelled = true;
                 frameState = FrameState.tapMeIn;
               }
@@ -688,11 +689,11 @@ class AppLogicModel extends ChangeNotifier {
             // if its coming from disconnected state immediately show tap me in, if its coming from print reply wait for 5 seconds
             if (frameState == FrameState.printReply) {
               Future.delayed(const Duration(seconds: 10), () async {
-                 await sendSprites( _connectedDevice!, "tap me in");
+                 await sendSprites( _connectedDevice!, "tap me in", emoji: "\u{F0000}");
                 frameState = FrameState.tapMeIn;
               });
             }else{
-              await sendSprites( _connectedDevice!, "tap me in");
+              await sendSprites( _connectedDevice!, "tap me in", emoji: "\u{F0000}");
             }
 
           });
@@ -707,7 +708,7 @@ class AppLogicModel extends ChangeNotifier {
           state.onEntry(() async {
             try {
               await sendSprites(
-                  _connectedDevice!, noaMessages.last.message);
+                  _connectedDevice!, noaMessages.last.message, emoji: "\u{F0003}");
               frameState = FrameState.printReply;
               await Future.delayed(const Duration(milliseconds: 800));
             } catch (_) {}

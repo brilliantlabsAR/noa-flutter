@@ -17,7 +17,7 @@ local photo_taken = false
 local capture_settings = nil
 local num_exposures = 0
 local looking_ahead = true
-
+local last_emoji = ""
 -- Phone to Frame flags
 MESSAGE_RESPONSE_FLAG = 0x20
 HOLD_RESPONSE_FLAG = 0x23
@@ -39,6 +39,11 @@ data.parsers[DATA_MSG] = code.parse_code
 data.parsers[LISTENING_FLAG] = camera.parse_capture_settings
 data.parsers[TEXT_SPRITE_BLOCK] = text_sprite_block.parse_text_sprite_block
 
+local function print_emoji()
+    if last_emoji ~= '' then
+        frame.display.text(last_emoji, 640 - 91, 40, { color = 'YELLOW' })
+    end
+end
 local function send_data(data)
     local try_until = frame.time.utc() + 2
     while frame.time.utc() < try_until do
@@ -58,12 +63,14 @@ function run_auto_exp(prev, interval)
         return prev
     end
 end
+
 local function check_look_ahead(_print)
     local pos = frame.imu.direction()
     if not (pos['roll'] > -20 and pos['roll'] < 20 and pos['pitch'] > -60 and pos['pitch'] < 40) then
         if _print then
-            -- graphics:clear()
-            -- graphics:append_text("look ahead", "\u{F0000}")
+            last_emoji = "\u{F0000}"
+            print_emoji()
+            frame.display.show()
         end
     else
         -- graphics:clear()
@@ -104,31 +111,30 @@ local function handle_messages()
         listening = true
         num_exposures = 0
         photo_taken = false
+        frame.microphone.stop {}
         capture_settings = data.app_data[LISTENING_FLAG]
         frame.microphone.start {}
         data.app_data[LISTENING_FLAG] = nil
     end
     -- To print response on Frame
     if (data.app_data[MESSAGE_RESPONSE_FLAG] ~= nil and data.app_data[MESSAGE_RESPONSE_FLAG].string ~= nil) and looking_ahead then
-        -- graphics:clear()
-        -- graphics:append_text(data.app_data[MESSAGE_RESPONSE_FLAG].string, data.app_data[MESSAGE_RESPONSE_FLAG].emoji)
+        last_emoji = data.app_data[MESSAGE_RESPONSE_FLAG].emoji
         data.app_data[MESSAGE_RESPONSE_FLAG] = nil
     end
     if (data.app_data[TEXT_SPRITE_BLOCK] ~= nil) then
-
-        frame.display.show(' ',1, 1)
+        -- frame.display.text(' ', 1, 1)
+        -- frame.display.show()
         -- show the text sprite block
         local tsb = data.app_data[TEXT_SPRITE_BLOCK]
-
         -- it can be that we haven't got any sprites yet
         local shift_y = 0
         if tsb.first_sprite_index > 0 then
             shift_y = tsb.offsets[tsb.first_sprite_index].y
             for index = tsb.first_sprite_index, tsb.last_sprite_index do
                 local spr = tsb.sprites[index]
-                frame.display.bitmap(1, tsb.offsets[index].y + 1 - shift_y, spr.width, 2^spr.bpp, 0, spr.pixel_data)
+                frame.display.bitmap(1, tsb.offsets[index].y + 1 - shift_y, spr.width, 2 ^ spr.bpp, 0, spr.pixel_data)
             end
-
+            print_emoji()
             frame.display.show()
         end
     end
@@ -139,7 +145,7 @@ local function transfer_audio_data()
     local audio_data_size = math.floor((mtu - 1) / 2) * 2
     local audio_data = nil
 
-    for i=1,20 do
+    for i = 1, 20 do
         audio_data = frame.microphone.read(audio_data_size)
         if audio_data == nil then
             print("STOPPED LISTENING")
@@ -175,6 +181,9 @@ while true do
     end
     if frame.time.utc() - last_msg_time > 15 and not sleep_started and not listening then
         sleep_started = true
+        last_emoji = "\u{F0008}"
+        print_emoji()
+        frame.display.show()
     end
     if frame.time.utc() - last_print_time > 0.07 then
         -- graphics:print()
@@ -182,7 +191,7 @@ while true do
     end
     if frame.time.utc() - last_msg_time > 18 and sleep_started then
         frame.microphone.stop()
-        frame.display.text(' ',1,1)
+        frame.display.text(' ', 1, 1)
         frame.display.show()
         frame.sleep(0.05)
         frame.sleep()
