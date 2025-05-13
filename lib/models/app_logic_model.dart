@@ -512,17 +512,12 @@ class AppLogicModel extends ChangeNotifier {
               }
               await _connectedDevice!.sendResetSignal();
               _setPairedDevice(_connectedDevice!.device.remoteId.toString());
-              await Future.delayed(const Duration(milliseconds: 800));
-              _connectedDevice!.sendMessage(singleDataFlag, TxCode(value: loopAheadFlag).pack());
-              triggerEvent(Event.done);
             } catch (error) {
               await _connectedDevice?.disconnect();
               _log.warning("Error uploading lua scripts. $error.");
               triggerEvent(Event.error);
             }
           });
-
-          state.changeOn(Event.done, State.connected);
           state.changeOn(Event.error, State.disconnected);
           break;
 
@@ -601,7 +596,7 @@ class AppLogicModel extends ChangeNotifier {
             _luaResponseStream =
                 _connectedDevice!.stringResponse.listen((event) async {});
             // wait for the device to be ready
-            await Future.delayed(const Duration(milliseconds: 100));
+            await Future.delayed(const Duration(milliseconds: 800));
             _connectedDevice!
                 .sendMessage(singleDataFlag, TxCode(value: stopTapFlag).pack());
             _tapSubs?.cancel();
@@ -769,8 +764,14 @@ class AppLogicModel extends ChangeNotifier {
         case State.recheckFirmwareVersion:
           state.onEntry(() async {
             _dataResponseStream?.cancel();
+            Timer? listenerTimeout;
+
+              listenerTimeout = Timer(const Duration(seconds: 2), () {
+                triggerEvent(Event.deviceNeedsUpdate);
+              });
             _dataResponseStream =
                 _connectedDevice!.dataResponse.listen((event) async {
+                  listenerTimeout?.cancel();
               final flag = event[0];
               if (flag == checkFwVersionFlag) {
                 _log.info("Firmware version: ${utf8.decode(event.sublist(1))}");
@@ -785,12 +786,17 @@ class AppLogicModel extends ChangeNotifier {
               await _connectedDevice!
                   .sendMessage(
                       singleDataFlag, TxCode(value: checkFwVersionFlag).pack())
-                  .timeout(const Duration(seconds: 1));
+                  .timeout(const Duration(seconds: 1), onTimeout:  () async {
+                        _log.warning("Timeout checking firmware version");
+                      });
             } catch (ex) {
               _log.warning("Error checking firmware version. $ex");
+              listenerTimeout.cancel();
               triggerEvent(Event.error);
             }
+            
           });
+
           state.changeOn(Event.deviceUpToDate, State.checkScriptVersion);
           state.changeOn(Event.deviceNeedsUpdate, State.stopLuaApp);
           state.changeOn(Event.error, State.stopLuaApp);
